@@ -897,5 +897,30 @@ const globalForMock = globalThis as unknown as {
   mockDb: MockDatabase | undefined;
 };
 
-export const mockDb = globalForMock.mockDb ?? new MockDatabase();
+function getInitializedMockDb(): MockDatabase {
+  if (!globalForMock.mockDb) {
+    return new MockDatabase();
+  }
+  // If singleton exists from before hot reload, re-link prototype
+  Object.setPrototypeOf(globalForMock.mockDb, MockDatabase.prototype);
+
+  // Ensure newly added fields exist on the cached instance
+  if (!Array.isArray(globalForMock.mockDb.wallets)) {
+    const fresh = new MockDatabase();
+    globalForMock.mockDb.wallets = fresh.wallets;
+  }
+
+  // Re-verify that getWallet is a function, otherwise re-instantiate
+  if (typeof globalForMock.mockDb.getWallet !== "function") {
+    const fresh = new MockDatabase();
+    fresh.bookings = globalForMock.mockDb.bookings || fresh.bookings;
+    fresh.users = globalForMock.mockDb.users || fresh.users;
+    fresh.courtBlocks = globalForMock.mockDb.courtBlocks || fresh.courtBlocks;
+    globalForMock.mockDb = fresh;
+  }
+
+  return globalForMock.mockDb;
+}
+
+export const mockDb = getInitializedMockDb();
 if (process.env.NODE_ENV !== "production") globalForMock.mockDb = mockDb;

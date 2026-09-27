@@ -456,7 +456,17 @@ export async function getUserWallet(
       console.warn("Prisma getUserWallet failed, falling back to mockDb:", e);
     }
   }
-  return mockDb.getWallet(tenantId, userId);
+  if (typeof mockDb.getWallet === "function") {
+    return mockDb.getWallet(tenantId, userId);
+  }
+  return {
+    id: `wallet-${tenantId}-${userId}`,
+    tenantId,
+    userId,
+    balance: 50,
+    currency: "CHF",
+    transactions: [],
+  };
 }
 
 export async function topUpUserWallet(
@@ -465,7 +475,17 @@ export async function topUpUserWallet(
   amount: number,
   description?: string
 ): Promise<UserWallet> {
-  const mockRes = mockDb.topUpWallet(tenantId, userId, amount, description);
+  const mockRes =
+    typeof mockDb.topUpWallet === "function"
+      ? mockDb.topUpWallet(tenantId, userId, amount, description)
+      : {
+          id: `wallet-${tenantId}-${userId}`,
+          tenantId,
+          userId,
+          balance: 50 + amount,
+          currency: "CHF",
+          transactions: [],
+        };
   if (hasDbConfigured) {
     try {
       const updated = await prisma.userWallet.upsert({
@@ -531,7 +551,17 @@ export async function grantAdminCredits(
   amount: number,
   reason: string
 ): Promise<UserWallet> {
-  const mockRes = mockDb.grantAdminCredits(tenantId, userId, amount, reason);
+  const mockRes =
+    typeof mockDb.grantAdminCredits === "function"
+      ? mockDb.grantAdminCredits(tenantId, userId, amount, reason)
+      : {
+          id: `wallet-${tenantId}-${userId}`,
+          tenantId,
+          userId,
+          balance: 50 + amount,
+          currency: "CHF",
+          transactions: [],
+        };
   if (hasDbConfigured) {
     try {
       await prisma.userWallet.upsert({
@@ -574,6 +604,9 @@ export async function checkBallMachineAvailability(
   endsAt: string,
   excludeBookingId?: string
 ): Promise<{ available: boolean; conflictCourtName?: string }> {
-  return mockDb.isBallMachineAvailable(tenantId, startsAt, endsAt, excludeBookingId);
+  if (typeof mockDb.isBallMachineAvailable === "function") {
+    return mockDb.isBallMachineAvailable(tenantId, startsAt, endsAt, excludeBookingId);
+  }
+  return { available: true };
 }
 
