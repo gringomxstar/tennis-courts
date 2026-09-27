@@ -1,36 +1,71 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🎾 Tennis Reservation App
 
-## Getting Started
+Moderne, mandantenfähige Webanwendung zur Verwaltung und Reservierung von Tennisplätzen für Tennisclubs, Mitglieder, Gäste und Administratoren.
 
-First, run the development server:
+Gebaut mit **Next.js 16 (App Router)**, **Prisma ORM**, **Neon Serverless PostgreSQL**, **Tailwind CSS** und **Shadcn UI**.
+
+---
+
+## 🚀 Kernfunktionen
+
+- **Mandantenfähigkeit (Multi-Tenant):** Jeder Tennisclub besitzt einen eigenen Bereich (`/c/[clubSlug]`) mit getrennter Datenhaltung, Standorten und Plätzen.
+- **Konfliktfreie Buchungen:** Doppelbuchungen werden technisch auf Datenbankebene durch **PostgreSQL Exclusion Constraints** (`btree_gist`) und transaktionale Absicherung verhindert.
+- **Flexible Buchungsregeln & Mitgliedschaftstarife:** Quoten (z.B. max. 4 zukünftige Buchungen), Buchungsfenster, Abendbeschränkungen und Stornierungsfristen.
+- **Mobile-First Buchungskalender:** Maßgeschneidertes Tennis-Court-Grid (Plätze als Spalten, Zeitslots als Zeilen) mit Touch-Unterstützung.
+- **Club- & Platzverwaltung:** Club-Admins verwalten Standorte, Plätze (Sand, Hartplatz, Halle, Flutlicht) und temporäre Platzsperren (Wartung, Regen, Turniere).
+
+---
+
+## 🛠️ Tech-Stack
+
+- **Frontend & Fullstack:** [Next.js](https://nextjs.org/) (App Router, Server Components & Server Actions)
+- **Styling:** [Tailwind CSS v4](https://tailwindcss.com/) & [Shadcn UI](https://ui.shadcn.com/) (Radix Primitives, Lucide Icons)
+- **Datenbank & ORM:** [Neon PostgreSQL](https://neon.tech/) & [Prisma ORM](https://www.prisma.io/)
+- **Authentifizierung:** [Auth.js / NextAuth v5](https://authjs.dev/) mit Prisma Adapter
+- **CI/CD & Hosting:** [GitHub Actions](.github/workflows/ci.yml) & [Vercel](https://vercel.com/)
+
+---
+
+## 📦 Erste Schritte
+
+### 1. Abhängigkeiten installieren
+
+```bash
+npm install
+```
+
+### 2. Umgebungsvariablen einrichten
+
+Kopiere `.env.example` nach `.env.local` und trage deine Neon-PostgreSQL-Verbindungsdaten ein:
+
+```bash
+cp .env.example .env.local
+```
+
+### 3. Datenbank synchronisieren & Seeden
+
+```bash
+# Schema auf Neon PostgreSQL anwenden
+npx prisma db push
+
+# Doppelbuchungsschutz auf DB-Ebene aktivieren (PostgreSQL Exclusion Constraint)
+# Siehe prisma/exclusion_constraint.sql
+
+# Testdaten für Demo-Club "TC Rot-Weiss Zürich" einspielen
+npx prisma db seed
+```
+
+### 4. Entwicklungsserver starten
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Die Anwendung ist anschließend unter [http://localhost:3000](http://localhost:3000) erreichbar.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 📄 Architektur & Bauplan
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Fachkonzept: [konzept.md](konzept.md)
+- Phasen- & Etappenbauplan: [bauplan.md](file:///Users/alain/.gemini/antigravity/brain/aee8e322-9bd6-434e-9289-7679b9f25401/bauplan.md)
