@@ -161,9 +161,9 @@ flowchart TD
 ### Phase 7: Spieler-Dashboard & Profil
 **Ziel:** Mitglieder können ihre Buchungen verwalten und Profile bearbeiten.
 
-- [ ] **7.1 Mein Bereich**:
-  - Übersicht der anstehenden und vergangenen Buchungen.
-  - Schnell-Storno-Funktion mit Bestätigungsdialog.
+- [x] **7.1 Mein Bereich (`/c/[clubSlug]/bookings`)**:
+  - Übersicht der anstehenden und vergangenen Buchungen mit Status-Badges.
+  - Schnell-Storno-Funktion mit interaktivem Bestätigungsdialog und Stornofristen.
 - [ ] **7.2 Benutzerprofil**:
   - Kontaktdaten, Telefonnummer, bevorzugte Spielzeiten, Passwort ändern.
 
@@ -179,6 +179,21 @@ flowchart TD
   - `prisma migrate deploy` im Vercel Build Step oder per GitHub Action.
 - [ ] **8.3 Smoke- & E2E-Tests**:
   - Grundlegende Tests für Buchungsworkflow und Tenant-Isolierung.
+
+---
+
+### Neuer Epic (Nächste Session / Separater PR): Mitspieler-Auswahl & Paywall-Engine
+**Ziel:** Erstklassiges Partner-Erlebnis beim Reservieren und automatisierte Tarifprüfung (Abo vs. Bezahlung für Non-Members).
+
+- [ ] **E.1 Deluxe Mitspieler- & Favoriten-Auswahl im Buchungs-Sheet**:
+  - **Favoriten / Buddies ("Häufige Partner"):** 1-Klick-Auswahl beliebter Spielpartner direkt mit Avatar-Pills.
+  - **Mitglieder-Suche:** Suchfeld mit Schnellfilter, Profil-Initialen und Club-Status statt langweiliger `<select>`-Liste.
+  - **Doppel-Unterstützung:** Bis zu 3 Mitspieler (2 vs 2) flexibel kombinierbar.
+  - **Gäste-Verwaltung:** Nahtloses Hinzufügen von externen Gästen mit Namens- und E-Mail-Erfassung.
+- [ ] **E.2 Intelligente Tarif- & Paywall-Engine**:
+  - **Aktives Abo / Mitgliedschaft:** Für Clubmitglieder mit gültigem Abonnement (`MembershipPlan`) ist die Buchung **kostenlos (0 CHF)** gemäss ihren Buchungsfenstern und Quoten.
+  - **Non-Members & Gastspieler:** Automatische Berechnung der Platz- oder Gastgebühr (z. B. 30 CHF/Stunde oder 15 CHF Gastanteil).
+  - **Checkout / Bezahlstatus:** Bezahlpflichtige Buchungen mit Zahlungsabwicklung (Stripe / Test-Gateway) und Bestätigungsbeleg.
 
 ---
 

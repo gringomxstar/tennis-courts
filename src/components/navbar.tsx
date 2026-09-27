@@ -209,6 +209,51 @@ export function Navbar({ currentTenant, user }: NavbarProps) {
           )}
         </div>
       </div>
+
+      {/* Mobile Sub-Navigation for Clubs */}
+      {currentTenant && (
+        <div className="md:hidden flex items-center justify-around border-t border-slate-100 dark:border-slate-800/80 px-2 py-1.5 bg-slate-50/80 dark:bg-slate-900/80 backdrop-blur-md">
+          <Link
+            href={`/c/${currentTenant.slug}`}
+            className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl transition-all ${
+              pathname === `/c/${currentTenant.slug}`
+                ? "bg-white dark:bg-slate-800 text-emerald-700 dark:text-emerald-400 shadow-xs"
+                : "text-slate-600 dark:text-slate-400"
+            }`}
+          >
+            <Calendar className="w-3.5 h-3.5 text-emerald-600" />
+            Kalender
+          </Link>
+
+          {user && (
+            <Link
+              href={`/c/${currentTenant.slug}/bookings`}
+              className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl transition-all ${
+                pathname.includes("/bookings")
+                  ? "bg-white dark:bg-slate-800 text-emerald-700 dark:text-emerald-400 shadow-xs"
+                  : "text-slate-600 dark:text-slate-400"
+              }`}
+            >
+              <Trophy className="w-3.5 h-3.5 text-amber-500" />
+              Meine Buchungen
+            </Link>
+          )}
+
+          {isTenantAdmin && (
+            <Link
+              href={`/c/${currentTenant.slug}/admin`}
+              className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl transition-all ${
+                pathname.includes("/admin")
+                  ? "bg-white dark:bg-slate-800 text-amber-700 dark:text-amber-400 shadow-xs"
+                  : "text-slate-600 dark:text-slate-400"
+              }`}
+            >
+              <Shield className="w-3.5 h-3.5 text-amber-600" />
+              Admin
+            </Link>
+          )}
+        </div>
+      )}
     </header>
   );
 }
