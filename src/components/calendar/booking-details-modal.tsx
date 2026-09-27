@@ -67,9 +67,9 @@ export function BookingDetailsModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
-      <div className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-        <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
+      <div className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl dark:bg-[#141A26] border border-slate-200 dark:border-white/[0.08]">
+        <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-white/[0.06]">
           <div>
             <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
               🎾 Buchungsdetails
@@ -79,13 +79,13 @@ export function BookingDetailsModal({
                 {booking.court?.name || "Tennisplatz"}
               </Badge>
               {isOrganizer && (
-                <Badge className="bg-emerald-600 text-white text-[10px]">Deine Buchung</Badge>
+                <Badge className="bg-[#E25B36] text-white text-[10px]">Deine Buchung</Badge>
               )}
             </div>
           </div>
           <button
             onClick={onClose}
-            className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800"
+            className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-white/[0.06] transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -100,8 +100,8 @@ export function BookingDetailsModal({
 
         <div className="mt-5 space-y-3.5 text-sm">
           {/* Date & Time */}
-          <div className="flex items-start gap-3 p-3 rounded-lg bg-slate-50 dark:bg-slate-800/60">
-            <Calendar className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+          <div className="flex items-start gap-3 p-3 rounded-xl bg-slate-50 dark:bg-[#101522] border border-slate-100 dark:border-white/[0.06]">
+            <Calendar className="w-5 h-5 text-[#E25B36] shrink-0 mt-0.5" />
             <div>
               <p className="font-semibold text-slate-900 dark:text-white">{formattedDate}</p>
               <p className="text-slate-500 text-xs mt-0.5">
@@ -112,7 +112,7 @@ export function BookingDetailsModal({
 
           {/* Players */}
           <div className="grid grid-cols-2 gap-3">
-            <div className="p-3 rounded-lg border border-slate-100 dark:border-slate-800">
+            <div className="p-3 rounded-xl border border-slate-100 dark:border-white/[0.06] dark:bg-[#101522]">
               <span className="text-[11px] font-medium text-slate-400 uppercase tracking-wider">
                 Bucher / Spieler 1
               </span>
@@ -123,7 +123,7 @@ export function BookingDetailsModal({
               </p>
             </div>
 
-            <div className="p-3 rounded-lg border border-slate-100 dark:border-slate-800">
+            <div className="p-3 rounded-xl border border-slate-100 dark:border-white/[0.06] dark:bg-[#101522]">
               <span className="text-[11px] font-medium text-slate-400 uppercase tracking-wider">
                 Partner / Spieler 2
               </span>
@@ -133,7 +133,7 @@ export function BookingDetailsModal({
 
           {/* Notes */}
           {booking.notes && (
-            <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800">
+            <div className="p-3 rounded-xl bg-slate-50 dark:bg-[#101522] border border-slate-100 dark:border-white/[0.06]">
               <span className="text-[11px] font-medium text-slate-400 uppercase tracking-wider">
                 Notizen
               </span>
@@ -144,8 +144,8 @@ export function BookingDetailsModal({
           )}
 
           {/* Status info */}
-          <div className="flex items-center justify-between text-xs text-slate-500 pt-2 border-t border-slate-100 dark:border-slate-800">
-            <span className="flex items-center gap-1.5 text-emerald-600 font-medium">
+          <div className="flex items-center justify-between text-xs text-slate-500 pt-2 border-t border-slate-100 dark:border-white/[0.06]">
+            <span className="flex items-center gap-1.5 text-emerald-500 font-medium">
               <CheckCircle2 className="w-4 h-4" /> Bestätigt & reserviert
             </span>
             <span>ID: {booking.id.substring(0, 14)}...</span>
@@ -154,7 +154,7 @@ export function BookingDetailsModal({
 
         {/* Cancellation Section */}
         {canCancel && (
-          <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800">
+          <div className="mt-6 pt-4 border-t border-slate-100 dark:border-white/[0.06]">
             {!confirmPrompt ? (
               <Button
                 variant="destructive"

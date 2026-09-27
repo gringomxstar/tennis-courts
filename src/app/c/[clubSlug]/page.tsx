@@ -43,7 +43,7 @@ export default async function ClubPage({ params, searchParams }: ClubPageProps) 
   ]);
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950">
+    <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-[#0B0F17]">
       <Navbar currentTenant={tenant} user={context.user} wallet={wallet} />
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -60,10 +60,10 @@ export default async function ClubPage({ params, searchParams }: ClubPageProps) 
         />
       </main>
 
-      <footer className="border-t border-slate-200 bg-white py-6 dark:border-slate-800 dark:bg-slate-900 mt-12 text-xs text-slate-500 text-center">
+      <footer className="border-t border-slate-200 bg-white py-6 dark:border-white/[0.06] dark:bg-[#141A26] mt-12 text-xs text-slate-500 dark:text-slate-400 text-center">
         <p>
           {tenant.name} &bull; Betrieben mit{" "}
-          <span className="font-semibold text-emerald-600">TennisCourts</span> Reservation OS
+          <span className="font-semibold text-[#E25B36]">TennisCourts</span> Reservation OS
         </p>
       </footer>
     </div>

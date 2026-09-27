@@ -11,7 +11,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Calendar as CalendarIcon,
-  Filter,
   Plus,
   MapPin,
   Clock,
@@ -134,20 +133,20 @@ export function CourtCalendar({
   );
 
   return (
-    <div className="space-y-6">
-      {/* Club Top Banner with Sports-Tech Gradient */}
-      <div className="relative overflow-hidden rounded-3xl border border-slate-200/80 dark:border-slate-800/80 bg-white/90 dark:bg-slate-900/90 shadow-sm p-6 backdrop-blur-xl">
-        <div className="absolute top-0 right-0 -mt-12 -mr-12 w-64 h-64 rounded-full bg-emerald-500/10 dark:bg-emerald-500/15 blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-1/3 -mb-12 w-48 h-48 rounded-full bg-amber-500/10 dark:bg-amber-500/10 blur-2xl pointer-events-none" />
+    <div className="space-y-5">
+      {/* Club Top Banner: Roland Garros Nocturne Night Stadium */}
+      <div className="relative overflow-hidden rounded-3xl border border-slate-200/80 dark:border-white/[0.06] bg-white/90 dark:bg-[#141A26]/90 shadow-sm p-6 backdrop-blur-xl">
+        <div className="absolute top-0 right-0 -mt-12 -mr-12 w-72 h-72 rounded-full bg-[#E25B36]/10 blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-1/3 -mb-12 w-56 h-56 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
 
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-2.5">
-              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-slate-100">
                 {tenant.name}
               </h1>
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/10 text-amber-600 dark:bg-amber-400/15 dark:text-amber-300 border border-amber-500/20 dark:border-amber-400/30">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
                 Live Belegung
               </div>
             </div>
@@ -155,14 +154,13 @@ export function CourtCalendar({
             <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-slate-500 dark:text-slate-400">
               {tenant.address && (
                 <span className="flex items-center gap-1.5">
-                  <MapPin className="w-3.5 h-3.5 text-emerald-600" />
+                  <MapPin className="w-3.5 h-3.5 text-[#E25B36]" />
                   {tenant.address}
                 </span>
               )}
               <span className="flex items-center gap-1.5">
                 <Clock className="w-3.5 h-3.5 text-slate-400" />
-                Öffnungszeiten: {tenant.settingsJson?.openingHour || 7}:00 –{" "}
-                {tenant.settingsJson?.closingHour || 22}:00 Uhr
+                {tenant.settingsJson?.openingHour || 7}:00 – {tenant.settingsJson?.closingHour || 22}:00 Uhr
               </span>
               <span className="inline-flex items-center gap-1 font-semibold text-slate-700 dark:text-slate-300">
                 🎾 {courts.length} Plätze bespielbar
@@ -177,7 +175,7 @@ export function CourtCalendar({
                 setSelectedTime("10:00");
                 setBookingModalOpen(true);
               }}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs h-10 px-4 rounded-xl shadow-md shadow-emerald-600/20 gap-2 transition-all hover:scale-102 cursor-pointer"
+              className="bg-[#E25B36] hover:bg-[#C84B2B] text-white font-semibold text-xs h-10 px-4 rounded-xl shadow-md shadow-[#E25B36]/25 gap-2 transition-all hover:scale-102 cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               Platz reservieren
@@ -187,14 +185,14 @@ export function CourtCalendar({
       </div>
 
       {/* Date Carousel & Filter Bar */}
-      <div className="rounded-3xl border border-slate-200/80 dark:border-slate-800/80 bg-white/90 dark:bg-slate-900/90 shadow-sm p-4 backdrop-blur-xl space-y-4">
+      <div className="rounded-3xl border border-slate-200/80 dark:border-white/[0.06] bg-white/90 dark:bg-[#141A26]/90 shadow-sm p-4 backdrop-blur-xl space-y-4">
         {/* Top: 7-Day Carousel Strip */}
         <div className="flex items-center justify-between gap-2 overflow-x-auto pb-1 scrollbar-none">
           <Button
             variant="outline"
             size="icon"
             onClick={() => handleDateChange(-1)}
-            className="shrink-0 h-11 w-11 rounded-2xl border-slate-200 dark:border-slate-800 cursor-pointer"
+            className="shrink-0 h-11 w-11 rounded-2xl border-slate-200 dark:border-white/[0.08] dark:bg-[#18202F] text-slate-700 dark:text-slate-300 hover:text-[#E25B36] cursor-pointer"
             title="Vorheriger Tag"
           >
             <ChevronLeft className="w-4 h-4" />
@@ -207,18 +205,18 @@ export function CourtCalendar({
                 onClick={() => navigateToDate(day.dateStr)}
                 className={`flex flex-col items-center justify-center py-2 px-3.5 min-w-[62px] rounded-2xl transition-all cursor-pointer ${
                   day.isSelected
-                    ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/25 scale-105 font-bold"
-                    : "bg-slate-100/70 hover:bg-slate-200/70 dark:bg-slate-800/70 dark:hover:bg-slate-700/70 text-slate-700 dark:text-slate-300"
+                    ? "bg-[#E25B36] text-white shadow-md shadow-[#E25B36]/30 scale-105 font-bold"
+                    : "bg-slate-100/70 hover:bg-slate-200/70 dark:bg-[#18202F] dark:hover:bg-[#1F2B3E] text-slate-700 dark:text-slate-300 border border-transparent dark:border-white/[0.03]"
                 }`}
               >
-                <span className={`text-[10px] uppercase font-bold tracking-wider ${day.isSelected ? "text-emerald-100" : "text-slate-400"}`}>
+                <span className={`text-[10px] uppercase font-bold tracking-wider ${day.isSelected ? "text-white/80" : "text-slate-400"}`}>
                   {day.weekday}
                 </span>
                 <span className="text-base font-extrabold leading-tight mt-0.5">
                   {day.dayNum}
                 </span>
                 {day.isToday && (
-                  <span className={`text-[9px] font-bold mt-0.5 ${day.isSelected ? "text-white" : "text-emerald-600"}`}>
+                  <span className={`text-[9px] font-bold mt-0.5 ${day.isSelected ? "text-white" : "text-amber-500 dark:text-amber-400"}`}>
                     Heute
                   </span>
                 )}
@@ -230,21 +228,21 @@ export function CourtCalendar({
             variant="outline"
             size="icon"
             onClick={() => handleDateChange(1)}
-            className="shrink-0 h-11 w-11 rounded-2xl border-slate-200 dark:border-slate-800 cursor-pointer"
+            className="shrink-0 h-11 w-11 rounded-2xl border-slate-200 dark:border-white/[0.08] dark:bg-[#18202F] text-slate-700 dark:text-slate-300 hover:text-[#E25B36] cursor-pointer"
             title="Nächster Tag"
           >
             <ChevronRight className="w-4 h-4" />
           </Button>
         </div>
 
-        {/* Bottom: Date title & Quick Filters */}
-        <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 flex flex-col md:flex-row md:items-center justify-between gap-3">
+        {/* Bottom: Date title & Segmented Filters */}
+        <div className="pt-3 border-t border-slate-100 dark:border-white/[0.06] flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div className="relative flex items-center gap-2">
-            <CalendarIcon className="w-4 h-4 text-emerald-600" />
-            <span className="text-sm font-bold text-slate-900 dark:text-white capitalize">
+            <CalendarIcon className="w-4 h-4 text-[#E25B36]" />
+            <span className="text-sm font-bold text-slate-900 dark:text-slate-100 capitalize">
               {formattedDisplayDate}
             </span>
-            {isPending && <Loader2 className="w-4 h-4 animate-spin text-emerald-600" />}
+            {isPending && <Loader2 className="w-4 h-4 animate-spin text-[#E25B36]" />}
             <input
               type="date"
               value={selectedDate}
@@ -252,82 +250,84 @@ export function CourtCalendar({
               className="opacity-0 absolute inset-0 cursor-pointer w-full"
               title="Anderes Datum wählen"
             />
-            <span className="text-[11px] text-slate-400 hover:text-emerald-600 underline cursor-pointer">
-              (Datum wählen)
+            <span className="text-[11px] text-slate-400 hover:text-[#E25B36] underline cursor-pointer">
+              (Kalender)
             </span>
           </div>
 
-          {/* Filter Pills */}
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="text-[11px] text-slate-400 mr-1 flex items-center gap-1">
-              <Filter className="w-3 h-3" /> Filter:
-            </span>
+          {/* Clean Segmented Filter Controls */}
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Quick Sport & Surface Pills */}
+            <div className="flex items-center p-1 rounded-2xl bg-slate-100 dark:bg-[#101522] border border-slate-200/80 dark:border-white/[0.06]">
+              <button
+                onClick={() => {
+                  setSportFilter("ALL");
+                  setSurfaceFilter("ALL");
+                  setIndoorFilter("ALL");
+                }}
+                className={`px-3 py-1 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                  sportFilter === "ALL" && surfaceFilter === "ALL" && indoorFilter === "ALL"
+                    ? "bg-white dark:bg-[#1C2536] text-[#E25B36] dark:text-[#F37957] shadow-xs"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                }`}
+              >
+                Alle Plätze
+              </button>
 
-            {/* Sport Filter */}
-            <button
-              onClick={() => setSportFilter(sportFilter === "ALL" ? "PADEL" : sportFilter === "PADEL" ? "TENNIS" : "ALL")}
-              className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
-                sportFilter !== "ALL"
-                  ? "bg-slate-900 text-white border-slate-900 shadow-xs dark:bg-white dark:text-slate-900"
-                  : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100"
-              }`}
-            >
-              {sportFilter === "ALL" ? "Sport: Alle" : sportFilter === "PADEL" ? "🎾 Padel" : "🎾 Tennis"}
-            </button>
+              <button
+                onClick={() => {
+                  setSurfaceFilter(surfaceFilter === "CLAY" ? "ALL" : "CLAY");
+                  setSportFilter("ALL");
+                }}
+                className={`px-3 py-1 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                  surfaceFilter === "CLAY"
+                    ? "bg-white dark:bg-[#1C2536] text-[#E25B36] dark:text-[#F37957] shadow-xs font-bold"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                }`}
+              >
+                Sand (Clay)
+              </button>
 
-            <button
-              onClick={() => setSurfaceFilter(surfaceFilter === "CLAY" ? "ALL" : "CLAY")}
-              className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
-                surfaceFilter === "CLAY"
-                  ? "bg-amber-600 text-white border-amber-600 shadow-xs"
-                  : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100"
-              }`}
-            >
-              Sandplatz
-            </button>
+              <button
+                onClick={() => {
+                  setSportFilter(sportFilter === "PADEL" ? "ALL" : "PADEL");
+                  setSurfaceFilter("ALL");
+                }}
+                className={`px-3 py-1 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                  sportFilter === "PADEL"
+                    ? "bg-white dark:bg-[#1C2536] text-cyan-600 dark:text-cyan-400 shadow-xs font-bold"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                }`}
+              >
+                Padel
+              </button>
 
-            <button
-              onClick={() => setSurfaceFilter(surfaceFilter === "HARD" ? "ALL" : "HARD")}
-              className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
-                surfaceFilter === "HARD"
-                  ? "bg-sky-600 text-white border-sky-600 shadow-xs"
-                  : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100"
-              }`}
-            >
-              Hartplatz
-            </button>
+              <button
+                onClick={() => {
+                  setIndoorFilter(indoorFilter === "INDOOR" ? "ALL" : "INDOOR");
+                  setSportFilter("ALL");
+                }}
+                className={`px-3 py-1 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                  indoorFilter === "INDOOR"
+                    ? "bg-white dark:bg-[#1C2536] text-indigo-600 dark:text-indigo-400 shadow-xs font-bold"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                }`}
+              >
+                Halle
+              </button>
+            </div>
 
-            <button
-              onClick={() => setIndoorFilter(indoorFilter === "OUTDOOR" ? "ALL" : "OUTDOOR")}
-              className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
-                indoorFilter === "OUTDOOR"
-                  ? "bg-emerald-600 text-white border-emerald-600 shadow-xs"
-                  : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100"
-              }`}
-            >
-              Freiplatz (Outdoor)
-            </button>
-
-            <button
-              onClick={() => setIndoorFilter(indoorFilter === "INDOOR" ? "ALL" : "INDOOR")}
-              className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
-                indoorFilter === "INDOOR"
-                  ? "bg-purple-600 text-white border-purple-600 shadow-xs"
-                  : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100"
-              }`}
-            >
-              Halle (Indoor)
-            </button>
-
+            {/* Optional Lighting Toggle */}
             <button
               onClick={() => setLightingOnly(!lightingOnly)}
-              className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
+              className={`px-3 py-1.5 rounded-2xl text-xs font-semibold border transition-all cursor-pointer flex items-center gap-1.5 ${
                 lightingOnly
-                  ? "bg-amber-500 text-white border-amber-500 shadow-xs"
-                  : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100"
+                  ? "bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/40 shadow-xs"
+                  : "border-slate-200/80 dark:border-white/[0.06] text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-[#18202F]"
               }`}
             >
-              Mit Flutlicht
+              <span>💡</span>
+              <span>Flutlicht</span>
             </button>
           </div>
         </div>

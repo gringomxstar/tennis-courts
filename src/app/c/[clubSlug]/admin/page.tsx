@@ -41,7 +41,7 @@ export default async function ClubAdminPage({ params }: ClubAdminPageProps) {
   ]);
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950">
+    <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-[#0B0F17]">
       <Navbar currentTenant={tenant} user={context.user} wallet={wallet} />
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
@@ -50,7 +50,7 @@ export default async function ClubAdminPage({ params }: ClubAdminPageProps) {
           <div>
             <Link
               href={`/c/${tenant.slug}`}
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600 hover:text-emerald-700 mb-2 transition-colors"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#E25B36] hover:text-[#C84B2B] mb-2 transition-colors"
             >
               <ChevronLeft className="w-3.5 h-3.5" />
               Zurück zum Buchungskalender

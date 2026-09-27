@@ -50,23 +50,23 @@ export function CancelBookingButton({
       </Button>
 
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
-          <div className="relative w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
+          <div className="relative w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl dark:bg-[#141A26] border border-slate-200 dark:border-white/[0.08] space-y-4">
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-2xl bg-rose-100 dark:bg-rose-950/80 text-rose-600 flex items-center justify-center shrink-0">
+              <div className="h-10 w-10 rounded-2xl bg-rose-100 dark:bg-rose-950/40 text-rose-500 flex items-center justify-center shrink-0">
                 <AlertTriangle className="w-5 h-5" />
               </div>
               <div>
                 <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
                   Reservierung stornieren?
                 </h3>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-slate-500 dark:text-slate-400">
                   Der reservierte Platz wird für andere Mitglieder freigegeben.
                 </p>
               </div>
             </div>
 
-            <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 space-y-1 text-xs">
+            <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-[#101522] border border-slate-200/80 dark:border-white/[0.06] space-y-1 text-xs">
               <div className="font-bold text-slate-800 dark:text-slate-200">
                 {courtName}
               </div>
@@ -76,7 +76,7 @@ export function CancelBookingButton({
             </div>
 
             {error && (
-              <div className="p-3 rounded-xl bg-rose-50 text-rose-700 text-xs border border-rose-200 dark:bg-rose-950 dark:text-rose-300 dark:border-rose-900">
+              <div className="p-3 rounded-xl bg-rose-50 text-rose-700 text-xs border border-rose-200 dark:bg-rose-950/60 dark:text-rose-200 dark:border-rose-900">
                 {error}
               </div>
             )}

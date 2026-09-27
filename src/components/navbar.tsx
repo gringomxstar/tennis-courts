@@ -18,6 +18,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { Tenant, TenantRole } from "@/types";
+import { ThemeToggle } from "./theme-toggle";
 
 interface NavbarProps {
   currentTenant?: Tenant | null;
@@ -96,24 +97,24 @@ export function Navbar({ currentTenant, user, wallet }: NavbarProps) {
   };
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-slate-200/80 dark:border-slate-800/80 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl transition-all">
+    <header className="sticky top-0 z-40 w-full border-b border-slate-200/80 dark:border-white/[0.06] bg-white/85 dark:bg-[#0B0F17]/90 backdrop-blur-xl transition-all">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
         {/* Left: Brand & Tenant Info */}
         <div className="flex items-center gap-3">
           <Link href="/" className="flex items-center gap-2.5 group">
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 flex items-center justify-center text-white shadow-md shadow-emerald-500/20 group-hover:scale-105 group-hover:shadow-emerald-500/30 transition-all">
+            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-[#E25B36] via-[#D84C25] to-[#B33816] flex items-center justify-center text-white shadow-md shadow-[#E25B36]/25 group-hover:scale-105 group-hover:shadow-[#E25B36]/35 transition-all">
               <span className="text-xl">🎾</span>
             </div>
             <div className="flex flex-col">
               <div className="flex items-center gap-1.5">
                 <span className="font-extrabold text-base tracking-tight text-slate-900 dark:text-white">
-                  Tennis<span className="text-emerald-600 dark:text-emerald-400">Courts</span>
+                  Tennis<span className="text-[#E25B36]">Courts</span>
                 </span>
-                <span className="inline-flex items-center px-1.5 py-0.2 text-[9px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 rounded">
-                  Pro
+                <span className="inline-flex items-center px-1.5 py-0.2 text-[9px] font-bold uppercase tracking-wider bg-[#E25B36]/15 text-[#E25B36] dark:bg-[#E25B36]/20 dark:text-[#F37957] rounded border border-[#E25B36]/25">
+                  Nocturne
                 </span>
               </div>
-              <span className="text-[10px] text-slate-400 font-medium">Smart Club OS</span>
+              <span className="text-[10px] text-slate-400 font-medium">Grand Slam OS</span>
             </div>
           </Link>
 
@@ -121,9 +122,9 @@ export function Navbar({ currentTenant, user, wallet }: NavbarProps) {
             <div className="hidden sm:flex items-center gap-2 pl-4 border-l border-slate-200 dark:border-slate-800">
               <Link
                 href={`/c/${currentTenant.slug}`}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-300 bg-slate-100/80 dark:bg-slate-900 hover:bg-emerald-50 hover:text-emerald-700 dark:hover:bg-emerald-950/60 dark:hover:text-emerald-300 transition-colors"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-300 bg-slate-100/80 dark:bg-[#141A26] hover:bg-[#E25B36]/10 hover:text-[#E25B36] dark:hover:bg-[#1A2232] dark:hover:text-[#F37957] transition-colors border border-transparent dark:border-white/[0.04]"
               >
-                <MapPin className="w-3.5 h-3.5 text-emerald-600" />
+                <MapPin className="w-3.5 h-3.5 text-[#E25B36]" />
                 <span>{currentTenant.name}</span>
               </Link>
             </div>
@@ -132,16 +133,16 @@ export function Navbar({ currentTenant, user, wallet }: NavbarProps) {
 
         {/* Center: Navigation Links inside Club */}
         {currentTenant && (
-          <nav className="hidden md:flex items-center gap-1 p-1 bg-slate-100/70 dark:bg-slate-900/70 rounded-xl border border-slate-200/50 dark:border-slate-800/50">
+          <nav className="hidden md:flex items-center gap-1 p-1 bg-slate-100/70 dark:bg-[#141A26]/80 rounded-xl border border-slate-200/50 dark:border-white/[0.06]">
             <Link href={`/c/${currentTenant.slug}`}>
               <button
                 className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                   pathname === `/c/${currentTenant.slug}`
-                    ? "bg-white dark:bg-slate-800 text-emerald-700 dark:text-emerald-400 shadow-xs"
+                    ? "bg-white dark:bg-[#1C2536] text-[#E25B36] dark:text-[#F37957] shadow-xs"
                     : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                 }`}
               >
-                <Calendar className="w-3.5 h-3.5 text-emerald-600" />
+                <Calendar className="w-3.5 h-3.5 text-[#E25B36]" />
                 Kalender
               </button>
             </Link>
@@ -151,7 +152,7 @@ export function Navbar({ currentTenant, user, wallet }: NavbarProps) {
                 <button
                   className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                     pathname.includes("/bookings")
-                      ? "bg-white dark:bg-slate-800 text-emerald-700 dark:text-emerald-400 shadow-xs"
+                      ? "bg-white dark:bg-[#1C2536] text-[#E25B36] dark:text-[#F37957] shadow-xs"
                       : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                   }`}
                 >
@@ -166,11 +167,11 @@ export function Navbar({ currentTenant, user, wallet }: NavbarProps) {
                 <button
                   className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                     pathname.includes("/admin")
-                      ? "bg-white dark:bg-slate-800 text-amber-700 dark:text-amber-400 shadow-xs"
-                      : "text-slate-600 dark:text-slate-400 hover:text-amber-700 dark:hover:text-amber-400"
+                      ? "bg-white dark:bg-[#1C2536] text-amber-600 dark:text-amber-400 shadow-xs"
+                      : "text-slate-600 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400"
                   }`}
                 >
-                  <Shield className="w-3.5 h-3.5 text-amber-600" />
+                  <Shield className="w-3.5 h-3.5 text-amber-500" />
                   Club-Verwaltung
                 </button>
               </Link>
@@ -179,19 +180,19 @@ export function Navbar({ currentTenant, user, wallet }: NavbarProps) {
         )}
 
         {/* Right: User Menu & Auth */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
           {/* User Credits Wallet Pill */}
           {user && currentTenant && (
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-200/80 dark:border-emerald-800 text-xs font-semibold shadow-2xs">
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100/90 dark:bg-[#141A26] border border-slate-200/80 dark:border-white/[0.08] text-xs font-semibold shadow-2xs">
               <Coins className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-              <span className="text-emerald-900 dark:text-emerald-200 font-bold">
+              <span className="text-slate-800 dark:text-slate-200 font-mono font-bold">
                 {currentBalance.toFixed(0)} CHF
               </span>
               <button
                 onClick={handleTopUp}
                 disabled={topUpLoading}
                 title="1-Klick Dev/Test: +50 CHF Guthaben aufladen"
-                className="ml-1 px-1.5 py-0.5 rounded bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold transition-all flex items-center gap-0.5 cursor-pointer disabled:opacity-50"
+                className="ml-1 px-1.5 py-0.5 rounded bg-[#E25B36] hover:bg-[#C84B2B] text-white text-[10px] font-bold transition-all flex items-center gap-0.5 cursor-pointer disabled:opacity-50"
               >
                 {topUpLoading ? (
                   <Loader2 className="w-2.5 h-2.5 animate-spin" />
@@ -201,6 +202,9 @@ export function Navbar({ currentTenant, user, wallet }: NavbarProps) {
               </button>
             </div>
           )}
+
+          {/* Theme Toggle (Day / Night) */}
+          <ThemeToggle />
 
           {user ? (
             <div className="flex items-center gap-3">
@@ -264,16 +268,16 @@ export function Navbar({ currentTenant, user, wallet }: NavbarProps) {
 
       {/* Mobile Sub-Navigation for Clubs */}
       {currentTenant && (
-        <div className="md:hidden flex items-center justify-around border-t border-slate-100 dark:border-slate-800/80 px-2 py-1.5 bg-slate-50/80 dark:bg-slate-900/80 backdrop-blur-md">
+        <div className="md:hidden flex items-center justify-around border-t border-slate-100 dark:border-white/[0.06] px-2 py-1.5 bg-slate-50/90 dark:bg-[#0B0F17]/95 backdrop-blur-md">
           <Link
             href={`/c/${currentTenant.slug}`}
             className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl transition-all ${
               pathname === `/c/${currentTenant.slug}`
-                ? "bg-white dark:bg-slate-800 text-emerald-700 dark:text-emerald-400 shadow-xs"
+                ? "bg-white dark:bg-[#1C2536] text-[#E25B36] dark:text-[#F37957] shadow-xs"
                 : "text-slate-600 dark:text-slate-400"
             }`}
           >
-            <Calendar className="w-3.5 h-3.5 text-emerald-600" />
+            <Calendar className="w-3.5 h-3.5 text-[#E25B36]" />
             Kalender
           </Link>
 
@@ -282,7 +286,7 @@ export function Navbar({ currentTenant, user, wallet }: NavbarProps) {
               href={`/c/${currentTenant.slug}/bookings`}
               className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl transition-all ${
                 pathname.includes("/bookings")
-                  ? "bg-white dark:bg-slate-800 text-emerald-700 dark:text-emerald-400 shadow-xs"
+                  ? "bg-white dark:bg-[#1C2536] text-[#E25B36] dark:text-[#F37957] shadow-xs"
                   : "text-slate-600 dark:text-slate-400"
               }`}
             >
@@ -296,11 +300,11 @@ export function Navbar({ currentTenant, user, wallet }: NavbarProps) {
               href={`/c/${currentTenant.slug}/admin`}
               className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl transition-all ${
                 pathname.includes("/admin")
-                  ? "bg-white dark:bg-slate-800 text-amber-700 dark:text-amber-400 shadow-xs"
+                  ? "bg-white dark:bg-[#1C2536] text-amber-600 dark:text-amber-400 shadow-xs"
                   : "text-slate-600 dark:text-slate-400"
               }`}
             >
-              <Shield className="w-3.5 h-3.5 text-amber-600" />
+              <Shield className="w-3.5 h-3.5 text-amber-500" />
               Admin
             </Link>
           )}
