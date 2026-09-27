@@ -1,5 +1,6 @@
 import {
   Tenant,
+  TenantSettings,
   Court,
   Booking,
   CourtBlock,
@@ -395,6 +396,46 @@ class MockDatabase {
           b.participants.some((p) => p.userId === userId)) &&
         b.status !== "CANCELLED"
     );
+  }
+
+  // Tenant settings & plans mutation helpers
+  updateTenantSettings(slug: string, settings: Partial<TenantSettings>): Tenant | null {
+    const tenant = this.getTenantBySlug(slug);
+    if (!tenant) return null;
+    tenant.settingsJson = {
+      ...(tenant.settingsJson || {
+        openingHour: 7,
+        closingHour: 22,
+        slotDurationMinutes: 60,
+        cancellationDeadlineHours: 24,
+      }),
+      ...settings,
+    };
+    return tenant;
+  }
+
+  getMembershipPlans(tenantId: string): MembershipPlan[] {
+    return this.membershipPlans.filter((p) => p.tenantId === tenantId);
+  }
+
+  createMembershipPlan(plan: Omit<MembershipPlan, "id">): MembershipPlan {
+    const id = `plan-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+    const newPlan: MembershipPlan = { ...plan, id };
+    this.membershipPlans.push(newPlan);
+    return newPlan;
+  }
+
+  updateMembershipPlan(id: string, plan: Partial<MembershipPlan>): MembershipPlan | null {
+    const existing = this.membershipPlans.find((p) => p.id === id);
+    if (!existing) return null;
+    Object.assign(existing, plan);
+    return existing;
+  }
+
+  deleteMembershipPlan(id: string): boolean {
+    const initialLen = this.membershipPlans.length;
+    this.membershipPlans = this.membershipPlans.filter((p) => p.id !== id);
+    return this.membershipPlans.length < initialLen;
   }
 
   // Mutation helpers

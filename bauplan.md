@@ -75,8 +75,9 @@ flowchart TD
 ### Phase 2: Datenbankmodell, Neon Postgres & Prisma
 **Ziel:** Vollständig modelliertes Schema in Prisma mit Neon-Postgres-Verbindung, Seed-Skript und Schutz vor Doppelbuchungen.
 
-- [ ] **2.1 Neon PostgreSQL Provisionierung**:
-  - Neon-Projekt erstellen, Verbindungszeichenfolgen (`DATABASE_URL`, `DIRECT_URL`) in `.env.local` eintragen.
+- [x] **2.1 Neon PostgreSQL Provisionierung**:
+  - Automatisches Provisionierungsskript `scripts/provision-db.ts` (`npm run db:provision`) für Schema-Push, Extension-Aktivierung und Seeding bereitgestellt.
+  - Verbindungszeichenfolgen (`DATABASE_URL`, `DIRECT_URL`) in `.env.local` vorbereitet.
 - [x] **2.2 Prisma Schema Definition**:
   - Alle Tabellen aus dem Fachkonzept in `prisma/schema.prisma` definiert:
     - `User`, `Tenant`, `TenantUser` (6 Rollen)
@@ -85,10 +86,11 @@ flowchart TD
     - `Booking`, `BookingParticipant`, `CourtBlock`
     - `AuditLog` & NextAuth-Tabellen (`Account`, `Session`, `VerificationToken`)
   - Prisma Client erfolgreich generiert (`prisma/schema.prisma` -> `@prisma/client`).
-- [x] **2.3 Doppelbuchungsschutz (Exclusion Constraint)**:
-  - `prisma/exclusion_constraint.sql` für atomare Überlappungsverhinderung (`btree_gist` Extension) bereitgestellt.
+- [x] **2.3 Doppelbuchungsschutz (Exclusion Constraint & Live-Testing)**:
+  - `prisma/exclusion_constraint.sql` für atomare Überlappungsverhinderung (`btree_gist` Extension) idempotent implementiert.
+  - Automatisierter Live-Test `scripts/test-exclusion-constraint.ts` (`npm run db:test-constraints`) mit 5 Testfällen (Kollisionsabwehr mit Code `23P01`, parallele Plätze, Slot-Aneinanderreihung, Freigabe nach Storno).
 - [x] **2.4 Seeding-Skript**:
-  - `prisma/seed.ts` mit Demo-Club ("TC Rot-Weiss Zürich"), 4 Plätzen, 3 Mitgliedern, Tarifen und Beispiel-Buchungen erstellt.
+  - `prisma/seed.ts` mit Demo-Club ("TC Rot-Weiss Zürich"), 4 Plätzen, 3 Mitgliedern, Tarifen und Beispiel-Buchungen erstellt (`npm run db:seed`).
 
 ---
 
@@ -114,12 +116,13 @@ flowchart TD
 ---
 
 ### Phase 4: Club-, Platz- & Sperrzeiten-Verwaltung (Admin)
-**Ziel:** Administratoren können ihren Club, Standorte, Plätze und Sperren vollständig konfigurieren.
+**Ziel:** Administratoren können ihren Club, Standorte, Plätze, Tarife und Sperren vollständig konfigurieren.
 
-- [x] **4.1 Club-Einstellungen**: Club-Stammdaten, Öffnungszeiten, Zeitzone in `/c/[clubSlug]/admin`.
-- [x] **4.2 Standort- & Platzverwaltung**: Plätze einsehen, Sortierung, Plaztattribute (Indoor, Sand, Flutlicht).
+- [x] **4.1 Club-Einstellungen & Öffnungszeiten**: Dynamische Konfiguration von Öffnungszeiten, Schliesszeiten, Standard-Slot-Dauer, Stornofristen und Gastbuchungsrechten (`ClubSettingsForm` + Server Action `updateClubSettingsAction`).
+- [x] **4.2 Standort- & Platzverwaltung**: Plätze einsehen, Sortierung, Platzattribute (Indoor, Sand, Flutlicht).
 - [x] **4.3 Platzsperren (Court Blocks)**: Formular zum Sperren von Plätzen (`CreateCourtBlockForm`) mit Wartung, Turnier, Witterung.
 - [x] **4.4 Mitgliederverwaltung**: Mitgliederverzeichnis mit Rollen und Berechtigungen.
+- [x] **4.5 Dynamische Tarif- & Quotenverwaltung**: Verwaltung von Mitgliedschaftstarifen (`MembershipPlan`) mit Preisen, Buchungsfenstern (Tage), max. gleichzeitigen Buchungen und Spieldauern via `MembershipPlansManager` (`createMembershipPlanAction`, `deleteMembershipPlanAction`).
 
 ---
 

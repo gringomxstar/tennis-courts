@@ -15,6 +15,7 @@ import {
   BlockReason,
   UserSummary,
   TenantRole,
+  MembershipPlan,
 } from "@/types";
 
 // Determine if we should attempt database connection
@@ -238,4 +239,171 @@ export async function getTenantMembers(tenantId: string): Promise<UserSummary[]>
 
 export async function getUserBookings(userId: string): Promise<Booking[]> {
   return mockDb.getAllUserBookings(userId);
+}
+
+export async function getMembershipPlansByTenantId(tenantId: string): Promise<MembershipPlan[]> {
+  if (hasDbConfigured) {
+    try {
+      const plans = await prisma.membershipPlan.findMany({
+        where: { tenantId, status: "ACTIVE" },
+        orderBy: { price: "asc" },
+      });
+      if (plans.length > 0) {
+        return plans.map((p) => ({
+          id: p.id,
+          tenantId: p.tenantId,
+          name: p.name,
+          description: p.description,
+          price: Number(p.price),
+          currency: p.currency,
+          bookingWindowDays: p.bookingWindowDays,
+          simultaneousBookingLimit: p.simultaneousBookingLimit,
+          dailyBookingLimit: p.dailyBookingLimit,
+          weeklyBookingLimit: p.weeklyBookingLimit,
+          allowedDurations: p.allowedDurations,
+        }));
+      }
+    } catch (e) {
+      console.warn("Prisma query failed, falling back to mockDb:", e);
+    }
+  }
+  return mockDb.getMembershipPlans(tenantId);
+}
+
+export async function updateTenantSettings(
+  slug: string,
+  settings: Partial<TenantSettings>
+): Promise<Tenant | null> {
+  const updatedMock = mockDb.updateTenantSettings(slug, settings);
+  if (hasDbConfigured) {
+    try {
+      const tenant = await prisma.tenant.findUnique({ where: { slug } });
+      if (tenant) {
+        const currentSettings = (tenant.settingsJson as Record<string, unknown>) || {};
+        const mergedSettings = { ...currentSettings, ...settings };
+        const updated = await prisma.tenant.update({
+          where: { slug },
+          data: {
+            settingsJson: mergedSettings,
+          },
+        });
+        return {
+          id: updated.id,
+          name: updated.name,
+          slug: updated.slug,
+          logoUrl: updated.logoUrl,
+          timezone: updated.timezone,
+          address: updated.address,
+          email: updated.email,
+          phone: updated.phone,
+          status: updated.status,
+          settingsJson: updated.settingsJson as unknown as TenantSettings | null,
+        };
+      }
+    } catch (e) {
+      console.warn("Prisma updateTenantSettings failed, falling back to mockDb:", e);
+    }
+  }
+  return updatedMock;
+}
+
+export async function createMembershipPlan(
+  tenantId: string,
+  plan: Omit<MembershipPlan, "id" | "tenantId">
+): Promise<MembershipPlan> {
+  const mockPlan = mockDb.createMembershipPlan({ ...plan, tenantId });
+  if (hasDbConfigured) {
+    try {
+      const dbPlan = await prisma.membershipPlan.create({
+        data: {
+          tenantId,
+          name: plan.name,
+          description: plan.description || null,
+          price: plan.price,
+          currency: plan.currency || "CHF",
+          bookingWindowDays: plan.bookingWindowDays,
+          simultaneousBookingLimit: plan.simultaneousBookingLimit,
+          dailyBookingLimit: plan.dailyBookingLimit,
+          weeklyBookingLimit: plan.weeklyBookingLimit,
+          allowedDurations: plan.allowedDurations,
+          status: "ACTIVE",
+        },
+      });
+      return {
+        id: dbPlan.id,
+        tenantId: dbPlan.tenantId,
+        name: dbPlan.name,
+        description: dbPlan.description,
+        price: Number(dbPlan.price),
+        currency: dbPlan.currency,
+        bookingWindowDays: dbPlan.bookingWindowDays,
+        simultaneousBookingLimit: dbPlan.simultaneousBookingLimit,
+        dailyBookingLimit: dbPlan.dailyBookingLimit,
+        weeklyBookingLimit: dbPlan.weeklyBookingLimit,
+        allowedDurations: dbPlan.allowedDurations,
+      };
+    } catch (e) {
+      console.warn("Prisma createMembershipPlan failed, falling back to mockDb:", e);
+    }
+  }
+  return mockPlan;
+}
+
+export async function updateMembershipPlan(
+  planId: string,
+  plan: Partial<MembershipPlan>
+): Promise<MembershipPlan | null> {
+  const mockUpdated = mockDb.updateMembershipPlan(planId, plan);
+  if (hasDbConfigured) {
+    try {
+      const dbPlan = await prisma.membershipPlan.update({
+        where: { id: planId },
+        data: {
+          ...(plan.name && { name: plan.name }),
+          ...(plan.description !== undefined && { description: plan.description }),
+          ...(plan.price !== undefined && { price: plan.price }),
+          ...(plan.currency && { currency: plan.currency }),
+          ...(plan.bookingWindowDays !== undefined && { bookingWindowDays: plan.bookingWindowDays }),
+          ...(plan.simultaneousBookingLimit !== undefined && {
+            simultaneousBookingLimit: plan.simultaneousBookingLimit,
+          }),
+          ...(plan.dailyBookingLimit !== undefined && { dailyBookingLimit: plan.dailyBookingLimit }),
+          ...(plan.weeklyBookingLimit !== undefined && { weeklyBookingLimit: plan.weeklyBookingLimit }),
+          ...(plan.allowedDurations && { allowedDurations: plan.allowedDurations }),
+        },
+      });
+      return {
+        id: dbPlan.id,
+        tenantId: dbPlan.tenantId,
+        name: dbPlan.name,
+        description: dbPlan.description,
+        price: Number(dbPlan.price),
+        currency: dbPlan.currency,
+        bookingWindowDays: dbPlan.bookingWindowDays,
+        simultaneousBookingLimit: dbPlan.simultaneousBookingLimit,
+        dailyBookingLimit: dbPlan.dailyBookingLimit,
+        weeklyBookingLimit: dbPlan.weeklyBookingLimit,
+        allowedDurations: dbPlan.allowedDurations,
+      };
+    } catch (e) {
+      console.warn("Prisma updateMembershipPlan failed, falling back to mockDb:", e);
+    }
+  }
+  return mockUpdated;
+}
+
+export async function deleteMembershipPlan(planId: string): Promise<boolean> {
+  const mockDeleted = mockDb.deleteMembershipPlan(planId);
+  if (hasDbConfigured) {
+    try {
+      await prisma.membershipPlan.update({
+        where: { id: planId },
+        data: { status: "INACTIVE" },
+      });
+      return true;
+    } catch (e) {
+      console.warn("Prisma deleteMembershipPlan failed, falling back to mockDb:", e);
+    }
+  }
+  return mockDeleted;
 }
