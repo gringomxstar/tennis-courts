@@ -155,6 +155,11 @@ flowchart TD
 - [x] **6.3 Kalender-Navigation & Filter**:
   - Tagesnavigation (Vor/Zurück, "Heute"-Button, nativer Date Picker).
   - Filter nach Belag (Sand, Hartplatz), Hallen-/Freiplatz (Indoor/Outdoor) und Flutlicht.
+- [x] **6.4 Roland Garros Nocturne Dark Mode & De-Cluttering**:
+  - Warmes Grand-Slam-Design mit Terrakotta (`#E25B36`), Mitternachtsblau (`#0B0F17`) und Flutlicht-Amber (`#F59E0B`).
+  - Entfernung von visuellem Lärm (keine 150 repetitiven Labels auf leeren Slots; ruhige Flächen mit Hover-Aktion `+ Buchen`).
+  - Segmentierte Filter-Leiste und Multi-Sport Akzentfarben (Padel: Cyan, Halle: Lavender, Sand: Clay).
+  - Client-seitiger Theme-Toggle (`ThemeToggle`) mit `localStorage`-Persistenz und flackerfreiem SSR-Hydration-Handling.
 
 ---
 
@@ -164,25 +169,30 @@ flowchart TD
 - [x] **7.1 Mein Bereich (`/c/[clubSlug]/bookings`)**:
   - Übersicht der anstehenden und vergangenen Buchungen mit Status-Badges.
   - Schnell-Storno-Funktion mit interaktivem Bestätigungsdialog und Stornofristen.
-- [ ] **7.2 Benutzerprofil**:
-  - Kontaktdaten, Telefonnummer, bevorzugte Spielzeiten, Passwort ändern.
+  - Roland Garros Nocturne Dashboard mit Guthaben-Historie & Quittungs-Feed.
+- [ ] **7.2 Benutzerprofil & Spielereinstellungen (`/c/[clubSlug]/profile`)**:
+  - Kontaktdaten, Telefonnummer, Notfallkontakt.
+  - Spielstärke / Klassierung (z. B. Swiss Tennis R1–R9 oder ITN/LK).
+  - Bevorzugte Spielzeiten & Partner-Matching-Präferenzen.
+  - Passwort ändern & Benachrichtigungseinstellungen.
 
 ---
 
 ### Phase 8: Deployment, Vercel & GitHub Actions CI/CD
 **Ziel:** Produktionsreifes Deployment auf Vercel mit Preview-Deployments für Pull Requests.
 
-- [ ] **8.1 Vercel Projektverbindung**:
+- [ ] **8.1 Vercel Projektverbindung & Neon Postgres Sync**:
   - Verknüpfung mit GitHub-Repository.
   - Hinterlegung aller Environment-Variablen (`DATABASE_URL`, `AUTH_SECRET`, etc.).
+  - Umschaltung von lokalem Mock-Fallback auf echte Neon Postgres-Instanz in Production.
 - [ ] **8.2 Automatisierte Migrationen im Build-Prozess**:
   - `prisma migrate deploy` im Vercel Build Step oder per GitHub Action.
-- [ ] **8.3 Smoke- & E2E-Tests**:
-  - Grundlegende Tests für Buchungsworkflow und Tenant-Isolierung.
+- [ ] **8.3 E2E- & Integrationstests (Playwright)**:
+  - Automatisierte E2E-Tests für Buchungsablauf, Doppel-Slot-Regeln, Marly-Kollisionsprüfung und Stornierung.
 
 ---
 
-### Neuer Epic (Nächste Session / Separater PR): Credits, Mitspieler-Deluxe, dynamische Buchungsregeln & Multi-Sport
+### Epic (Abgeschlossen auf Branch `feat/credits-player-rules-multisport`): Credits, Mitspieler-Deluxe, dynamische Buchungsregeln & Multi-Sport
 **Ziel:** Erstklassiges Reservierungserlebnis mit nahtlosem Credits-Guthaben, club-spezifischen Buchungsregeln (z.B. TC Marly), dynamischer Dauer nach Spieleranzahl, Ballmaschinen-Buchung und saisonalen Tarifen (Sommer-/Winterabo, Padel, Tennishalle).
 
 - [x] **E.1 Integriertes Credits- & Wallet-System (Club-Guthaben & Test-Engine)**:
@@ -221,23 +231,31 @@ flowchart TD
 
 ---
 
-### Phase 9: Nach dem MVP (Erweiterungen)
-- Stripe Online-Zahlungen (Kreditkarte, Twint für Gastbuchungen & Credit-Pakete).
-- E-Mail-Transaktionsmails via Resend oder Postmark.
-- Öffentliche Matches & Mitspielersuche (Community).
-- Erweiterte Club-Statistiken & Auslastungsberichte.
+### Phase 9: Nach dem MVP (Erweiterungen & Roadmap)
+- [ ] **9.1 Community Matchmaking & Offene Matches ("Match-Börse")**:
+  - Slot als "Partner gesucht" reservieren (z. B. für Einzel oder 4. Spieler beim Padel/Doppel).
+  - Club-Mitglieder können mit 1 Klick beitreten.
+- [ ] **9.2 Transaktions-E-Mails via Resend**:
+  - Automatische Buchungsbestätigung mit .ics / Apple / Google Kalender-Datei.
+  - Benachrichtigung aller Partner bei Storno oder Platzänderung.
+- [ ] **9.3 Stripe / Twint Online-Zahlung**:
+  - Echte Kreditkarten-/Twint-Zahlungen für Gastgebühren und Credit-Pakete.
+- [ ] **9.4 Club-Statistiken & Auslastungsberichte**:
+  - Grafische Auswertung für den Clubvorstand: Spitzenzeiten, Belag-Beliebtheit, Einnahmen durch Gäste und Zusatzleistungen.
+- [ ] **9.5 Zutrittskontrolle & Lichtsteuerung (IoT/Hardware)**:
+  - 4-stelliger PIN-Code für Clubhaus-/Platz-Torschloss, automatische Flutlicht-Freischaltung für gebuchte Slots.
 
 ---
 
 ## 3. Sofortige nächste Schritte für die NEUE Session
 
-1. **Neuen Feature-Branch erstellen:**
-   - `git checkout -b feat/credits-player-rules-multisport`
-2. **Datenmodell & Mock/Prisma erweitern:**
-   - Wallet/Credits für Tenant-User anlegen.
-   - Resource-Modell für Ballmaschine hinzufügen.
-   - Club-Regelparameter (Marly-Cooldown, Doppel-Verlängerung) in `settingsJson` integrieren.
-3. **UI & Buchungs-Sheet implementieren:**
-   - Neues Partner-Auswahl-Sheet mit Favoriten-Pills & Mitgliedersuche.
-   - Dynamische 1h vs. 2h Slot-Auswahl bei 4 Spielern.
-   - Credits-Anzeige mit 1-Klick Test-Aufladung und Ballmaschinen-Checkbox.
+In der neuen Session können wir direkt aus folgenden Bausteinen wählen:
+
+1. **Option A: Spielerprofil & Einstellungen (`/c/[clubSlug]/profile`)** (Phase 7.2)
+   - Profilseite für Spieler mit Spielstärke (R-Klassierung/LK), Kontaktdaten, bevorzugter Hand, Passwort-Änderung und Notfallnummer.
+2. **Option B: Community Match-Börse ("Partner gesucht" / Offene Matches)** (Phase 9.1)
+   - Ermöglicht Mitgliedern, Spiele auszuschreiben, wenn ihnen ein Partner fehlt – ideal für Tennis und Padel.
+3. **Option C: E-Mail-Bestätigungen & Kalender-Export (.ics)** (Phase 9.2)
+   - Buchungsbestätigungen mit Kalender-Export für iOS & Android.
+4. **Option D: Vercel Live Deployment & Neon Postgres DB-Verbindung** (Phase 8)
+   - Echtes Hosting auf Vercel mit persistenter Neon PostgreSQL-Cloud-Datenbank.
