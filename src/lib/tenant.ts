@@ -1,0 +1,98 @@
+import { auth } from "@/auth";
+import { getTenantBySlug } from "@/lib/data";
+import { redirect } from "next/navigation";
+import { Tenant, TenantRole } from "@/types";
+
+export interface TenantContext {
+  tenant: Tenant;
+  user: {
+    id: string;
+    email: string;
+    name?: string | null;
+    role: TenantRole;
+    isPlatformAdmin: boolean;
+  } | null;
+  isTenantAdmin: boolean;
+  isPlatformAdmin: boolean;
+  canBook: boolean;
+}
+
+export async function getCurrentSession() {
+  return await auth();
+}
+
+export async function getCurrentUser() {
+  const session = await auth();
+  return session?.user ?? null;
+}
+
+export async function getTenantContext(slug: string): Promise<TenantContext> {
+  const tenant = await getTenantBySlug(slug);
+  if (!tenant) {
+    redirect("/?error=TenantNotFound");
+  }
+
+  const session = await auth();
+  const rawUser = session?.user;
+
+  if (!rawUser) {
+    return {
+      tenant,
+      user: null,
+      isTenantAdmin: false,
+      isPlatformAdmin: false,
+      canBook: Boolean(tenant.settingsJson?.allowGuestBookings),
+    };
+  }
+
+  const isPlatformAdmin = Boolean(rawUser.isPlatformAdmin || rawUser.role === "PLATFORM_ADMIN");
+  
+  // Find role in this specific tenant
+  let tenantRole: TenantRole = "GUEST";
+  if (isPlatformAdmin) {
+    tenantRole = "PLATFORM_ADMIN";
+  } else if (rawUser.tenants) {
+    const matchingTenant = rawUser.tenants.find((t) => t.slug === slug);
+    if (matchingTenant) {
+      tenantRole = matchingTenant.role;
+    } else if (rawUser.role) {
+      tenantRole = rawUser.role;
+    }
+  } else if (rawUser.role) {
+    tenantRole = rawUser.role;
+  }
+
+  const isTenantAdmin =
+    isPlatformAdmin || tenantRole === "CLUB_ADMIN" || tenantRole === "PLATFORM_ADMIN";
+
+  return {
+    tenant,
+    user: {
+      id: rawUser.id,
+      email: rawUser.email || "",
+      name: rawUser.name,
+      role: tenantRole,
+      isPlatformAdmin,
+    },
+    isTenantAdmin,
+    isPlatformAdmin,
+    canBook: true,
+  };
+}
+
+export async function requirePlatformAdmin() {
+  const session = await auth();
+  const user = session?.user;
+  if (!user || (!user.isPlatformAdmin && user.role !== "PLATFORM_ADMIN")) {
+    redirect("/login?error=UnauthorizedAdmin");
+  }
+  return user;
+}
+
+export async function requireTenantAdmin(slug: string) {
+  const context = await getTenantContext(slug);
+  if (!context.isTenantAdmin) {
+    redirect(`/c/${slug}?error=Unauthorized`);
+  }
+  return context;
+}

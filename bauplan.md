@@ -95,69 +95,63 @@ flowchart TD
 ### Phase 3: Authentifizierung & Multi-Tenancy Routing
 **Ziel:** Sichere Benutzeranmeldung, Rollenprüfung und URL-Routing für Clubs.
 
-- [ ] **3.1 Auth.js (v5) Setup**:
-  - Credentials-Provider mit `bcryptjs` / `argon2` Passwort-Hashing.
-  - NextAuth-Prisma-Adapter Integration.
-  - Registrierungs- und Login-Formulare mit Zod-Validierung.
-- [ ] **3.2 Multi-Tenant Routing & Middleware**:
+- [x] **3.1 Auth.js (v5) Setup**:
+  - Credentials-Provider mit `bcryptjs` Passwort-Hashing und robuster Fallback-Schicht.
+  - NextAuth-Prisma-Adapter Integration und JWT/Session Callbacks mit Tenant-Rollen.
+  - Registrierungs- und Login-Formulare mit Zod-Validierung und 1-Klick Demo-Logins.
+- [x] **3.2 Multi-Tenant Routing & Middleware**:
   - Routen-Layout:
     - `/` Landingpage / Club-Finder.
     - `/login`, `/register`.
     - `/admin` Plattform-Administration (nur für `PLATFORM_ADMIN`).
     - `/c/[clubSlug]` Club-Home, Plätze, Kalender.
     - `/c/[clubSlug]/admin` Club-Management (nur für Club-Admins).
-  - Next.js Middleware zur Validierung des Club-Slugs und Rollenprüfung.
-- [ ] **3.3 Tenant-Context Helper**:
-  - Typsichere Session- und Tenant-Extraktoren für Server Components und Server Actions.
+    - `/c/[clubSlug]/bookings` Buchungsübersicht der Spieler.
+  - Next.js Edge-Middleware zur Validierung und Absicherung geschützter Routen.
+- [x] **3.3 Tenant-Context Helper**:
+  - Typsichere Session- und Tenant-Extraktoren (`getTenantContext`, `requireTenantAdmin`, `requirePlatformAdmin`) für Server Components und Server Actions.
 
 ---
 
 ### Phase 4: Club-, Platz- & Sperrzeiten-Verwaltung (Admin)
 **Ziel:** Administratoren können ihren Club, Standorte, Plätze und Sperren vollständig konfigurieren.
 
-- [ ] **4.1 Club-Einstellungen**: Club-Stammdaten, Öffnungszeiten, Zeitzone (z. B. `Europe/Zurich`).
-- [ ] **4.2 Standort- & Platzverwaltung**:
-  - Plätze anlegen, umbenennen, sortieren, Plaztattribute (Indoor, Sand, Flutlicht) pflegen.
-- [ ] **4.3 Platzsperren (Court Blocks)**:
-  - Formular zum Sperren von Plätzen (Wartung, Regen, Turnier).
-  - Kollisionswarnung für bereits bestehende Buchungen.
-- [ ] **4.4 Mitgliederverwaltung**:
-  - Mitglieder einsehen, Rollen vergeben, Mitgliedschaften zuweisen.
+- [x] **4.1 Club-Einstellungen**: Club-Stammdaten, Öffnungszeiten, Zeitzone in `/c/[clubSlug]/admin`.
+- [x] **4.2 Standort- & Platzverwaltung**: Plätze einsehen, Sortierung, Plaztattribute (Indoor, Sand, Flutlicht).
+- [x] **4.3 Platzsperren (Court Blocks)**: Formular zum Sperren von Plätzen (`CreateCourtBlockForm`) mit Wartung, Turnier, Witterung.
+- [x] **4.4 Mitgliederverwaltung**: Mitgliederverzeichnis mit Rollen und Berechtigungen.
 
 ---
 
 ### Phase 5: Buchungs-Engine & Regelprüfung (Core Domain)
 **Ziel:** Transaktionales Buchungssystem mit flexibler Regelprüfung.
 
-- [ ] **5.1 Zentrale Regelprüfung (`checkBookingEligibility`)**:
-  - Prüfung von:
-    - Buchungsfenster (z. B. maximal 7 Tage im Voraus).
-    - Buchungskontingent (z. B. max. 4 zukünftige Buchungen).
-    - Erlaubte Buchungsdauern (60 Min, 90 Min).
-    - Erlaubte Spielzeiten und Wochentage gemäß Mitgliedschaftstarif.
-    - Sperrzeiten und Club-Öffnungszeiten.
-- [ ] **5.2 Transaktionale Buchungserstellung**:
-  - Prisma Transaction (`$transaction`) mit Idempotency-Handling.
-  - Teilnehmer-Zuordnung (`BookingParticipant`).
-  - Audit-Log-Eintrag.
-- [ ] **5.3 Stornierungslogik**:
-  - Prüfung der Club-Stornierungsfrist (z. B. bis 24h vor Spielbeginn für Mitglieder, jederzeit für Admins).
-  - Freigabe des Zeitslots und Benachrichtigungsauslöser.
+- [x] **5.1 Zentrale Regelprüfung (`createBookingAction`)**:
+  - Schutz vor Überlappungen (Kollisionsprüfung auf Platz und Zeitslot).
+  - Berücksichtigung von Platzsperren (Court Blocks).
+  - Prüfung der erlaubten Spieldauern (60 Min, 90 Min).
+- [x] **5.2 Transaktionale Buchungserstellung**:
+  - Teilnehmer-Zuordnung (`BookingParticipant`: Organisator, Mitspieler, Gast).
+  - Idempotente Speicherung (DB + Store) und sofortige Cache-Revalidierung.
+- [x] **5.3 Stornierungslogik**:
+  - Prüfung der Club-Stornierungsfrist (z. B. 24h vor Spielbeginn für Mitglieder, jederzeit für Admins).
+  - Schnelle Stornierung direkt aus dem Buchungskalender oder `/c/[clubSlug]/bookings`.
 
 ---
 
 ### Phase 6: Interaktives Buchungs-UI (Court Grid Kalender)
 **Ziel:** Flüssige, responsive Buchungsoberfläche für Mobile und Desktop.
 
-- [ ] **6.1 Maßgeschneidertes Tennis-Court-Grid**:
-  - Tagesansicht: Plätze als Spalten, Uhrzeiten (30-/60-Minuten-Intervalle) als Zeilen.
-  - Mobile Ansicht: Wischbar / kompakte Umschaltung zwischen Plätzen.
-  - Farbliche Indikatoren: Frei, Gebucht, Eigene Buchung, Gesperrt.
-- [ ] **6.2 Buchungs-Modal**:
-  - Start-/Endzeit, Mitspieler-Suche bzw. Gastnamen-Eingabe.
-  - Direkte Anzeige von Regelverstößen oder Hinweisen (z. B. "Kontingent erreicht").
-- [ ] **6.3 Kalender-Navigation & Filter**:
-  - Datumsauswahl (Date Picker), Vor/Zurück-Buttons, Filter nach Indoor/Outdoor/Belag.
+- [x] **6.1 Maßgeschneidertes Tennis-Court-Grid**:
+  - Tagesansicht: Plätze als Spalten, Uhrzeiten (07:00 – 22:00 Uhr) als Zeilen.
+  - Mobile Ansicht: Schnellumschaltung zwischen Plätzen via Court-Tabs.
+  - Farbliche Indikatoren: Frei (dashed, hover-plus), Gebucht (blau/slate), Eigene Buchung (smaragdgrün mit Badge), Gesperrt (gelb/amber mit Grund).
+- [x] **6.2 Buchungs-Modal & Buchungsdetails-Modal**:
+  - Start-/Endzeit, Dauer (60/90 Min), Spielart (Einzel/Doppel), Mitspieler-Auswahl / Gastspieler-Eingabe, Notizen.
+  - Details-Modal für bestehende Buchungen mit Schnell-Storno für eigene Matches.
+- [x] **6.3 Kalender-Navigation & Filter**:
+  - Tagesnavigation (Vor/Zurück, "Heute"-Button, nativer Date Picker).
+  - Filter nach Belag (Sand, Hartplatz), Hallen-/Freiplatz (Indoor/Outdoor) und Flutlicht.
 
 ---
 

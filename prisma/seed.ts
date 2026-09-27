@@ -1,4 +1,4 @@
-import { PrismaClient, TenantRole, UserStatus, CourtSurface, CourtStatus, BookingStatus, BookingType, ParticipantRole, InvitationStatus, PaymentStatus } from "@prisma/client";
+import { PrismaClient, TenantRole, UserStatus, CourtSurface, CourtStatus, BookingStatus, BookingType, ParticipantRole, InvitationStatus } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
@@ -157,7 +157,7 @@ async function main() {
     },
   });
 
-  const court2 = await prisma.court.create({
+  await prisma.court.create({
     data: {
       tenantId: tenant.id,
       locationId: location.id,
@@ -170,7 +170,7 @@ async function main() {
     },
   });
 
-  const court3 = await prisma.court.create({
+  await prisma.court.create({
     data: {
       tenantId: tenant.id,
       locationId: location.id,
@@ -183,7 +183,7 @@ async function main() {
     },
   });
 
-  const court4 = await prisma.court.create({
+  await prisma.court.create({
     data: {
       tenantId: tenant.id,
       locationId: location.id,
@@ -212,7 +212,7 @@ async function main() {
     },
   });
 
-  const planJunior = await prisma.membershipPlan.create({
+  await prisma.membershipPlan.create({
     data: {
       tenantId: tenant.id,
       name: "Junior",
@@ -267,7 +267,7 @@ async function main() {
   const today11 = new Date();
   today11.setHours(11, 0, 0, 0);
 
-  const booking1 = await prisma.booking.create({
+  await prisma.booking.create({
     data: {
       tenantId: tenant.id,
       courtId: court1.id,

@@ -1,55 +1,30 @@
 import Link from "next/link";
+import { auth } from "@/auth";
+import { Navbar } from "@/components/navbar";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, ShieldCheck, Users, Trophy, ChevronRight, MapPin } from "lucide-react";
+import { Calendar, ShieldCheck, Users, Trophy, ChevronRight, MapPin, Sparkles } from "lucide-react";
+import { getAllTenants } from "@/lib/data";
 
-export default function Home() {
-  const demoClubs = [
-    {
-      name: "TC Rot-Weiss Zürich",
-      slug: "tc-rot-weiss",
-      courts: 6,
-      location: "Zürich-Fluntern",
-      surface: "Sand & Allwetter",
-    },
-    {
-      name: "Tennis Club Obersee",
-      slug: "tc-obersee",
-      courts: 4,
-      location: "Rapperswil",
-      surface: "Halle & Sand",
-    },
-  ];
+export default async function Home() {
+  const session = await auth();
+  const tenants = await getAllTenants();
+
+  const navbarUser = session?.user
+    ? {
+        id: session.user.id,
+        email: session.user.email || "",
+        name: session.user.name,
+        role: session.user.role,
+        isPlatformAdmin: session.user.isPlatformAdmin,
+      }
+    : null;
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950">
       {/* Navigation Header */}
-      <header className="border-b border-slate-200 bg-white/80 backdrop-blur-md sticky top-0 z-50 dark:border-slate-800 dark:bg-slate-900/80">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-lg bg-emerald-600 flex items-center justify-center text-white shadow-sm font-bold">
-              🎾
-            </div>
-            <span className="font-bold text-lg tracking-tight text-slate-900 dark:text-white">
-              TennisCourts
-            </span>
-            <Badge variant="secondary" className="hidden sm:inline-flex text-[10px]">
-              Multi-Tenant
-            </Badge>
-          </div>
-          <div className="flex items-center gap-3">
-            <Link href="/login">
-              <Button variant="ghost" size="sm">
-                Anmelden
-              </Button>
-            </Link>
-            <Link href="#clubs">
-              <Button size="sm">Club wählen</Button>
-            </Link>
-          </div>
-        </div>
-      </header>
+      <Navbar user={navbarUser} />
 
       {/* Hero Section */}
       <section className="relative overflow-hidden pt-16 pb-20 lg:pt-24 lg:pb-28">
@@ -75,9 +50,10 @@ export default function Home() {
                 Demo Club Kalender öffnen
               </Button>
             </Link>
-            <Link href="#features">
-              <Button variant="outline" size="lg" className="w-full sm:w-auto">
-                Funktionen entdecken
+            <Link href="/login">
+              <Button variant="outline" size="lg" className="w-full sm:w-auto gap-2">
+                <Sparkles className="w-4 h-4 text-emerald-600" />
+                1-Klick Demo Login
               </Button>
             </Link>
           </div>
@@ -97,30 +73,39 @@ export default function Home() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
-            {demoClubs.map((club) => (
-              <Card key={club.slug} className="hover:shadow-md transition-shadow">
+            {tenants.map((club) => (
+              <Card key={club.slug} className="hover:shadow-md transition-shadow border-slate-200 dark:border-slate-800">
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div>
                       <CardTitle className="text-lg">{club.name}</CardTitle>
                       <CardDescription className="flex items-center gap-1 mt-1">
-                        <MapPin className="w-3.5 h-3.5" />
-                        {club.location}
+                        <MapPin className="w-3.5 h-3.5 text-emerald-600" />
+                        {club.address || "Standort Schweiz"}
                       </CardDescription>
                     </div>
-                    <Badge variant="outline">{club.courts} Plätze</Badge>
+                    <Badge variant="outline" className="text-xs">
+                      Aktiv
+                    </Badge>
                   </div>
                 </CardHeader>
                 <CardContent>
                   <div className="text-xs text-slate-500 dark:text-slate-400 mb-4">
-                    Belag: <span className="font-medium text-slate-700 dark:text-slate-300">{club.surface}</span>
+                    Zeitzone: <span className="font-medium text-slate-700 dark:text-slate-300">{club.timezone}</span>
                   </div>
-                  <Link href={`/c/${club.slug}`} className="block">
-                    <Button variant="outline" className="w-full justify-between" size="sm">
-                      Zum Buchungskalender
-                      <ChevronRight className="w-4 h-4" />
-                    </Button>
-                  </Link>
+                  <div className="flex items-center gap-2">
+                    <Link href={`/c/${club.slug}`} className="flex-1">
+                      <Button className="w-full justify-between" size="sm">
+                        <span>Zum Buchungskalender</span>
+                        <ChevronRight className="w-4 h-4" />
+                      </Button>
+                    </Link>
+                    <Link href={`/c/${club.slug}/admin`}>
+                      <Button variant="outline" size="sm">
+                        Admin
+                      </Button>
+                    </Link>
+                  </div>
                 </CardContent>
               </Card>
             ))}
@@ -157,9 +142,9 @@ export default function Home() {
               <div className="h-10 w-10 rounded-lg bg-blue-100 dark:bg-blue-950 flex items-center justify-center text-blue-700 dark:text-blue-400 mb-2">
                 <Users className="w-5 h-5" />
               </div>
-              <CardTitle>Flexible Tarife & Regeln</CardTitle>
+              <CardTitle>Multi-Tenant Club-Architektur</CardTitle>
               <CardDescription>
-                Passgenaue Quoten (z.B. max. 4 zukünftige Buchungen), Buchungsfenster, Abendquoten und Spielregeln je Mitgliedschaft.
+                Jeder Club hat sein eigenes path-basiertes Portal (/c/[clubSlug]) mit isolierten Mitgliedern, Tarifen und Berechtigungen.
               </CardDescription>
             </CardHeader>
           </Card>
@@ -184,6 +169,7 @@ export default function Home() {
           <div>© {new Date().getFullYear()} Tennis Reservation App. Alle Rechte vorbehalten.</div>
           <div className="flex items-center gap-6">
             <span>Next.js 16</span>
+            <span>Auth.js v5</span>
             <span>Neon PostgreSQL</span>
             <span>Vercel Ready</span>
           </div>
