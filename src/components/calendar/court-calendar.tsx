@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { Tenant, Court, Booking, CourtBlock, UserSummary } from "@/types";
+import { Tenant, Court, Booking, CourtBlock, UserSummary, SportType } from "@/types";
 import { CourtGrid } from "./court-grid";
 import { BookingModal } from "./booking-modal";
 import { BookingDetailsModal } from "./booking-details-modal";
@@ -25,6 +25,7 @@ interface CourtCalendarProps {
   initialCourtBlocks: CourtBlock[];
   members: UserSummary[];
   currentUserId?: string;
+  userWallet?: { balance: number; currency: string } | null;
   isClubAdmin?: boolean;
   selectedDate: string;
 }
@@ -36,6 +37,7 @@ export function CourtCalendar({
   initialCourtBlocks,
   members,
   currentUserId,
+  userWallet,
   isClubAdmin,
   selectedDate,
 }: CourtCalendarProps) {
@@ -48,6 +50,7 @@ export function CourtCalendar({
   const todayStr = new Date().toISOString().split("T")[0];
 
   // Filters
+  const [sportFilter, setSportFilter] = useState<string>("ALL");
   const [surfaceFilter, setSurfaceFilter] = useState<string>("ALL");
   const [indoorFilter, setIndoorFilter] = useState<string>("ALL");
   const [lightingOnly, setLightingOnly] = useState<boolean>(false);
@@ -112,6 +115,7 @@ export function CourtCalendar({
 
   // Filter courts
   const filteredCourts = courts.filter((court) => {
+    if (sportFilter !== "ALL" && court.sportType !== (sportFilter as SportType)) return false;
     if (surfaceFilter !== "ALL" && court.surface !== surfaceFilter) return false;
     if (indoorFilter === "INDOOR" && !court.isIndoor) return false;
     if (indoorFilter === "OUTDOOR" && court.isIndoor) return false;
@@ -173,7 +177,7 @@ export function CourtCalendar({
                 setSelectedTime("10:00");
                 setBookingModalOpen(true);
               }}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs h-10 px-4 rounded-xl shadow-md shadow-emerald-600/20 gap-2 transition-all hover:scale-102"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs h-10 px-4 rounded-xl shadow-md shadow-emerald-600/20 gap-2 transition-all hover:scale-102 cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               Platz reservieren
@@ -190,7 +194,7 @@ export function CourtCalendar({
             variant="outline"
             size="icon"
             onClick={() => handleDateChange(-1)}
-            className="shrink-0 h-11 w-11 rounded-2xl border-slate-200 dark:border-slate-800"
+            className="shrink-0 h-11 w-11 rounded-2xl border-slate-200 dark:border-slate-800 cursor-pointer"
             title="Vorheriger Tag"
           >
             <ChevronLeft className="w-4 h-4" />
@@ -226,7 +230,7 @@ export function CourtCalendar({
             variant="outline"
             size="icon"
             onClick={() => handleDateChange(1)}
-            className="shrink-0 h-11 w-11 rounded-2xl border-slate-200 dark:border-slate-800"
+            className="shrink-0 h-11 w-11 rounded-2xl border-slate-200 dark:border-slate-800 cursor-pointer"
             title="Nächster Tag"
           >
             <ChevronRight className="w-4 h-4" />
@@ -259,9 +263,21 @@ export function CourtCalendar({
               <Filter className="w-3 h-3" /> Filter:
             </span>
 
+            {/* Sport Filter */}
+            <button
+              onClick={() => setSportFilter(sportFilter === "ALL" ? "PADEL" : sportFilter === "PADEL" ? "TENNIS" : "ALL")}
+              className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
+                sportFilter !== "ALL"
+                  ? "bg-slate-900 text-white border-slate-900 shadow-xs dark:bg-white dark:text-slate-900"
+                  : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100"
+              }`}
+            >
+              {sportFilter === "ALL" ? "Sport: Alle" : sportFilter === "PADEL" ? "🎾 Padel" : "🎾 Tennis"}
+            </button>
+
             <button
               onClick={() => setSurfaceFilter(surfaceFilter === "CLAY" ? "ALL" : "CLAY")}
-              className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all ${
+              className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
                 surfaceFilter === "CLAY"
                   ? "bg-amber-600 text-white border-amber-600 shadow-xs"
                   : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100"
@@ -272,7 +288,7 @@ export function CourtCalendar({
 
             <button
               onClick={() => setSurfaceFilter(surfaceFilter === "HARD" ? "ALL" : "HARD")}
-              className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all ${
+              className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
                 surfaceFilter === "HARD"
                   ? "bg-sky-600 text-white border-sky-600 shadow-xs"
                   : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100"
@@ -283,7 +299,7 @@ export function CourtCalendar({
 
             <button
               onClick={() => setIndoorFilter(indoorFilter === "OUTDOOR" ? "ALL" : "OUTDOOR")}
-              className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all ${
+              className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
                 indoorFilter === "OUTDOOR"
                   ? "bg-emerald-600 text-white border-emerald-600 shadow-xs"
                   : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100"
@@ -294,7 +310,7 @@ export function CourtCalendar({
 
             <button
               onClick={() => setIndoorFilter(indoorFilter === "INDOOR" ? "ALL" : "INDOOR")}
-              className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all ${
+              className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
                 indoorFilter === "INDOOR"
                   ? "bg-purple-600 text-white border-purple-600 shadow-xs"
                   : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100"
@@ -305,7 +321,7 @@ export function CourtCalendar({
 
             <button
               onClick={() => setLightingOnly(!lightingOnly)}
-              className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all ${
+              className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
                 lightingOnly
                   ? "bg-amber-500 text-white border-amber-500 shadow-xs"
                   : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100"
@@ -338,13 +354,15 @@ export function CourtCalendar({
           key={`booking-modal-${selectedCourtId}-${selectedDate}-${selectedTime}`}
           isOpen={bookingModalOpen}
           onClose={() => setBookingModalOpen(false)}
-          clubSlug={tenant.slug}
+          tenant={tenant}
           courts={courts}
           members={members}
           currentUserId={currentUserId}
+          userWallet={userWallet}
           selectedCourtId={selectedCourtId}
           selectedDateStr={selectedDate}
           selectedTimeStr={selectedTime}
+          existingBookings={initialBookings}
         />
       )}
 

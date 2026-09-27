@@ -1,11 +1,22 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { logoutAction } from "@/app/actions/auth";
-import { Calendar, Shield, LogOut, Trophy, Sparkles, MapPin } from "lucide-react";
+import { topUpWalletAction } from "@/app/actions/booking";
+import {
+  Calendar,
+  Shield,
+  LogOut,
+  Trophy,
+  Sparkles,
+  MapPin,
+  Coins,
+  Loader2,
+} from "lucide-react";
 import { Tenant, TenantRole } from "@/types";
 
 interface NavbarProps {
@@ -17,10 +28,29 @@ interface NavbarProps {
     role?: TenantRole;
     isPlatformAdmin?: boolean;
   } | null;
+  wallet?: {
+    balance: number;
+    currency: string;
+  } | null;
 }
 
-export function Navbar({ currentTenant, user }: NavbarProps) {
+export function Navbar({ currentTenant, user, wallet }: NavbarProps) {
   const pathname = usePathname();
+  const [topUpLoading, setTopUpLoading] = useState(false);
+  const [optimisticBalance, setOptimisticBalance] = useState<number | null>(null);
+
+  const currentBalance =
+    optimisticBalance !== null ? optimisticBalance : (wallet?.balance ?? 50);
+
+  const handleTopUp = async () => {
+    if (!currentTenant) return;
+    setTopUpLoading(true);
+    const res = await topUpWalletAction({ clubSlug: currentTenant.slug, amount: 50 });
+    setTopUpLoading(false);
+    if (res.success && res.balance !== undefined) {
+      setOptimisticBalance(res.balance);
+    }
+  };
 
   const getRoleBadge = (role?: TenantRole, isPlatformAdmin?: boolean) => {
     if (isPlatformAdmin || role === "PLATFORM_ADMIN") {
@@ -105,7 +135,7 @@ export function Navbar({ currentTenant, user }: NavbarProps) {
           <nav className="hidden md:flex items-center gap-1 p-1 bg-slate-100/70 dark:bg-slate-900/70 rounded-xl border border-slate-200/50 dark:border-slate-800/50">
             <Link href={`/c/${currentTenant.slug}`}>
               <button
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                   pathname === `/c/${currentTenant.slug}`
                     ? "bg-white dark:bg-slate-800 text-emerald-700 dark:text-emerald-400 shadow-xs"
                     : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
@@ -119,7 +149,7 @@ export function Navbar({ currentTenant, user }: NavbarProps) {
             {user && (
               <Link href={`/c/${currentTenant.slug}/bookings`}>
                 <button
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                     pathname.includes("/bookings")
                       ? "bg-white dark:bg-slate-800 text-emerald-700 dark:text-emerald-400 shadow-xs"
                       : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
@@ -134,7 +164,7 @@ export function Navbar({ currentTenant, user }: NavbarProps) {
             {isTenantAdmin && (
               <Link href={`/c/${currentTenant.slug}/admin`}>
                 <button
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                     pathname.includes("/admin")
                       ? "bg-white dark:bg-slate-800 text-amber-700 dark:text-amber-400 shadow-xs"
                       : "text-slate-600 dark:text-slate-400 hover:text-amber-700 dark:hover:text-amber-400"
@@ -150,6 +180,28 @@ export function Navbar({ currentTenant, user }: NavbarProps) {
 
         {/* Right: User Menu & Auth */}
         <div className="flex items-center gap-3">
+          {/* User Credits Wallet Pill */}
+          {user && currentTenant && (
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-200/80 dark:border-emerald-800 text-xs font-semibold shadow-2xs">
+              <Coins className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+              <span className="text-emerald-900 dark:text-emerald-200 font-bold">
+                {currentBalance.toFixed(0)} CHF
+              </span>
+              <button
+                onClick={handleTopUp}
+                disabled={topUpLoading}
+                title="1-Klick Dev/Test: +50 CHF Guthaben aufladen"
+                className="ml-1 px-1.5 py-0.5 rounded bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold transition-all flex items-center gap-0.5 cursor-pointer disabled:opacity-50"
+              >
+                {topUpLoading ? (
+                  <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                ) : (
+                  "+50"
+                )}
+              </button>
+            </div>
+          )}
+
           {user ? (
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-2.5">

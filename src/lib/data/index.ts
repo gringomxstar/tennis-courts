@@ -16,6 +16,8 @@ import {
   UserSummary,
   TenantRole,
   MembershipPlan,
+  UserWallet,
+  SportType,
 } from "@/types";
 
 // Determine if we should attempt database connection
@@ -88,7 +90,9 @@ export async function getCourtsByTenantId(tenantId: string): Promise<Court[]> {
           tenantId: c.tenantId,
           locationId: c.locationId,
           name: c.name,
+          sportType: ((c as { sportType?: SportType }).sportType || "TENNIS") as SportType,
           surface: c.surface as CourtSurface,
+          hourlyRate: Number((c as { hourlyRate?: unknown }).hourlyRate || 30),
           isIndoor: c.isIndoor,
           hasLighting: c.hasLighting,
           status: c.status as CourtStatus,
@@ -143,6 +147,9 @@ export async function getCourtBookings(
           status: b.status as BookingStatus,
           bookingType: b.bookingType as BookingType,
           notes: b.notes,
+          hasBallMachine: Boolean((b as { hasBallMachine?: boolean }).hasBallMachine),
+          hasLighting: Boolean((b as { hasLighting?: boolean }).hasLighting),
+          totalCost: Number((b as { totalCost?: unknown }).totalCost || 0),
           organizer: {
             id: b.organizer.id,
             firstName: b.organizer.firstName,
@@ -407,3 +414,166 @@ export async function deleteMembershipPlan(planId: string): Promise<boolean> {
   }
   return mockDeleted;
 }
+
+// Wallet functions
+export async function getUserWallet(
+  tenantId: string,
+  userId: string
+): Promise<UserWallet> {
+  if (hasDbConfigured) {
+    try {
+      const dbWallet = await prisma.userWallet.findUnique({
+        where: {
+          tenantId_userId: { tenantId, userId },
+        },
+        include: {
+          transactions: {
+            orderBy: { createdAt: "desc" },
+            take: 20,
+          },
+        },
+      });
+
+      if (dbWallet) {
+        return {
+          id: dbWallet.id,
+          tenantId: dbWallet.tenantId,
+          userId: dbWallet.userId,
+          balance: Number(dbWallet.balance),
+          currency: dbWallet.currency,
+          transactions: dbWallet.transactions.map((tx) => ({
+            id: tx.id,
+            walletId: tx.walletId,
+            amount: Number(tx.amount),
+            type: tx.type,
+            description: tx.description,
+            bookingId: tx.bookingId,
+            createdAt: tx.createdAt.toISOString(),
+          })),
+        };
+      }
+    } catch (e) {
+      console.warn("Prisma getUserWallet failed, falling back to mockDb:", e);
+    }
+  }
+  return mockDb.getWallet(tenantId, userId);
+}
+
+export async function topUpUserWallet(
+  tenantId: string,
+  userId: string,
+  amount: number,
+  description?: string
+): Promise<UserWallet> {
+  const mockRes = mockDb.topUpWallet(tenantId, userId, amount, description);
+  if (hasDbConfigured) {
+    try {
+      const updated = await prisma.userWallet.upsert({
+        where: {
+          tenantId_userId: { tenantId, userId },
+        },
+        create: {
+          tenantId,
+          userId,
+          balance: 50 + amount,
+          currency: "CHF",
+          transactions: {
+            create: {
+              amount,
+              type: "TOP_UP",
+              description: description || `Guthaben aufgeladen (+${amount} CHF)`,
+            },
+          },
+        },
+        update: {
+          balance: { increment: amount },
+          transactions: {
+            create: {
+              amount,
+              type: "TOP_UP",
+              description: description || `Guthaben aufgeladen (+${amount} CHF)`,
+            },
+          },
+        },
+        include: {
+          transactions: {
+            orderBy: { createdAt: "desc" },
+            take: 20,
+          },
+        },
+      });
+      return {
+        id: updated.id,
+        tenantId: updated.tenantId,
+        userId: updated.userId,
+        balance: Number(updated.balance),
+        currency: updated.currency,
+        transactions: updated.transactions.map((tx) => ({
+          id: tx.id,
+          walletId: tx.walletId,
+          amount: Number(tx.amount),
+          type: tx.type,
+          description: tx.description,
+          bookingId: tx.bookingId,
+          createdAt: tx.createdAt.toISOString(),
+        })),
+      };
+    } catch (e) {
+      console.warn("Prisma topUpUserWallet failed, falling back to mockDb:", e);
+    }
+  }
+  return mockRes;
+}
+
+export async function grantAdminCredits(
+  tenantId: string,
+  userId: string,
+  amount: number,
+  reason: string
+): Promise<UserWallet> {
+  const mockRes = mockDb.grantAdminCredits(tenantId, userId, amount, reason);
+  if (hasDbConfigured) {
+    try {
+      await prisma.userWallet.upsert({
+        where: {
+          tenantId_userId: { tenantId, userId },
+        },
+        create: {
+          tenantId,
+          userId,
+          balance: 50 + amount,
+          transactions: {
+            create: {
+              amount,
+              type: "ADMIN_GRANT",
+              description: `Admin-Gutschrift: ${reason} (+${amount} CHF)`,
+            },
+          },
+        },
+        update: {
+          balance: { increment: amount },
+          transactions: {
+            create: {
+              amount,
+              type: "ADMIN_GRANT",
+              description: `Admin-Gutschrift: ${reason} (+${amount} CHF)`,
+            },
+          },
+        },
+      });
+    } catch (e) {
+      console.warn("Prisma grantAdminCredits failed, falling back to mockDb:", e);
+    }
+  }
+  return mockRes;
+}
+
+export async function checkBallMachineAvailability(
+  tenantId: string,
+  startsAt: string,
+  endsAt: string,
+  excludeBookingId?: string
+): Promise<{ available: boolean; conflictCourtName?: string }> {
+  return mockDb.isBallMachineAvailable(tenantId, startsAt, endsAt, excludeBookingId);
+}
+

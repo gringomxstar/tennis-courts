@@ -94,6 +94,17 @@ export async function updateClubSettingsAction(
     slotDurationMinutes: slotDuration,
     cancellationDeadlineHours: cancellationDeadline,
     allowGuestBookings: Boolean(settings.allowGuestBookings),
+    allowConsecutiveSlotsForDoubles: settings.allowConsecutiveSlotsForDoubles ?? true,
+    marlyRuleEnabled: settings.marlyRuleEnabled ?? true,
+    marlyCooldownMinutes: Number(settings.marlyCooldownMinutes ?? 60),
+    maxActiveSlotsPerPlayer: Number(settings.maxActiveSlotsPerPlayer ?? 2),
+    ballMachineAvailable: settings.ballMachineAvailable ?? true,
+    ballMachineFee: Number(settings.ballMachineFee ?? 10),
+    floodlightFee: Number(settings.floodlightFee ?? 5),
+    guestFee: Number(settings.guestFee ?? 15),
+    defaultHourlyRateTennis: Number(settings.defaultHourlyRateTennis ?? 30),
+    defaultHourlyRateHalle: Number(settings.defaultHourlyRateHalle ?? 45),
+    defaultHourlyRatePadel: Number(settings.defaultHourlyRatePadel ?? 40),
   });
 
   if (!updated) {

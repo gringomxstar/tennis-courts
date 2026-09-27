@@ -203,11 +203,16 @@ export function CourtGrid({
           </div>
 
           {/* Middle: Opponent / Guest */}
-          <div className="text-[11px] opacity-80 truncate">
+          <div className="flex items-center justify-between text-[11px] opacity-80 gap-1 truncate">
             {opponentName ? (
-              <span>vs. {opponentName}</span>
+              <span className="truncate">vs. {opponentName}</span>
             ) : (
               <span className="italic text-[10px] opacity-70">Einzel-Reservierung</span>
+            )}
+            {booking.hasBallMachine && (
+              <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-emerald-200/80 text-emerald-950 dark:bg-emerald-900 dark:text-emerald-200 shrink-0">
+                🎾 Ballmaschine
+              </span>
             )}
           </div>
 
@@ -520,23 +525,31 @@ export function CourtGrid({
                 <div className={`absolute top-0 left-0 right-0 h-1.5 ${surfaceMeta.barColor}`} />
 
                 <div className="flex items-center justify-between gap-1.5 mb-1.5">
-                  <span className="font-bold text-sm text-slate-900 dark:text-white truncate">
-                    {court.name}
-                  </span>
+                  <div className="flex items-center gap-1.5 truncate">
+                    <span className="font-bold text-sm text-slate-900 dark:text-white truncate">
+                      {court.name}
+                    </span>
+                    <span className="px-1.5 py-0.2 rounded text-[9px] font-extrabold uppercase bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                      {court.sportType === "PADEL" ? "Padel" : "Tennis"}
+                    </span>
+                  </div>
                   <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${surfaceMeta.color}`}>
                     {surfaceMeta.label}
                   </span>
                 </div>
 
-                <div className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400">
+                <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
                   <span className="flex items-center gap-1">
                     {court.isIndoor ? "🏢 Halle" : "☀️ Freiplatz"}
+                    {court.hasLighting && (
+                      <span className="font-semibold text-amber-600 dark:text-amber-400">
+                        • 💡
+                      </span>
+                    )}
                   </span>
-                  {court.hasLighting && (
-                    <span className="flex items-center gap-1 font-semibold text-amber-600 dark:text-amber-400">
-                      • 💡 Flutlicht
-                    </span>
-                  )}
+                  <span className="font-mono text-emerald-700 dark:text-emerald-400 font-semibold text-[10px]">
+                    {court.hourlyRate} CHF/h
+                  </span>
                 </div>
               </div>
             );

@@ -7,7 +7,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
-import { Clock, ShieldCheck, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
+import {
+  Clock,
+  ShieldCheck,
+  CheckCircle2,
+  AlertCircle,
+  Loader2,
+  Sparkles,
+  Coins,
+} from "lucide-react";
 
 interface ClubSettingsFormProps {
   clubSlug: string;
@@ -33,6 +41,38 @@ export function ClubSettingsForm({
     initialSettings?.allowGuestBookings ?? true
   );
 
+  // Epic settings
+  const [allowConsecutiveSlotsForDoubles, setAllowConsecutiveSlotsForDoubles] = useState<boolean>(
+    initialSettings?.allowConsecutiveSlotsForDoubles ?? true
+  );
+  const [marlyRuleEnabled, setMarlyRuleEnabled] = useState<boolean>(
+    initialSettings?.marlyRuleEnabled ?? true
+  );
+  const [marlyCooldownMinutes, setMarlyCooldownMinutes] = useState<number>(
+    initialSettings?.marlyCooldownMinutes ?? 60
+  );
+  const [maxActiveSlotsPerPlayer, setMaxActiveSlotsPerPlayer] = useState<number>(
+    initialSettings?.maxActiveSlotsPerPlayer ?? 2
+  );
+  const [ballMachineFee, setBallMachineFee] = useState<number>(
+    initialSettings?.ballMachineFee ?? 10
+  );
+  const [floodlightFee, setFloodlightFee] = useState<number>(
+    initialSettings?.floodlightFee ?? 5
+  );
+  const [guestFee, setGuestFee] = useState<number>(
+    initialSettings?.guestFee ?? 15
+  );
+  const [defaultHourlyRateTennis, setDefaultHourlyRateTennis] = useState<number>(
+    initialSettings?.defaultHourlyRateTennis ?? 30
+  );
+  const [defaultHourlyRateHalle, setDefaultHourlyRateHalle] = useState<number>(
+    initialSettings?.defaultHourlyRateHalle ?? 45
+  );
+  const [defaultHourlyRatePadel, setDefaultHourlyRatePadel] = useState<number>(
+    initialSettings?.defaultHourlyRatePadel ?? 40
+  );
+
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState<{
     type: "success" | "error";
@@ -51,12 +91,22 @@ export function ClubSettingsForm({
         slotDurationMinutes: Number(slotDurationMinutes),
         cancellationDeadlineHours: Number(cancellationDeadlineHours),
         allowGuestBookings,
+        allowConsecutiveSlotsForDoubles,
+        marlyRuleEnabled,
+        marlyCooldownMinutes: Number(marlyCooldownMinutes),
+        maxActiveSlotsPerPlayer: Number(maxActiveSlotsPerPlayer),
+        ballMachineFee: Number(ballMachineFee),
+        floodlightFee: Number(floodlightFee),
+        guestFee: Number(guestFee),
+        defaultHourlyRateTennis: Number(defaultHourlyRateTennis),
+        defaultHourlyRateHalle: Number(defaultHourlyRateHalle),
+        defaultHourlyRatePadel: Number(defaultHourlyRatePadel),
       });
 
       if (res.success) {
         setFeedback({
           type: "success",
-          message: "Club-Einstellungen und Öffnungszeiten erfolgreich gespeichert!",
+          message: "Club-Einstellungen und Buchungsregeln erfolgreich gespeichert!",
         });
       } else {
         setFeedback({
@@ -79,10 +129,10 @@ export function ClubSettingsForm({
       <CardHeader>
         <CardTitle className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
           <Clock className="w-4 h-4 text-emerald-600" />
-          Öffnungszeiten & Buchungsregeln
+          Club-Regeln, Tarife & Fairplay-System
         </CardTitle>
         <CardDescription className="text-xs">
-          Definiere die Betriebszeiten des Clubs, Stornofristen und Spielzeit-Regeln.
+          Definiere Betriebszeiten, TC Marly Fairplay-Regeln, Doppel-Verlängerung und Gebühren.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -104,6 +154,7 @@ export function ClubSettingsForm({
             </div>
           )}
 
+          {/* Section 1: Times & Durations */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label htmlFor="openingHour" className="text-xs font-medium">
@@ -145,7 +196,7 @@ export function ClubSettingsForm({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label htmlFor="slotDurationMinutes" className="text-xs font-medium">
-                Standard Slot-Dauer
+                Standard Slot-Dauer (Einzel)
               </Label>
               <select
                 id="slotDurationMinutes"
@@ -156,7 +207,6 @@ export function ClubSettingsForm({
                 <option value={45}>45 Minuten</option>
                 <option value={60}>60 Minuten (1 Stunde)</option>
                 <option value={90}>90 Minuten (1.5 Stunden)</option>
-                <option value={120}>120 Minuten (2 Stunden)</option>
               </select>
             </div>
 
@@ -171,14 +221,193 @@ export function ClubSettingsForm({
                   min={0}
                   max={72}
                   value={cancellationDeadlineHours}
-                  onChange={(e) =>
-                    setCancellationDeadlineHours(Number(e.target.value))
-                  }
+                  onChange={(e) => setCancellationDeadlineHours(Number(e.target.value))}
                   className="text-xs"
                 />
                 <span className="text-xs text-slate-500 whitespace-nowrap">
                   Stunden vorher
                 </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 2: Fairplay & Marly-Modell */}
+          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 space-y-3">
+            <span className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+              TC Marly Fairplay-Regeln & Rolling Slot Release
+            </span>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <label className="flex items-start gap-2.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={marlyRuleEnabled}
+                  onChange={(e) => setMarlyRuleEnabled(e.target.checked)}
+                  className="mt-0.5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4"
+                />
+                <div>
+                  <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                    Marly-Regel aktivieren
+                  </p>
+                  <p className="text-[10px] text-slate-500">
+                    Keine Doppel-Stunden im Einzel & Rolling Release nach Ablauf des Spiels.
+                  </p>
+                </div>
+              </label>
+
+              <label className="flex items-start gap-2.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={allowConsecutiveSlotsForDoubles}
+                  onChange={(e) => setAllowConsecutiveSlotsForDoubles(e.target.checked)}
+                  className="mt-0.5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4"
+                />
+                <div>
+                  <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                    2h Doppel-Spezial erlauben
+                  </p>
+                  <p className="text-[10px] text-slate-500">
+                    Erlaubt 2 Stunden am Stück, wenn 4 Spieler im Doppel antreten.
+                  </p>
+                </div>
+              </label>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-200/60 dark:border-slate-700/60">
+              <div className="space-y-1">
+                <Label htmlFor="maxActiveSlots" className="text-xs">
+                  Max. aktive Reservierungen pro Spieler
+                </Label>
+                <Input
+                  id="maxActiveSlots"
+                  type="number"
+                  min={1}
+                  max={10}
+                  value={maxActiveSlotsPerPlayer}
+                  onChange={(e) => setMaxActiveSlotsPerPlayer(Number(e.target.value))}
+                  className="text-xs h-8"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor="cooldown" className="text-xs">
+                  Mindestabstand / Cooldown (Minuten)
+                </Label>
+                <Input
+                  id="cooldown"
+                  type="number"
+                  min={0}
+                  step={15}
+                  value={marlyCooldownMinutes}
+                  onChange={(e) => setMarlyCooldownMinutes(Number(e.target.value))}
+                  className="text-xs h-8"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Section 3: Fees & Multi-Sport Tarife */}
+          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 space-y-3">
+            <span className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+              <Coins className="w-3.5 h-3.5 text-emerald-600" />
+              Gebühren, Equipment & Multi-Sport Stundensätze (CHF)
+            </span>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="space-y-1">
+                <Label htmlFor="guestFee" className="text-xs">
+                  Gastgebühr / Spieler
+                </Label>
+                <div className="flex items-center gap-1">
+                  <Input
+                    id="guestFee"
+                    type="number"
+                    min={0}
+                    value={guestFee}
+                    onChange={(e) => setGuestFee(Number(e.target.value))}
+                    className="text-xs h-8"
+                  />
+                  <span className="text-xs text-slate-500">CHF</span>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor="ballMachineFee" className="text-xs">
+                  Ballmaschine / Stunde
+                </Label>
+                <div className="flex items-center gap-1">
+                  <Input
+                    id="ballMachineFee"
+                    type="number"
+                    min={0}
+                    value={ballMachineFee}
+                    onChange={(e) => setBallMachineFee(Number(e.target.value))}
+                    className="text-xs h-8"
+                  />
+                  <span className="text-xs text-slate-500">CHF</span>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor="floodlightFee" className="text-xs">
+                  Flutlicht-Zuschlag
+                </Label>
+                <div className="flex items-center gap-1">
+                  <Input
+                    id="floodlightFee"
+                    type="number"
+                    min={0}
+                    value={floodlightFee}
+                    onChange={(e) => setFloodlightFee(Number(e.target.value))}
+                    className="text-xs h-8"
+                  />
+                  <span className="text-xs text-slate-500">CHF</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-200/60 dark:border-slate-700/60">
+              <div className="space-y-1">
+                <Label htmlFor="rateTennis" className="text-xs">
+                  Tennis Sand (Gast)
+                </Label>
+                <Input
+                  id="rateTennis"
+                  type="number"
+                  min={0}
+                  value={defaultHourlyRateTennis}
+                  onChange={(e) => setDefaultHourlyRateTennis(Number(e.target.value))}
+                  className="text-xs h-8"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor="rateHalle" className="text-xs">
+                  Tennishalle / h
+                </Label>
+                <Input
+                  id="rateHalle"
+                  type="number"
+                  min={0}
+                  value={defaultHourlyRateHalle}
+                  onChange={(e) => setDefaultHourlyRateHalle(Number(e.target.value))}
+                  className="text-xs h-8"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor="ratePadel" className="text-xs">
+                  Padel Court / h
+                </Label>
+                <Input
+                  id="ratePadel"
+                  type="number"
+                  min={0}
+                  value={defaultHourlyRatePadel}
+                  onChange={(e) => setDefaultHourlyRatePadel(Number(e.target.value))}
+                  className="text-xs h-8"
+                />
               </div>
             </div>
           </div>
@@ -189,7 +418,7 @@ export function ClubSettingsForm({
                 type="checkbox"
                 checked={allowGuestBookings}
                 onChange={(e) => setAllowGuestBookings(e.target.checked)}
-                className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4"
+                className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
               />
               <div>
                 <p className="text-xs font-medium text-slate-900 dark:text-white">
@@ -206,7 +435,7 @@ export function ClubSettingsForm({
             <Button
               type="submit"
               disabled={loading}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2 text-xs font-medium"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2 text-xs font-semibold cursor-pointer shadow-xs"
             >
               {loading ? (
                 <>

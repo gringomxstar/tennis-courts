@@ -6,6 +6,8 @@ import {
   CourtBlock,
   UserSummary,
   MembershipPlan,
+  UserWallet,
+  WalletTransaction,
 } from "@/types";
 
 // Base Mock Store
@@ -26,6 +28,17 @@ class MockDatabase {
         slotDurationMinutes: 60,
         cancellationDeadlineHours: 24,
         allowGuestBookings: true,
+        allowConsecutiveSlotsForDoubles: true,
+        marlyRuleEnabled: true,
+        marlyCooldownMinutes: 60,
+        maxActiveSlotsPerPlayer: 2,
+        ballMachineAvailable: true,
+        ballMachineFee: 10,
+        floodlightFee: 5,
+        guestFee: 15,
+        defaultHourlyRateTennis: 30,
+        defaultHourlyRateHalle: 45,
+        defaultHourlyRatePadel: 40,
       },
     },
     {
@@ -43,6 +56,17 @@ class MockDatabase {
         slotDurationMinutes: 60,
         cancellationDeadlineHours: 12,
         allowGuestBookings: true,
+        allowConsecutiveSlotsForDoubles: true,
+        marlyRuleEnabled: true,
+        marlyCooldownMinutes: 60,
+        maxActiveSlotsPerPlayer: 2,
+        ballMachineAvailable: true,
+        ballMachineFee: 10,
+        floodlightFee: 5,
+        guestFee: 15,
+        defaultHourlyRateTennis: 30,
+        defaultHourlyRateHalle: 45,
+        defaultHourlyRatePadel: 40,
       },
     },
   ];
@@ -53,7 +77,9 @@ class MockDatabase {
       tenantId: "tenant-rot-weiss",
       locationId: "loc-1",
       name: "Platz 1 (Center Court)",
+      sportType: "TENNIS",
       surface: "CLAY",
+      hourlyRate: 30,
       isIndoor: false,
       hasLighting: true,
       status: "ACTIVE",
@@ -64,7 +90,9 @@ class MockDatabase {
       tenantId: "tenant-rot-weiss",
       locationId: "loc-1",
       name: "Platz 2",
+      sportType: "TENNIS",
       surface: "CLAY",
+      hourlyRate: 30,
       isIndoor: false,
       hasLighting: true,
       status: "ACTIVE",
@@ -75,7 +103,9 @@ class MockDatabase {
       tenantId: "tenant-rot-weiss",
       locationId: "loc-1",
       name: "Platz 3",
+      sportType: "TENNIS",
       surface: "CLAY",
+      hourlyRate: 30,
       isIndoor: false,
       hasLighting: false,
       status: "ACTIVE",
@@ -86,11 +116,39 @@ class MockDatabase {
       tenantId: "tenant-rot-weiss",
       locationId: "loc-1",
       name: "Platz 4 (Allwetter)",
+      sportType: "TENNIS",
       surface: "HARD",
+      hourlyRate: 30,
       isIndoor: false,
       hasLighting: true,
       status: "ACTIVE",
       sortOrder: 4,
+    },
+    {
+      id: "court-5",
+      tenantId: "tenant-rot-weiss",
+      locationId: "loc-1",
+      name: "Padel Court 1",
+      sportType: "PADEL",
+      surface: "ARTIFICIAL_GRASS",
+      hourlyRate: 40,
+      isIndoor: false,
+      hasLighting: true,
+      status: "ACTIVE",
+      sortOrder: 5,
+    },
+    {
+      id: "court-6",
+      tenantId: "tenant-rot-weiss",
+      locationId: "loc-1",
+      name: "Halle 1 (Teppich)",
+      sportType: "TENNIS",
+      surface: "CARPET",
+      hourlyRate: 45,
+      isIndoor: true,
+      hasLighting: true,
+      status: "ACTIVE",
+      sortOrder: 6,
     },
     // TC Obersee courts
     {
@@ -98,7 +156,9 @@ class MockDatabase {
       tenantId: "tenant-obersee",
       locationId: "loc-2",
       name: "Seeplatz 1",
+      sportType: "TENNIS",
       surface: "CLAY",
+      hourlyRate: 30,
       isIndoor: false,
       hasLighting: true,
       status: "ACTIVE",
@@ -109,11 +169,26 @@ class MockDatabase {
       tenantId: "tenant-obersee",
       locationId: "loc-2",
       name: "Halle 1",
+      sportType: "TENNIS",
       surface: "CARPET",
+      hourlyRate: 45,
       isIndoor: true,
       hasLighting: true,
       status: "ACTIVE",
       sortOrder: 2,
+    },
+    {
+      id: "court-ob-3",
+      tenantId: "tenant-obersee",
+      locationId: "loc-2",
+      name: "Padel Panorama",
+      sportType: "PADEL",
+      surface: "ARTIFICIAL_GRASS",
+      hourlyRate: 40,
+      isIndoor: false,
+      hasLighting: true,
+      status: "ACTIVE",
+      sortOrder: 3,
     },
   ];
 
@@ -178,7 +253,7 @@ class MockDatabase {
       simultaneousBookingLimit: 4,
       dailyBookingLimit: 2,
       weeklyBookingLimit: 6,
-      allowedDurations: [60, 90],
+      allowedDurations: [60, 90, 120],
     },
     {
       id: "plan-junior",
@@ -197,6 +272,7 @@ class MockDatabase {
 
   bookings: Booking[] = [];
   courtBlocks: CourtBlock[] = [];
+  wallets: UserWallet[] = [];
 
   constructor() {
     this.seedDynamicData();
@@ -205,6 +281,95 @@ class MockDatabase {
   private seedDynamicData() {
     // Generate bookings for today & tomorrow dynamically
     const now = new Date();
+
+    // Init wallets
+    this.wallets = [
+      {
+        id: "wallet-admin",
+        tenantId: "tenant-rot-weiss",
+        userId: "user-admin",
+        balance: 200,
+        currency: "CHF",
+        transactions: [
+          {
+            id: "tx-init-admin",
+            walletId: "wallet-admin",
+            amount: 200,
+            type: "TOP_UP",
+            description: "Startguthaben Dev/Test",
+            createdAt: now.toISOString(),
+          },
+        ],
+      },
+      {
+        id: "wallet-clubadmin",
+        tenantId: "tenant-rot-weiss",
+        userId: "user-clubadmin",
+        balance: 150,
+        currency: "CHF",
+        transactions: [
+          {
+            id: "tx-init-clubadmin",
+            walletId: "wallet-clubadmin",
+            amount: 150,
+            type: "TOP_UP",
+            description: "Startguthaben Club Admin",
+            createdAt: now.toISOString(),
+          },
+        ],
+      },
+      {
+        id: "wallet-roger",
+        tenantId: "tenant-rot-weiss",
+        userId: "user-roger",
+        balance: 100,
+        currency: "CHF",
+        transactions: [
+          {
+            id: "tx-init-roger",
+            walletId: "wallet-roger",
+            amount: 100,
+            type: "TOP_UP",
+            description: "Startguthaben Roger Federer",
+            createdAt: now.toISOString(),
+          },
+        ],
+      },
+      {
+        id: "wallet-stan",
+        tenantId: "tenant-rot-weiss",
+        userId: "user-stan",
+        balance: 75,
+        currency: "CHF",
+        transactions: [
+          {
+            id: "tx-init-stan",
+            walletId: "wallet-stan",
+            amount: 75,
+            type: "TOP_UP",
+            description: "Startguthaben Stan Wawrinka",
+            createdAt: now.toISOString(),
+          },
+        ],
+      },
+      {
+        id: "wallet-belinda",
+        tenantId: "tenant-rot-weiss",
+        userId: "user-belinda",
+        balance: 50,
+        currency: "CHF",
+        transactions: [
+          {
+            id: "tx-init-belinda",
+            walletId: "wallet-belinda",
+            amount: 50,
+            type: "TOP_UP",
+            description: "Startguthaben Belinda Bencic",
+            createdAt: now.toISOString(),
+          },
+        ],
+      },
+    ];
     
     // Helper to format ISO with specific hour/minute
     const makeDate = (dayOffset: number, hour: number, minute: number = 0) => {
@@ -214,7 +379,7 @@ class MockDatabase {
       return d.toISOString();
     };
 
-    // Today 10:00 - 11:00 on Court 1 (Roger & Stan)
+    // Today 10:00 - 11:00 on Court 1 (Roger & Stan, with Ball Machine!)
     this.bookings.push({
       id: "booking-demo-1",
       tenantId: "tenant-rot-weiss",
@@ -224,7 +389,10 @@ class MockDatabase {
       endsAt: makeDate(0, 11, 0),
       status: "CONFIRMED",
       bookingType: "MEMBER",
-      notes: "Einzel Match Training",
+      hasBallMachine: true,
+      hasLighting: false,
+      totalCost: 10,
+      notes: "Einzel Match Training mit Ballmaschine",
       organizer: {
         id: "user-roger",
         firstName: "Roger",
@@ -261,7 +429,7 @@ class MockDatabase {
       ],
     });
 
-    // Today 14:00 - 15:00 on Court 2 (Belinda & Gast)
+    // Today 14:00 - 15:00 on Court 2 (Belinda & Gast Martina Hingis)
     this.bookings.push({
       id: "booking-demo-2",
       tenantId: "tenant-rot-weiss",
@@ -271,6 +439,9 @@ class MockDatabase {
       endsAt: makeDate(0, 15, 0),
       status: "CONFIRMED",
       bookingType: "MEMBER",
+      hasBallMachine: false,
+      hasLighting: false,
+      totalCost: 15,
       notes: "Sparring mit Gast",
       organizer: {
         id: "user-belinda",
@@ -296,6 +467,7 @@ class MockDatabase {
           id: "part-4",
           bookingId: "booking-demo-2",
           guestName: "Martina Hingis",
+          guestEmail: "martina@hingis-tennis.ch",
           role: "GUEST",
           invitationStatus: "ACCEPTED",
         },
@@ -324,6 +496,9 @@ class MockDatabase {
       endsAt: makeDate(1, 19, 30),
       status: "CONFIRMED",
       bookingType: "MEMBER",
+      hasBallMachine: false,
+      hasLighting: true,
+      totalCost: 5,
       notes: "Clubmeisterschaft Vorbereitung",
       organizer: {
         id: "user-clubadmin",
@@ -343,6 +518,19 @@ class MockDatabase {
             firstName: "Marc",
             lastName: "Rosset",
             email: "clubadmin@tc-rotweiss.ch",
+          },
+        },
+        {
+          id: "part-6",
+          bookingId: "booking-demo-3",
+          userId: "user-roger",
+          role: "PLAYER",
+          invitationStatus: "ACCEPTED",
+          user: {
+            id: "user-roger",
+            firstName: "Roger",
+            lastName: "Federer",
+            email: "roger@tc-rotweiss.ch",
           },
         },
       ],
@@ -396,6 +584,226 @@ class MockDatabase {
           b.participants.some((p) => p.userId === userId)) &&
         b.status !== "CANCELLED"
     );
+  }
+
+  // Wallet methods
+  getWallet(tenantId: string, userId: string): UserWallet {
+    let wallet = this.wallets.find((w) => w.tenantId === tenantId && w.userId === userId);
+    if (!wallet) {
+      wallet = {
+        id: `wallet-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        tenantId,
+        userId,
+        balance: 50, // default starting credit for test ease
+        currency: "CHF",
+        transactions: [
+          {
+            id: `tx-${Date.now()}`,
+            walletId: "",
+            amount: 50,
+            type: "TOP_UP",
+            description: "Willkommensguthaben (50 CHF)",
+            createdAt: new Date().toISOString(),
+          },
+        ],
+      };
+      wallet.transactions[0].walletId = wallet.id;
+      this.wallets.push(wallet);
+    }
+    return wallet;
+  }
+
+  topUpWallet(tenantId: string, userId: string, amount: number, description?: string): UserWallet {
+    const wallet = this.getWallet(tenantId, userId);
+    wallet.balance += amount;
+    const tx: WalletTransaction = {
+      id: `tx-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      walletId: wallet.id,
+      amount,
+      type: "TOP_UP",
+      description: description || `Guthaben aufgeladen (+${amount} CHF)`,
+      createdAt: new Date().toISOString(),
+    };
+    wallet.transactions.unshift(tx);
+    return wallet;
+  }
+
+  deductWallet(
+    tenantId: string,
+    userId: string,
+    amount: number,
+    description: string,
+    bookingId?: string
+  ): { success: boolean; wallet?: UserWallet; error?: string } {
+    const wallet = this.getWallet(tenantId, userId);
+    if (wallet.balance < amount) {
+      return {
+        success: false,
+        error: `Nicht genügend Guthaben. Benötigt: ${amount} CHF, Aktuell: ${wallet.balance} CHF.`,
+      };
+    }
+    wallet.balance -= amount;
+    const tx: WalletTransaction = {
+      id: `tx-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      walletId: wallet.id,
+      amount: -amount,
+      type: "BOOKING_PAYMENT",
+      description,
+      bookingId,
+      createdAt: new Date().toISOString(),
+    };
+    wallet.transactions.unshift(tx);
+    return { success: true, wallet };
+  }
+
+  refundWallet(
+    tenantId: string,
+    userId: string,
+    amount: number,
+    description: string,
+    bookingId?: string
+  ): UserWallet {
+    const wallet = this.getWallet(tenantId, userId);
+    wallet.balance += amount;
+    const tx: WalletTransaction = {
+      id: `tx-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      walletId: wallet.id,
+      amount,
+      type: "REFUND",
+      description,
+      bookingId,
+      createdAt: new Date().toISOString(),
+    };
+    wallet.transactions.unshift(tx);
+    return wallet;
+  }
+
+  grantAdminCredits(
+    tenantId: string,
+    userId: string,
+    amount: number,
+    reason: string
+  ): UserWallet {
+    const wallet = this.getWallet(tenantId, userId);
+    wallet.balance += amount;
+    const tx: WalletTransaction = {
+      id: `tx-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      walletId: wallet.id,
+      amount,
+      type: "ADMIN_GRANT",
+      description: `Admin-Gutschrift: ${reason} (+${amount} CHF)`,
+      createdAt: new Date().toISOString(),
+    };
+    wallet.transactions.unshift(tx);
+    return wallet;
+  }
+
+  // Ball Machine Exclusive Availability Check
+  isBallMachineAvailable(
+    tenantId: string,
+    startsAt: string,
+    endsAt: string,
+    excludeBookingId?: string
+  ): { available: boolean; conflictCourtName?: string } {
+    const start = new Date(startsAt).getTime();
+    const end = new Date(endsAt).getTime();
+
+    const conflict = this.bookings.find((b) => {
+      if (b.tenantId !== tenantId || b.status === "CANCELLED" || !b.hasBallMachine) {
+        return false;
+      }
+      if (excludeBookingId && b.id === excludeBookingId) return false;
+      const bStart = new Date(b.startsAt).getTime();
+      const bEnd = new Date(b.endsAt).getTime();
+      return start < bEnd && end > bStart;
+    });
+
+    if (conflict) {
+      const court = this.courts.find((c) => c.id === conflict.courtId);
+      return {
+        available: false,
+        conflictCourtName: court?.name || "einem anderen Platz",
+      };
+    }
+    return { available: true };
+  }
+
+  // Marly Rule & Cooldown Check
+  checkMarlyRule(
+    tenantId: string,
+    userId: string,
+    startsAt: string,
+    endsAt: string,
+    isDouble: boolean
+  ): { allowed: boolean; reason?: string } {
+    const tenant = this.tenants.find((t) => t.id === tenantId);
+    const settings = tenant?.settingsJson;
+    if (!settings?.marlyRuleEnabled) {
+      return { allowed: true };
+    }
+
+    const now = Date.now();
+    const targetStart = new Date(startsAt).getTime();
+    const targetEnd = new Date(endsAt).getTime();
+
+    // 1. Check max active slots limit (Rolling Release after expiration)
+    const maxActive = settings.maxActiveSlotsPerPlayer ?? 2;
+    const activeFutureBookings = this.bookings.filter((b) => {
+      if (b.tenantId !== tenantId || b.status === "CANCELLED") return false;
+      const isUserInvolved =
+        b.organizerId === userId || b.participants.some((p) => p.userId === userId);
+      if (!isUserInvolved) return false;
+      // Active if its end time is still in future
+      return new Date(b.endsAt).getTime() > now;
+    });
+
+    if (activeFutureBookings.length >= maxActive) {
+      return {
+        allowed: false,
+        reason: `Buchungskontingent erschöpft: Maximal ${maxActive} aktive Reservierungen gleichzeitig möglich. Ein neuer Slot wird erst freigeschaltet, nachdem dein nächstes Spiel beendet ist (Rolling Release).`,
+      };
+    }
+
+    // 2. Anti-Blockier-Regel (Kein Consecutive Booking im Einzel)
+    if (!isDouble) {
+      const hasConsecutive = activeFutureBookings.some((b) => {
+        const bStart = new Date(b.startsAt).getTime();
+        const bEnd = new Date(b.endsAt).getTime();
+        // Starts exactly when previous ended, or ends exactly when next starts
+        return bEnd === targetStart || bStart === targetEnd;
+      });
+
+      if (hasConsecutive) {
+        return {
+          allowed: false,
+          reason:
+            "Direkt aufeinanderfolgende Buchungen (2 Stunden am Stück) sind im Einzel nicht gestattet. Eine 2-stündige Reservierung ist exklusiv für 4er-Doppel reserviert.",
+        };
+      }
+    }
+
+    // 3. Cooldown / Mindestabstand between games
+    const cooldownMs = (settings.marlyCooldownMinutes ?? 60) * 60 * 1000;
+    if (cooldownMs > 0 && !isDouble) {
+      const hasCooldownViolation = activeFutureBookings.some((b) => {
+        const bStart = new Date(b.startsAt).getTime();
+        const bEnd = new Date(b.endsAt).getTime();
+        // Target starts too soon after b ended
+        if (targetStart >= bEnd && targetStart - bEnd < cooldownMs) return true;
+        // b starts too soon after target ended
+        if (bStart >= targetEnd && bStart - targetEnd < cooldownMs) return true;
+        return false;
+      });
+
+      if (hasCooldownViolation) {
+        return {
+          allowed: false,
+          reason: `Fairplay-Regel: Zwischen deinen Spielen ist eine Pause von mindestens ${settings.marlyCooldownMinutes} Minuten vorgeschrieben.`,
+        };
+      }
+    }
+
+    return { allowed: true };
   }
 
   // Tenant settings & plans mutation helpers
@@ -478,6 +886,8 @@ class MockDatabase {
       tenantId: tenant.id,
     };
     this.users.push(newUser);
+    // initialize wallet with 50 CHF welcome credit
+    this.getWallet(tenant.id, newUser.id);
     return newUser;
   }
 }

@@ -5,6 +5,7 @@ import {
   getCourtBookings,
   getCourtBlocks,
   getTenantMembers,
+  getUserWallet,
 } from "@/lib/data";
 import { Navbar } from "@/components/navbar";
 import { CourtCalendar } from "@/components/calendar/court-calendar";
@@ -32,17 +33,18 @@ export default async function ClubPage({ params, searchParams }: ClubPageProps) 
   const selectedDateStr =
     rawDate && /^\d{4}-\d{2}-\d{2}$/.test(rawDate) ? rawDate : todayStr;
 
-  // Fetch courts, bookings, court blocks, and members for the selected date
-  const [courts, bookings, courtBlocks, members] = await Promise.all([
+  // Fetch courts, bookings, court blocks, members, and user wallet
+  const [courts, bookings, courtBlocks, members, wallet] = await Promise.all([
     getCourtsByTenantId(tenant.id),
     getCourtBookings(tenant.id, selectedDateStr),
     getCourtBlocks(tenant.id, selectedDateStr),
     getTenantMembers(tenant.id),
+    context.user?.id ? getUserWallet(tenant.id, context.user.id) : null,
   ]);
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950">
-      <Navbar currentTenant={tenant} user={context.user} />
+      <Navbar currentTenant={tenant} user={context.user} wallet={wallet} />
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <CourtCalendar
@@ -52,6 +54,7 @@ export default async function ClubPage({ params, searchParams }: ClubPageProps) 
           initialCourtBlocks={courtBlocks}
           members={members}
           currentUserId={context.user?.id}
+          userWallet={wallet}
           isClubAdmin={context.isTenantAdmin}
           selectedDate={selectedDateStr}
         />

@@ -6,6 +6,8 @@ export type TenantRole =
   | "MEMBER"
   | "GUEST";
 
+export type SportType = "TENNIS" | "PADEL";
+
 export type CourtSurface = "CLAY" | "HARD" | "ARTIFICIAL_GRASS" | "CARPET";
 export type CourtStatus = "ACTIVE" | "MAINTENANCE" | "INACTIVE";
 
@@ -43,6 +45,18 @@ export interface TenantSettings {
   slotDurationMinutes: number;
   cancellationDeadlineHours: number;
   allowGuestBookings?: boolean;
+  // Epic: credits, doubles, marly, equipment, multi-sport
+  allowConsecutiveSlotsForDoubles?: boolean;
+  marlyRuleEnabled?: boolean;
+  marlyCooldownMinutes?: number;
+  maxActiveSlotsPerPlayer?: number;
+  ballMachineAvailable?: boolean;
+  ballMachineFee?: number;
+  floodlightFee?: number;
+  guestFee?: number;
+  defaultHourlyRateTennis?: number;
+  defaultHourlyRateHalle?: number;
+  defaultHourlyRatePadel?: number;
 }
 
 export interface Tenant {
@@ -63,7 +77,9 @@ export interface Court {
   tenantId: string;
   locationId: string;
   name: string;
+  sportType: SportType;
   surface: CourtSurface;
+  hourlyRate: number;
   isIndoor: boolean;
   hasLighting: boolean;
   status: CourtStatus;
@@ -99,6 +115,9 @@ export interface Booking {
   status: BookingStatus;
   bookingType: BookingType;
   price?: number;
+  totalCost?: number;
+  hasBallMachine?: boolean;
+  hasLighting?: boolean;
   currency?: string;
   notes?: string | null;
   organizer?: {
@@ -144,4 +163,29 @@ export interface MembershipPlan {
   dailyBookingLimit: number;
   weeklyBookingLimit: number;
   allowedDurations: number[];
+}
+
+export type WalletTransactionType =
+  | "TOP_UP"
+  | "BOOKING_PAYMENT"
+  | "REFUND"
+  | "ADMIN_GRANT";
+
+export interface WalletTransaction {
+  id: string;
+  walletId: string;
+  amount: number;
+  type: WalletTransactionType;
+  description: string;
+  bookingId?: string | null;
+  createdAt: string;
+}
+
+export interface UserWallet {
+  id: string;
+  tenantId: string;
+  userId: string;
+  balance: number;
+  currency: string;
+  transactions: WalletTransaction[];
 }

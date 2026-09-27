@@ -185,34 +185,34 @@ flowchart TD
 ### Neuer Epic (Nächste Session / Separater PR): Credits, Mitspieler-Deluxe, dynamische Buchungsregeln & Multi-Sport
 **Ziel:** Erstklassiges Reservierungserlebnis mit nahtlosem Credits-Guthaben, club-spezifischen Buchungsregeln (z.B. TC Marly), dynamischer Dauer nach Spieleranzahl, Ballmaschinen-Buchung und saisonalen Tarifen (Sommer-/Winterabo, Padel, Tennishalle).
 
-- [ ] **E.1 Integriertes Credits- & Wallet-System (Club-Guthaben & Test-Engine)**:
+- [x] **E.1 Integriertes Credits- & Wallet-System (Club-Guthaben & Test-Engine)**:
   - **Credit-Konto:** Jedes Mitglied/Gast besitzt ein clubweites Guthaben-Konto (z. B. 1 Credit = 1 CHF).
   - **Test-Guthaben (1-Klick):** Direkte Dev-/Testing-Aufladung (z.B. "+50 CHF Test-Credits aufladen") im Modal/Header ohne Zwang zu echten Kreditkartentransaktionen.
   - **Automatisches Einlösen:** Bezahlung von Gastgebühren, Platzmieten oder Zusatzleistungen (Ballmaschine) direkt aus dem Credit-Guthaben mit Quittungshistorie.
   - **Admin-Gutschriften:** Admins können Mitgliedern bei Witterungsausfall direkt Credits gutschreiben.
 
-- [ ] **E.2 Deluxe Mitspieler- & Favoriten-Auswahl (Buddies)**:
+- [x] **E.2 Deluxe Mitspieler- & Favoriten-Auswahl (Buddies)**:
   - **Favoriten-Leiste ("Häufige Partner"):** 1-Klick-Auswahl beliebter Spielpartner über prominente Avatar-Pills direkt oben im Sheet.
   - **Interaktive Mitgliedersuche:** Schnellsuche mit Live-Filter, Club-Status, Profil-Initialen statt langweiligem Dropdown.
   - **Gäste-Erfassung:** Einfaches Hinzufügen von externen Gastspielern (Name & E-Mail) mit automatischer Berechnung des Gastkostenanteils.
 
-- [ ] **E.3 Dynamische Slot-Dauer & Verknüpfung mit Spieleranzahl**:
+- [x] **E.3 Dynamische Slot-Dauer & Verknüpfung mit Spieleranzahl**:
   - **Einzel (2 Spieler):** Standardmässig maximal **1 Stunde** (1 Slot, z.B. 14:00 – 15:00 Uhr).
   - **Doppel (4 Spieler):** Möglichkeit, direkt **2 aufeinanderfolgende Stunden (2x 1h, z.B. 14:00 – 16:00 Uhr)** am Stück zu buchen.
   - **Club-Konfiguration:** Jeder Club kann `allowConsecutiveSlotsForDoubles` und die benötigte Spieleranzahl im Adminbereich selbst konfigurieren.
 
-- [ ] **E.4 Clubspezifische Buchungsregeln & Cooldowns (z. B. TC Marly-Modell)**:
+- [x] **E.4 Clubspezifische Buchungsregeln & Cooldowns (z. B. TC Marly-Modell)**:
   - **Rolling Release nach Slot-Ablauf:** Ein Mitglied hat z. B. ein Kontingent von 2 aktiven Slots. Ein weiterer Slot wird erst buchbar, nachdem die Zeit des ersten Slots **abgelaufen** ist.
   - **Anti-Blockier-Regel (Kein Consecutive Booking im Einzel):** Ein Spieler kann nicht 14:00 Uhr und direkt 15:00 Uhr hintereinander reservieren (ausser im 4er-Doppel).
   - **Mindestabstand (Cooldown):** Konfigurierbare Pause zwischen Buchungen desselben Spielers (z. B. mind. 1 Stunde Pause).
   - **Stornierungsfristen:** 24h vor Spielbeginn kostenlos, danach Sperre oder Verfall von Credits.
 
-- [ ] **E.5 Zusatzleistungen & exklusive Ressourcen (Equipment: Ballmaschine, Flutlicht)**:
+- [x] **E.5 Zusatzleistungen & exklusive Ressourcen (Equipment: Ballmaschine, Flutlicht)**:
   - **Ballmaschine buchen:** Optionale Checkbox im Buchungsdialog (z. B. +10 CHF / Stunde).
   - **Exklusivitäts-Schutz:** Da ein Club meist nur 1 Ballmaschine besitzt, kann diese zeitgleich nur auf genau einem Platz gebucht werden. Bei paralleler Buchung auf Platz 2 wird sie automatisch als belegt/ausgegraut angezeigt.
   - **Flutlicht-Steuerung/Gebühr:** Buchbar als Zusatz-Option für Abendslots.
 
-- [ ] **E.6 Multi-Sportarten & saisonale Abos (Padel, Tennis, Halle, Sommer-/Winterabo)**:
+- [x] **E.6 Multi-Sportarten & saisonale Abos (Padel, Tennis, Halle, Sommer-/Winterabo)**:
   - **Sportarten-Differenzierung:** Tennis (Sand, Hartplatz), Padel Courts (4 Spieler, eigene Regeln) und Tennishalle (Teppich/Granulat).
   - **Differenzierte Platzpreise:** Eigene Stundensätze für Halle (z. B. 45 CHF/h), Padel (z. B. 40 CHF/h) und Sandplatz (z. B. 30 CHF/h).
   - **Saisonale Mitgliedschaften:**
