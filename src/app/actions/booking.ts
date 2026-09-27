@@ -178,7 +178,6 @@ export async function cancelBookingAction(bookingId: string, clubSlug: string) {
   const isPlatformAdmin = Boolean(session.user.isPlatformAdmin || session.user.role === "PLATFORM_ADMIN");
   const isClubAdmin =
     isPlatformAdmin ||
-    session.user.role === "CLUB_ADMIN" ||
     session.user.tenants?.some((t) => t.slug === clubSlug && t.role === "CLUB_ADMIN");
 
   const booking = mockDb.bookings.find((b) => b.id === bookingId);
@@ -192,14 +191,19 @@ export async function cancelBookingAction(bookingId: string, clubSlug: string) {
     return { success: false, error: "Du hast keine Berechtigung, diese Buchung zu stornieren." };
   }
 
+  const bookingTime = new Date(booking.startsAt).getTime();
+  const now = Date.now();
+
+  // Prevent retroactive cancellation of past matches
+  if (!isClubAdmin && now >= bookingTime) {
+    return { success: false, error: "Vergangene oder laufende Spiele können nicht storniert werden." };
+  }
+
   // Check cancellation deadline (24 hours prior) for non-admins
   if (!isClubAdmin) {
-    const bookingTime = new Date(booking.startsAt).getTime();
-    const now = Date.now();
     const hoursRemaining = (bookingTime - now) / (1000 * 60 * 60);
-
     const deadline = mockDb.getTenantBySlug(clubSlug)?.settingsJson?.cancellationDeadlineHours ?? 24;
-    if (hoursRemaining < deadline && hoursRemaining > 0) {
+    if (hoursRemaining < deadline) {
       return {
         success: false,
         error: `Stornierungen sind nur bis ${deadline} Stunden vor Spielbeginn möglich.`,
@@ -224,6 +228,7 @@ export async function cancelBookingAction(bookingId: string, clubSlug: string) {
 
   mockDb.cancelBooking(bookingId, userId);
   revalidatePath(`/c/${clubSlug}`);
+  revalidatePath(`/c/${clubSlug}/bookings`);
   return { success: true };
 }
 
@@ -237,12 +242,46 @@ export async function createCourtBlockAction(input: {
 }) {
   const session = await auth();
   if (!session?.user) {
-    return { success: false, error: "Nicht autorisiert." };
+    return { success: false, error: "Nicht angemeldet." };
+  }
+
+  // Enforce Tenant Admin Authorization
+  const isPlatformAdmin = Boolean(session.user.isPlatformAdmin || session.user.role === "PLATFORM_ADMIN");
+  const isClubAdmin =
+    isPlatformAdmin ||
+    session.user.tenants?.some((t) => t.slug === input.clubSlug && t.role === "CLUB_ADMIN");
+
+  if (!isClubAdmin) {
+    return { success: false, error: "Keine Berechtigung zur Platzsperrung in diesem Club." };
   }
 
   const tenant = mockDb.getTenantBySlug(input.clubSlug);
   if (!tenant) {
     return { success: false, error: "Club nicht gefunden." };
+  }
+
+  const courts = mockDb.getCourtsByTenantId(tenant.id);
+  const courtExists = courts.some((c) => c.id === input.courtId);
+  if (!courtExists) {
+    return { success: false, error: "Der ausgewählte Platz gehört nicht zu diesem Club." };
+  }
+
+  if (process.env.DATABASE_URL) {
+    try {
+      await prisma.courtBlock.create({
+        data: {
+          tenantId: tenant.id,
+          courtId: input.courtId,
+          startsAt: new Date(input.startsAt),
+          endsAt: new Date(input.endsAt),
+          reason: input.reason,
+          description: input.description || null,
+          createdById: session.user.id,
+        },
+      });
+    } catch (e) {
+      console.warn("Prisma court block creation failed:", e);
+    }
   }
 
   mockDb.createCourtBlock({

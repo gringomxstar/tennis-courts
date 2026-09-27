@@ -13,10 +13,14 @@ interface ClubPageProps {
   params: Promise<{
     clubSlug: string;
   }>;
+  searchParams: Promise<{
+    date?: string;
+  }>;
 }
 
-export default async function ClubPage({ params }: ClubPageProps) {
+export default async function ClubPage({ params, searchParams }: ClubPageProps) {
   const { clubSlug } = await params;
+  const { date: rawDate } = await searchParams;
   const context = await getTenantContext(clubSlug);
 
   if (!context || !context.tenant) {
@@ -25,12 +29,14 @@ export default async function ClubPage({ params }: ClubPageProps) {
 
   const tenant = context.tenant;
   const todayStr = new Date().toISOString().split("T")[0];
+  const selectedDateStr =
+    rawDate && /^\d{4}-\d{2}-\d{2}$/.test(rawDate) ? rawDate : todayStr;
 
-  // Fetch courts, bookings, court blocks, and members
+  // Fetch courts, bookings, court blocks, and members for the selected date
   const [courts, bookings, courtBlocks, members] = await Promise.all([
     getCourtsByTenantId(tenant.id),
-    getCourtBookings(tenant.id, todayStr),
-    getCourtBlocks(tenant.id, todayStr),
+    getCourtBookings(tenant.id, selectedDateStr),
+    getCourtBlocks(tenant.id, selectedDateStr),
     getTenantMembers(tenant.id),
   ]);
 
@@ -47,6 +53,7 @@ export default async function ClubPage({ params }: ClubPageProps) {
           members={members}
           currentUserId={context.user?.id}
           isClubAdmin={context.isTenantAdmin}
+          selectedDate={selectedDateStr}
         />
       </main>
 

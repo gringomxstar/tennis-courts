@@ -31,7 +31,6 @@ export const authConfig: NextAuthConfig = {
           const hasRole =
             user?.isPlatformAdmin ||
             user?.role === "PLATFORM_ADMIN" ||
-            user?.role === "CLUB_ADMIN" ||
             user?.tenants?.some(
               (t) =>
                 t.slug === clubSlug &&

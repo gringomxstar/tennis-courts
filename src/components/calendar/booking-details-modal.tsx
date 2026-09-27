@@ -6,6 +6,7 @@ import { cancelBookingAction } from "@/app/actions/booking";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { X, Calendar, AlertTriangle, Loader2, CheckCircle2 } from "lucide-react";
+import { formatTime24 } from "@/lib/utils";
 
 interface BookingDetailsModalProps {
   isOpen: boolean;
@@ -43,15 +44,8 @@ export function BookingDetailsModal({
     year: "numeric",
   });
 
-  const formattedStartTime = startDate.toLocaleTimeString("de-CH", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-
-  const formattedEndTime = endDate.toLocaleTimeString("de-CH", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  const formattedStartTime = formatTime24(startDate);
+  const formattedEndTime = formatTime24(endDate);
 
   const opponent = booking.participants.find((p) => p.role !== "ORGANIZER");
   const opponentName = opponent?.user

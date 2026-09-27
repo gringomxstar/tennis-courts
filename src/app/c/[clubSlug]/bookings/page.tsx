@@ -11,11 +11,11 @@ import {
   ChevronLeft,
   Users,
   CheckCircle2,
-  Trash2,
   Plus,
 } from "lucide-react";
-import { cancelBookingAction } from "@/app/actions/booking";
 import { Booking } from "@/types";
+import { formatTime24 } from "@/lib/utils";
+import { CancelBookingButton } from "@/components/calendar/cancel-booking-button";
 
 interface BookingsPageProps {
   params: Promise<{
@@ -149,7 +149,6 @@ export default async function UserBookingsPage({ params }: BookingsPageProps) {
             <div className="space-y-3">
               {upcomingBookings.map((booking) => {
                 const startDate = new Date(booking.startsAt);
-                const endDate = new Date(booking.endsAt);
                 const court = courtMap.get(booking.courtId);
                 const courtName = court?.name || "Tennisplatz";
 
@@ -188,11 +187,9 @@ export default async function UserBookingsPage({ params }: BookingsPageProps) {
                             year: "numeric",
                           })}
                         </span>
-                        <span className="flex items-center gap-1 font-mono">
+                        <span className="flex items-center gap-1 font-mono" suppressHydrationWarning>
                           <Clock className="w-3.5 h-3.5 text-slate-400" />
-                          {startDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                          {" – "}
-                          {endDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} Uhr
+                          {formatTime24(booking.startsAt)} – {formatTime24(booking.endsAt)} Uhr
                         </span>
                         <span className="flex items-center gap-1 text-slate-500">
                           <Users className="w-3.5 h-3.5 text-slate-400" />
@@ -205,22 +202,12 @@ export default async function UserBookingsPage({ params }: BookingsPageProps) {
                       )}
                     </div>
 
-                    <form
-                      action={async () => {
-                        "use server";
-                        await cancelBookingAction(booking.id, tenant.slug);
-                      }}
-                    >
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        type="submit"
-                        className="text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 border-rose-200 dark:border-rose-900/60 rounded-xl gap-1.5 h-8 font-semibold"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        Stornieren
-                      </Button>
-                    </form>
+                    <CancelBookingButton
+                      bookingId={booking.id}
+                      clubSlug={tenant.slug}
+                      courtName={courtName}
+                      formattedTime={`${formatTime24(booking.startsAt)} – ${formatTime24(booking.endsAt)} Uhr`}
+                    />
                   </div>
                 );
               })}

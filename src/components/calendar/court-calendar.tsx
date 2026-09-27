@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { Tenant, Court, Booking, CourtBlock, UserSummary } from "@/types";
 import { CourtGrid } from "./court-grid";
 import { BookingModal } from "./booking-modal";
@@ -14,6 +15,7 @@ import {
   Plus,
   MapPin,
   Clock,
+  Loader2,
 } from "lucide-react";
 
 interface CourtCalendarProps {
@@ -24,6 +26,7 @@ interface CourtCalendarProps {
   members: UserSummary[];
   currentUserId?: string;
   isClubAdmin?: boolean;
+  selectedDate: string;
 }
 
 export function CourtCalendar({
@@ -34,10 +37,15 @@ export function CourtCalendar({
   members,
   currentUserId,
   isClubAdmin,
+  selectedDate,
 }: CourtCalendarProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const [isPending, startTransition] = useTransition();
+
   // Today's date string YYYY-MM-DD
   const todayStr = new Date().toISOString().split("T")[0];
-  const [selectedDate, setSelectedDate] = useState<string>(todayStr);
 
   // Filters
   const [surfaceFilter, setSurfaceFilter] = useState<string>("ALL");
@@ -51,6 +59,14 @@ export function CourtCalendar({
 
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+
+  const navigateToDate = (newDateStr: string) => {
+    const params = new URLSearchParams(searchParams ? searchParams.toString() : "");
+    params.set("date", newDateStr);
+    startTransition(() => {
+      router.push(`${pathname}?${params.toString()}`);
+    });
+  };
 
   // Helper to generate 7-day carousel around selected date
   const generate7DayStrip = () => {
@@ -80,7 +96,7 @@ export function CourtCalendar({
   const handleDateChange = (daysDelta: number) => {
     const cur = new Date(selectedDate);
     cur.setDate(cur.getDate() + daysDelta);
-    setSelectedDate(cur.toISOString().split("T")[0]);
+    navigateToDate(cur.toISOString().split("T")[0]);
   };
 
   const handleSelectSlot = (courtId: string, timeStr: string) => {
@@ -184,7 +200,7 @@ export function CourtCalendar({
             {dayStrip.map((day) => (
               <button
                 key={day.dateStr}
-                onClick={() => setSelectedDate(day.dateStr)}
+                onClick={() => navigateToDate(day.dateStr)}
                 className={`flex flex-col items-center justify-center py-2 px-3.5 min-w-[62px] rounded-2xl transition-all cursor-pointer ${
                   day.isSelected
                     ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/25 scale-105 font-bold"
@@ -224,10 +240,11 @@ export function CourtCalendar({
             <span className="text-sm font-bold text-slate-900 dark:text-white capitalize">
               {formattedDisplayDate}
             </span>
+            {isPending && <Loader2 className="w-4 h-4 animate-spin text-emerald-600" />}
             <input
               type="date"
               value={selectedDate}
-              onChange={(e) => e.target.value && setSelectedDate(e.target.value)}
+              onChange={(e) => e.target.value && navigateToDate(e.target.value)}
               className="opacity-0 absolute inset-0 cursor-pointer w-full"
               title="Anderes Datum wählen"
             />
@@ -301,30 +318,35 @@ export function CourtCalendar({
       </div>
 
       {/* Main Grid Component */}
-      <CourtGrid
-        courts={filteredCourts}
-        bookings={initialBookings}
-        courtBlocks={initialCourtBlocks}
-        dateStr={selectedDate}
-        openingHour={tenant.settingsJson?.openingHour || 7}
-        closingHour={tenant.settingsJson?.closingHour || 22}
-        currentUserId={currentUserId}
-        onSelectSlot={handleSelectSlot}
-        onSelectBooking={handleSelectBooking}
-      />
+      <div className={isPending ? "opacity-50 pointer-events-none transition-opacity duration-200" : "transition-opacity duration-200"}>
+        <CourtGrid
+          courts={filteredCourts}
+          bookings={initialBookings}
+          courtBlocks={initialCourtBlocks}
+          dateStr={selectedDate}
+          openingHour={tenant.settingsJson?.openingHour || 7}
+          closingHour={tenant.settingsJson?.closingHour || 22}
+          currentUserId={currentUserId}
+          onSelectSlot={handleSelectSlot}
+          onSelectBooking={handleSelectBooking}
+        />
+      </div>
 
       {/* Modals */}
-      <BookingModal
-        isOpen={bookingModalOpen}
-        onClose={() => setBookingModalOpen(false)}
-        clubSlug={tenant.slug}
-        courts={courts}
-        members={members}
-        currentUserId={currentUserId}
-        selectedCourtId={selectedCourtId}
-        selectedDateStr={selectedDate}
-        selectedTimeStr={selectedTime}
-      />
+      {bookingModalOpen && (
+        <BookingModal
+          key={`booking-modal-${selectedCourtId}-${selectedDate}-${selectedTime}`}
+          isOpen={bookingModalOpen}
+          onClose={() => setBookingModalOpen(false)}
+          clubSlug={tenant.slug}
+          courts={courts}
+          members={members}
+          currentUserId={currentUserId}
+          selectedCourtId={selectedCourtId}
+          selectedDateStr={selectedDate}
+          selectedTimeStr={selectedTime}
+        />
+      )}
 
       <BookingDetailsModal
         isOpen={detailsModalOpen}
