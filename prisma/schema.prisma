@@ -1,0 +1,410 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ==========================================
+// 1. Authentifizierung & NextAuth
+// ==========================================
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+model User {
+  id            String      @id @default(cuid())
+  email         String      @unique
+  passwordHash  String?
+  firstName     String
+  lastName      String
+  phone         String?
+  locale        String      @default("de")
+  timezone      String      @default("Europe/Zurich")
+  status        UserStatus  @default(ACTIVE)
+  image         String?
+  emailVerified DateTime?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  deletedAt     DateTime?
+
+  // Relations
+  tenantUsers          TenantUser[]
+  organizedBookings    Booking[]            @relation("BookingOrganizer")
+  participantBookings  BookingParticipant[]
+  memberships          Membership[]
+  auditLogs            AuditLog[]           @relation("ActorAuditLogs")
+  courtBlocksCreated   CourtBlock[]         @relation("BlockCreatedBy")
+
+  // NextAuth
+  accounts      Account[]
+  sessions      Session[]
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// ==========================================
+// 2. Multi-Tenancy & Clubverwaltung
+// ==========================================
+
+enum TenantStatus {
+  ACTIVE
+  INACTIVE
+  SETUP
+}
+
+enum TenantRole {
+  PLATFORM_ADMIN
+  CLUB_ADMIN
+  COURT_MANAGER
+  COACH
+  MEMBER
+  GUEST
+}
+
+model Tenant {
+  id           String       @id @default(cuid())
+  name         String
+  slug         String       @unique
+  logoUrl      String?
+  timezone     String       @default("Europe/Zurich")
+  address      String?
+  email        String?
+  phone        String?
+  status       TenantStatus @default(ACTIVE)
+  settingsJson Json?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  // Relations
+  tenantUsers     TenantUser[]
+  locations       Location[]
+  courts          Court[]
+  membershipPlans MembershipPlan[]
+  memberships     Membership[]
+  bookings        Booking[]
+  courtBlocks     CourtBlock[]
+  auditLogs       AuditLog[]
+
+  @@map("tenants")
+}
+
+model TenantUser {
+  id        String     @id @default(cuid())
+  tenantId  String
+  userId    String
+  role      TenantRole @default(MEMBER)
+  status    String     @default("ACTIVE")
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, userId])
+  @@index([tenantId, role])
+  @@map("tenant_users")
+}
+
+// ==========================================
+// 3. Standorte & Plätze
+// ==========================================
+
+model Location {
+  id        String   @id @default(cuid())
+  tenantId  String
+  name      String
+  address   String?
+  latitude  Float?
+  longitude Float?
+  status    String   @default("ACTIVE")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  courts Court[]
+
+  @@map("locations")
+}
+
+enum CourtSurface {
+  CLAY             // Sand
+  HARD             // Hartplatz
+  ARTIFICIAL_GRASS // Kunstrasen
+  CARPET           // Teppich/Granulat
+}
+
+enum CourtStatus {
+  ACTIVE
+  MAINTENANCE
+  INACTIVE
+}
+
+model Court {
+  id          String       @id @default(cuid())
+  tenantId    String
+  locationId  String
+  name        String
+  surface     CourtSurface @default(CLAY)
+  isIndoor    Boolean      @default(false)
+  hasLighting Boolean      @default(false)
+  status      CourtStatus  @default(ACTIVE)
+  sortOrder   Int          @default(0)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  tenant   Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  location Location     @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  bookings Booking[]
+  blocks   CourtBlock[]
+
+  @@index([tenantId, status])
+  @@map("courts")
+}
+
+// ==========================================
+// 4. Mitgliedschaften & Tarife
+// ==========================================
+
+model MembershipPlan {
+  id                        String   @id @default(cuid())
+  tenantId                  String
+  name                      String
+  description               String?
+  price                     Decimal  @default(0.0) @db.Decimal(10, 2)
+  currency                  String   @default("CHF")
+  bookingWindowDays         Int      @default(7)
+  simultaneousBookingLimit  Int      @default(4)
+  dailyBookingLimit         Int      @default(1)
+  weeklyBookingLimit        Int      @default(4)
+  monthlyBookingLimit       Int      @default(16)
+  allowedDurations          Int[]    @default([60, 90])
+  rulesJson                 Json?
+  status                    String   @default("ACTIVE")
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+
+  tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  memberships Membership[]
+
+  @@map("membership_plans")
+}
+
+enum MembershipStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
+  PENDING
+}
+
+model Membership {
+  id               String           @id @default(cuid())
+  tenantId         String
+  userId           String
+  membershipPlanId String
+  startsAt         DateTime
+  endsAt           DateTime?
+  status           MembershipStatus @default(ACTIVE)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  tenant Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan   MembershipPlan @relation(fields: [membershipPlanId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, userId, status])
+  @@map("memberships")
+}
+
+// ==========================================
+// 5. Buchungen & Teilnehmer
+// ==========================================
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  EXPIRED
+  COMPLETED
+  NO_SHOW
+}
+
+enum BookingType {
+  MEMBER
+  GUEST
+  COACH
+  COURSE
+  TOURNAMENT
+  ADMIN
+  MAINTENANCE
+  EVENT
+}
+
+model Booking {
+  id             String        @id @default(cuid())
+  tenantId       String
+  courtId        String
+  organizerId    String
+  startsAt       DateTime
+  endsAt         DateTime
+  status         BookingStatus @default(CONFIRMED)
+  bookingType    BookingType   @default(MEMBER)
+  price          Decimal       @default(0.0) @db.Decimal(10, 2)
+  currency       String        @default("CHF")
+  notes          String?
+  idempotencyKey String?       @unique
+  cancelledAt    DateTime?
+  cancelledById  String?
+  createdById    String
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  tenant       Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  court        Court                @relation(fields: [courtId], references: [id], onDelete: Cascade)
+  organizer    User                 @relation("BookingOrganizer", fields: [organizerId], references: [id], onDelete: Cascade)
+  participants BookingParticipant[]
+
+  @@index([tenantId, courtId, startsAt, endsAt])
+  @@index([organizerId, startsAt])
+  @@map("bookings")
+}
+
+enum ParticipantRole {
+  ORGANIZER
+  PLAYER
+  GUEST
+  COACH
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+}
+
+enum PaymentStatus {
+  UNPAID
+  PAID
+  WAIVED
+}
+
+model BookingParticipant {
+  id               String           @id @default(cuid())
+  bookingId        String
+  userId           String?
+  guestName        String?
+  guestEmail       String?
+  role             ParticipantRole  @default(PLAYER)
+  invitationStatus InvitationStatus @default(ACCEPTED)
+  paymentStatus    PaymentStatus    @default(PAID)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  user    User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@map("booking_participants")
+}
+
+// ==========================================
+// 6. Platzsperren (Court Blocks)
+// ==========================================
+
+enum BlockReason {
+  MAINTENANCE
+  RAIN
+  SNOW
+  TOURNAMENT
+  TRAINING
+  EVENT
+  PRIVATE
+  OTHER
+}
+
+model CourtBlock {
+  id          String      @id @default(cuid())
+  tenantId    String
+  courtId     String
+  startsAt    DateTime
+  endsAt      DateTime
+  reason      BlockReason @default(MAINTENANCE)
+  description String?
+  createdById String
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  tenant    Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  court     Court  @relation(fields: [courtId], references: [id], onDelete: Cascade)
+  createdBy User   @relation("BlockCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, courtId, startsAt, endsAt])
+  @@map("court_blocks")
+}
+
+// ==========================================
+// 7. Audit-Log
+// ==========================================
+
+model AuditLog {
+  id           String   @id @default(cuid())
+  tenantId     String?
+  actorId      String?
+  action       String
+  entityType   String
+  entityId     String
+  metadataJson Json?
+  ipAddress    String?
+  userAgent    String?
+  createdAt    DateTime @default(now())
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  actor  User?   @relation("ActorAuditLogs", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, createdAt])
+  @@map("audit_logs")
+}
