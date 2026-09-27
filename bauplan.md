@@ -182,35 +182,62 @@ flowchart TD
 
 ---
 
-### Neuer Epic (Nächste Session / Separater PR): Mitspieler-Auswahl & Paywall-Engine
-**Ziel:** Erstklassiges Partner-Erlebnis beim Reservieren und automatisierte Tarifprüfung (Abo vs. Bezahlung für Non-Members).
+### Neuer Epic (Nächste Session / Separater PR): Credits, Mitspieler-Deluxe, dynamische Buchungsregeln & Multi-Sport
+**Ziel:** Erstklassiges Reservierungserlebnis mit nahtlosem Credits-Guthaben, club-spezifischen Buchungsregeln (z.B. TC Marly), dynamischer Dauer nach Spieleranzahl, Ballmaschinen-Buchung und saisonalen Tarifen (Sommer-/Winterabo, Padel, Tennishalle).
 
-- [ ] **E.1 Deluxe Mitspieler- & Favoriten-Auswahl im Buchungs-Sheet**:
-  - **Favoriten / Buddies ("Häufige Partner"):** 1-Klick-Auswahl beliebter Spielpartner direkt mit Avatar-Pills.
-  - **Mitglieder-Suche:** Suchfeld mit Schnellfilter, Profil-Initialen und Club-Status statt langweiliger `<select>`-Liste.
-  - **Doppel-Unterstützung:** Bis zu 3 Mitspieler (2 vs 2) flexibel kombinierbar.
-  - **Gäste-Verwaltung:** Nahtloses Hinzufügen von externen Gästen mit Namens- und E-Mail-Erfassung.
-- [ ] **E.2 Intelligente Tarif- & Paywall-Engine**:
-  - **Aktives Abo / Mitgliedschaft:** Für Clubmitglieder mit gültigem Abonnement (`MembershipPlan`) ist die Buchung **kostenlos (0 CHF)** gemäss ihren Buchungsfenstern und Quoten.
-  - **Non-Members & Gastspieler:** Automatische Berechnung der Platz- oder Gastgebühr (z. B. 30 CHF/Stunde oder 15 CHF Gastanteil).
-  - **Checkout / Bezahlstatus:** Bezahlpflichtige Buchungen mit Zahlungsabwicklung (Stripe / Test-Gateway) und Bestätigungsbeleg.
+- [ ] **E.1 Integriertes Credits- & Wallet-System (Club-Guthaben & Test-Engine)**:
+  - **Credit-Konto:** Jedes Mitglied/Gast besitzt ein clubweites Guthaben-Konto (z. B. 1 Credit = 1 CHF).
+  - **Test-Guthaben (1-Klick):** Direkte Dev-/Testing-Aufladung (z.B. "+50 CHF Test-Credits aufladen") im Modal/Header ohne Zwang zu echten Kreditkartentransaktionen.
+  - **Automatisches Einlösen:** Bezahlung von Gastgebühren, Platzmieten oder Zusatzleistungen (Ballmaschine) direkt aus dem Credit-Guthaben mit Quittungshistorie.
+  - **Admin-Gutschriften:** Admins können Mitgliedern bei Witterungsausfall direkt Credits gutschreiben.
+
+- [ ] **E.2 Deluxe Mitspieler- & Favoriten-Auswahl (Buddies)**:
+  - **Favoriten-Leiste ("Häufige Partner"):** 1-Klick-Auswahl beliebter Spielpartner über prominente Avatar-Pills direkt oben im Sheet.
+  - **Interaktive Mitgliedersuche:** Schnellsuche mit Live-Filter, Club-Status, Profil-Initialen statt langweiligem Dropdown.
+  - **Gäste-Erfassung:** Einfaches Hinzufügen von externen Gastspielern (Name & E-Mail) mit automatischer Berechnung des Gastkostenanteils.
+
+- [ ] **E.3 Dynamische Slot-Dauer & Verknüpfung mit Spieleranzahl**:
+  - **Einzel (2 Spieler):** Standardmässig maximal **1 Stunde** (1 Slot, z.B. 14:00 – 15:00 Uhr).
+  - **Doppel (4 Spieler):** Möglichkeit, direkt **2 aufeinanderfolgende Stunden (2x 1h, z.B. 14:00 – 16:00 Uhr)** am Stück zu buchen.
+  - **Club-Konfiguration:** Jeder Club kann `allowConsecutiveSlotsForDoubles` und die benötigte Spieleranzahl im Adminbereich selbst konfigurieren.
+
+- [ ] **E.4 Clubspezifische Buchungsregeln & Cooldowns (z. B. TC Marly-Modell)**:
+  - **Rolling Release nach Slot-Ablauf:** Ein Mitglied hat z. B. ein Kontingent von 2 aktiven Slots. Ein weiterer Slot wird erst buchbar, nachdem die Zeit des ersten Slots **abgelaufen** ist.
+  - **Anti-Blockier-Regel (Kein Consecutive Booking im Einzel):** Ein Spieler kann nicht 14:00 Uhr und direkt 15:00 Uhr hintereinander reservieren (ausser im 4er-Doppel).
+  - **Mindestabstand (Cooldown):** Konfigurierbare Pause zwischen Buchungen desselben Spielers (z. B. mind. 1 Stunde Pause).
+  - **Stornierungsfristen:** 24h vor Spielbeginn kostenlos, danach Sperre oder Verfall von Credits.
+
+- [ ] **E.5 Zusatzleistungen & exklusive Ressourcen (Equipment: Ballmaschine, Flutlicht)**:
+  - **Ballmaschine buchen:** Optionale Checkbox im Buchungsdialog (z. B. +10 CHF / Stunde).
+  - **Exklusivitäts-Schutz:** Da ein Club meist nur 1 Ballmaschine besitzt, kann diese zeitgleich nur auf genau einem Platz gebucht werden. Bei paralleler Buchung auf Platz 2 wird sie automatisch als belegt/ausgegraut angezeigt.
+  - **Flutlicht-Steuerung/Gebühr:** Buchbar als Zusatz-Option für Abendslots.
+
+- [ ] **E.6 Multi-Sportarten & saisonale Abos (Padel, Tennis, Halle, Sommer-/Winterabo)**:
+  - **Sportarten-Differenzierung:** Tennis (Sand, Hartplatz), Padel Courts (4 Spieler, eigene Regeln) und Tennishalle (Teppich/Granulat).
+  - **Differenzierte Platzpreise:** Eigene Stundensätze für Halle (z. B. 45 CHF/h), Padel (z. B. 40 CHF/h) und Sandplatz (z. B. 30 CHF/h).
+  - **Saisonale Mitgliedschaften:**
+    - *Sommerabo (Mai – Sept):* Freiplätze inklusive (0 CHF), Hallenplätze nur mit Aufpreis/Credits buchbar.
+    - *Winterabo (Okt – April):* Berechtigung für Tennishalle mit Vorverkaufsfenster und Fixplatz-Option.
 
 ---
 
 ### Phase 9: Nach dem MVP (Erweiterungen)
-- Stripe Online-Zahlungen (Gastbuchungen & Platzgebühren).
+- Stripe Online-Zahlungen (Kreditkarte, Twint für Gastbuchungen & Credit-Pakete).
 - E-Mail-Transaktionsmails via Resend oder Postmark.
-- Öffentliche Matches & Mitspielersuche.
+- Öffentliche Matches & Mitspielersuche (Community).
 - Erweiterte Club-Statistiken & Auslastungsberichte.
 
 ---
 
-## 3. Sofortige nächste Schritte zur Umsetzung
+## 3. Sofortige nächste Schritte für die NEUE Session
 
-1. **Phase 1 starten:**
-   - Next.js Projekt im aktuellen Verzeichnis initialisieren.
-   - Git initialisieren, `.gitignore` aufsetzen, initialen Commit erstellen.
-   - Shadcn UI und Tailwind einrichten.
-2. **Neon-Datenbank anbinden:**
-   - Neon-Projekt erstellen und Verbindungsdaten hinterlegen.
-   - Prisma initialisieren und Schema aus [konzept.md](file:///Users/alain/TennisCourts/konzept.md) übertragen.
+1. **Neuen Feature-Branch erstellen:**
+   - `git checkout -b feat/credits-player-rules-multisport`
+2. **Datenmodell & Mock/Prisma erweitern:**
+   - Wallet/Credits für Tenant-User anlegen.
+   - Resource-Modell für Ballmaschine hinzufügen.
+   - Club-Regelparameter (Marly-Cooldown, Doppel-Verlängerung) in `settingsJson` integrieren.
+3. **UI & Buchungs-Sheet implementieren:**
+   - Neues Partner-Auswahl-Sheet mit Favoriten-Pills & Mitgliedersuche.
+   - Dynamische 1h vs. 2h Slot-Auswahl bei 4 Spielern.
+   - Credits-Anzeige mit 1-Klick Test-Aufladung und Ballmaschinen-Checkbox.
