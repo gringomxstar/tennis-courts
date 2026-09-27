@@ -57,7 +57,7 @@ async function runExclusionConstraintTests() {
   try {
     // 0. Verify Extension and Constraint in Database Catalog
     console.log("🔎 0. Prüfe PostgreSQL-Systemkatalog...");
-    const extensions: any[] = await prisma.$queryRawUnsafe(
+    const extensions = await prisma.$queryRawUnsafe<{ extname: string }[]>(
       "SELECT extname FROM pg_extension WHERE extname = 'btree_gist';"
     );
     if (extensions.length === 0) {
@@ -67,7 +67,7 @@ async function runExclusionConstraintTests() {
     }
     console.log("   ✔ PostgreSQL Extension 'btree_gist' ist aktiv.");
 
-    const constraints: any[] = await prisma.$queryRawUnsafe(
+    const constraints = await prisma.$queryRawUnsafe<{ conname: string }[]>(
       "SELECT conname, contype FROM pg_constraint WHERE conname = 'no_overlapping_bookings';"
     );
     if (constraints.length === 0) {
@@ -78,7 +78,7 @@ async function runExclusionConstraintTests() {
     console.log("   ✔ GiST Exclusion Constraint 'no_overlapping_bookings' ist aktiv.\n");
 
     // Fetch or create a test tenant and courts
-    let tenant = await prisma.tenant.findFirst({
+    const tenant = await prisma.tenant.findFirst({
       include: { courts: true, tenantUsers: { include: { user: true } } },
     });
 
@@ -133,7 +133,6 @@ async function runExclusionConstraintTests() {
 
     let rejectedByDb = false;
     let pgErrorCode: string | null = null;
-    let pgErrorMessage = "";
 
     try {
       const collidingBooking = await prisma.booking.create({
@@ -150,10 +149,9 @@ async function runExclusionConstraintTests() {
         },
       });
       createdTestBookingIds.push(collidingBooking.id);
-    } catch (err: any) {
+    } catch (err: unknown) {
       rejectedByDb = true;
-      pgErrorMessage = err.message || "";
-      // PostgreSQL exclusion violation code is 23P01
+      const pgErrorMessage = err instanceof Error ? err.message : String(err);
       if (pgErrorMessage.includes("23P01") || pgErrorMessage.includes("no_overlapping_bookings")) {
         pgErrorCode = "23P01 (exclusion_violation)";
       }
@@ -234,8 +232,9 @@ async function runExclusionConstraintTests() {
     console.log("🎉 ALLE 5/5 POSTGRESQL EXCLUSION CONSTRAINT TESTS BESTANDEN!");
     console.log("===============================================================");
     console.log("Neon Postgres garantiert atomaren Schutz gegen Doppelbuchungen.");
-  } catch (err: any) {
-    console.error("\n❌ Test fehlgeschlagen:", err.message || err);
+  } catch (err: unknown) {
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    console.error("\n❌ Test fehlgeschlagen:", errorMsg);
     process.exit(1);
   } finally {
     // Cleanup test bookings

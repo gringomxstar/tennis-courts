@@ -54,7 +54,7 @@ async function provisionDatabase() {
 
   try {
     // 1. Connection check
-    const [versionResult]: any[] = await prisma.$queryRawUnsafe("SELECT version();");
+    const [versionResult] = await prisma.$queryRawUnsafe<{ version: string }[]>("SELECT version();");
     console.log(`✅ Verbindung erfolgreich! PostgreSQL-Version:`);
     console.log(`   ${versionResult.version.split(",")[0]}\n`);
 
@@ -70,8 +70,6 @@ async function provisionDatabase() {
 
     // 3. Apply PostgreSQL Exclusion Constraint & Extension
     console.log("🔒 2. Aktiviere btree_gist Extension & PostgreSQL Exclusion Constraints...");
-    const sqlPath = path.resolve(process.cwd(), "prisma/exclusion_constraint.sql");
-    const sqlContent = fs.readFileSync(sqlPath, "utf-8");
 
     // Execute extension
     await prisma.$executeRawUnsafe("CREATE EXTENSION IF NOT EXISTS btree_gist;");
@@ -105,8 +103,9 @@ async function provisionDatabase() {
     console.log("===============================================================");
     console.log("Du kannst den Ausschluss-Constraint jetzt live testen mit:");
     console.log("👉 npm run db:test-constraints\n");
-  } catch (err: any) {
-    console.error("\n❌ Fehler bei der Provisionierung:", err.message || err);
+  } catch (err: unknown) {
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    console.error("\n❌ Fehler bei der Provisionierung:", errorMsg);
     process.exit(1);
   } finally {
     await prisma.$disconnect();
