@@ -1,4 +1,3 @@
-import { CheckCircle2, Landmark } from "lucide-react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { PrintButton } from "@/components/ui/print-button";
@@ -45,109 +44,45 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
   const dueDate = new Date(membership.createdAt.getTime() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString("de-CH");
   const price = Number(membership.plan.price);
 
+  const cur = membership.plan.currency;
   return (
-    <div className="min-h-screen bg-background py-12 px-4 selection:bg-clay/30">
-      <div className="max-w-2xl mx-auto">
-
-        {/* Success Header */}
-        <div className="mb-8 text-center print:hidden">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-clay/10 text-clay mb-4">
-            <CheckCircle2 className="w-8 h-8" />
-          </div>
-          <h1 className="text-2xl font-bold text-foreground">Abo erfolgreich reserviert!</h1>
-          <p className="text-slate-500 mt-2">
-            Dein Zugang wird freigeschaltet, sobald die Zahlung bei uns eingegangen ist.
-          </p>
+    <InvoiceLayout
+      title="Reserviert."
+      subtitle="Dein Zugang wird freigeschaltet, sobald die Zahlung bei uns eingegangen ist."
+      clubName={membership.tenant.name}
+      clubAddress={membership.tenant.address}
+      docLabel="Rechnung"
+      number={invoiceNumber}
+      toLabel="Rechnung an"
+      toName={`${membership.user.firstName} ${membership.user.lastName}`}
+      toEmail={membership.user.email}
+      meta={[
+        ["Rechnungsdatum", invoiceDate],
+        ["Zahlbar bis", dueDate],
+      ]}
+      item={membership.plan.name}
+      amount={`${price.toFixed(2)} ${cur}`}
+      totals={[
+        ["Zwischensumme", `${price.toFixed(2)} ${cur}`],
+        ["MwSt (0%)", `0.00 ${cur}`],
+      ]}
+    >
+      <div className="mt-6 rounded-[20px] bg-inset p-[18px] print:rounded-none print:border print:border-black/20 print:bg-white">
+        <div className="text-[13px] font-bold uppercase tracking-[.06em] text-muted-foreground print:text-black/60">
+          E-Banking Zahlungsinformationen
         </div>
-
-        {/* Die eigentliche Rechnung (Print-optimiert) */}
-        <div className="bg-card text-foreground p-10 md:p-14 rounded-3xl shadow-xl border border-border print:shadow-none print:border-none print:p-0">
-
-          <div className="flex justify-between items-start mb-16">
-            <div>
-              <h2 className="text-2xl font-black tracking-tighter">{membership.tenant.name}</h2>
-              <p className="text-sm text-slate-500 mt-1">{membership.tenant.address || ""}</p>
-            </div>
-            <div className="text-right">
-              <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-1">Rechnung</h3>
-              <p className="font-mono text-lg">#{invoiceNumber}</p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-8 mb-16">
-            <div>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Rechnung an</p>
-              <p className="font-medium">{membership.user.firstName} {membership.user.lastName}</p>
-              <p className="text-slate-500 text-sm">{membership.user.email}</p>
-            </div>
-            <div className="text-right">
-              <div className="mb-4">
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Rechnungsdatum</p>
-                <p className="font-medium">{invoiceDate}</p>
-              </div>
-              <div>
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Zahlbar bis</p>
-                <p className="font-medium text-rose-600 dark:text-rose-400">{dueDate}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="border-t border-b border-slate-200 dark:border-white/[0.1] py-4 mb-8">
-            <div className="flex justify-between text-sm font-bold mb-4 px-2 text-slate-400 uppercase tracking-wider">
-              <span>Beschreibung</span>
-              <span>Betrag</span>
-            </div>
-            <div className="flex justify-between font-medium text-lg px-2">
-              <span>{membership.plan.name}</span>
-              <span>{price.toFixed(2)} {membership.plan.currency}</span>
-            </div>
-          </div>
-
-          <div className="flex justify-end mb-16 px-2">
-            <div className="text-right">
-              <p className="text-sm text-slate-500 mb-1">Zwischensumme: {price.toFixed(2)} {membership.plan.currency}</p>
-              <p className="text-sm text-slate-500 mb-2">MwSt (0%): 0.00 {membership.plan.currency}</p>
-              <p className="text-2xl font-black text-clay border-t-2 border-slate-900 dark:border-white pt-2 mt-2">
-                Total: {price.toFixed(2)} {membership.plan.currency}
-              </p>
-            </div>
-          </div>
-
-          {/* Zahlungsanweisungen / E-Banking */}
-          <div className="bg-slate-50 dark:bg-black/50 rounded-2xl p-6 border border-slate-200 dark:border-white/[0.05]">
-            <h4 className="font-bold mb-4 flex items-center gap-2">
-              <Landmark className="w-4 h-4" /> E-Banking Zahlungsinformationen
-            </h4>
-            <div className="grid grid-cols-[120px_1fr] gap-y-2 text-sm">
-              <span className="text-slate-500">Bank:</span>
-              <span className="font-medium">Freiburger Kantonalbank</span>
-
-              <span className="text-slate-500">IBAN:</span>
-              <span className="font-mono font-bold tracking-wide">CH93 0079 0012 3456 7890 1</span>
-
-              <span className="text-slate-500">Zugunsten von:</span>
-              <span className="font-medium">{membership.tenant.name}</span>
-
-              <span className="text-slate-500">Mitteilung:</span>
-              <span className="font-mono font-bold text-clay bg-clay/10 px-2 py-0.5 rounded">
-                {paymentReference}
-              </span>
-            </div>
-          </div>
-
-          {/* Print Button */}
-          <div className="mt-12 text-center print:hidden">
-             <PrintButton />
-             <div className="mt-6">
-                <Link href="/" className="text-sm text-slate-500 hover:text-clay underline underline-offset-4">
-                  Zurück zum Dashboard
-                </Link>
-             </div>
-          </div>
-
+        <div className="mt-3 grid grid-cols-[120px_1fr] gap-y-2 text-[15px]">
+          <span className="text-muted-foreground print:text-black/60">Bank</span>
+          <span className="font-semibold">Freiburger Kantonalbank</span>
+          <span className="text-muted-foreground print:text-black/60">IBAN</span>
+          <span className="font-bold tracking-wide">CH93 0079 0012 3456 7890 1</span>
+          <span className="text-muted-foreground print:text-black/60">Zugunsten von</span>
+          <span className="font-semibold">{membership.tenant.name}</span>
+          <span className="text-muted-foreground print:text-black/60">Mitteilung</span>
+          <span className="font-bold text-clay-text print:text-black">{paymentReference}</span>
         </div>
       </div>
-    </div>
+    </InvoiceLayout>
   );
 }
 
@@ -177,85 +112,110 @@ async function BookingReceipt({ id }: { id: string }) {
   const maskedEmail = emailDomain ? `${emailUser[0] ?? ""}***@${emailDomain}` : booking.organizer.email;
 
   return (
-    <div className="min-h-screen bg-background py-12 px-4 selection:bg-clay/30">
-      <div className="max-w-2xl mx-auto">
+    <InvoiceLayout
+      title={isPaid ? "Bezahlt." : "Gebucht."}
+      subtitle={isPaid ? "Deine Platzreservierung ist bestätigt." : "Diese Buchung wartet noch auf die Zahlungsbestätigung."}
+      clubName={booking.tenant.name}
+      clubAddress={booking.tenant.address}
+      docLabel="Quittung"
+      number={invoiceNumber}
+      toLabel="Gebucht von"
+      toName={`${booking.organizer.firstName} ${booking.organizer.lastName}`}
+      toEmail={maskedEmail}
+      meta={[
+        ["Datum", bookingDate],
+        ["Status", isPaid ? "Bezahlt" : "Offen"],
+      ]}
+      item={`${booking.court.name} · ${startsAt} – ${endsAt}`}
+      amount={`${total.toFixed(2)} ${booking.currency}`}
+      totals={[]}
+    />
+  );
+}
 
-        <div className="mb-8 text-center print:hidden">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-clay/10 text-clay mb-4">
-            <CheckCircle2 className="w-8 h-8" />
-          </div>
-          <h1 className="text-2xl font-bold text-foreground">
-            {isPaid ? "Zahlung erfolgreich!" : "Buchung erstellt"}
-          </h1>
-          <p className="text-slate-500 mt-2">
-            {isPaid
-              ? "Deine Platzreservierung ist bestätigt."
-              : "Diese Buchung wartet noch auf die Zahlungsbestätigung."}
-          </p>
+const label = "text-[13px] font-bold uppercase tracking-[.06em] text-muted-foreground print:text-black/60";
+
+// Shared markup: card on screen, plain white sheet on paper (header, buttons and chrome hidden).
+function InvoiceLayout(p: {
+  title: string;
+  subtitle: string;
+  clubName: string;
+  clubAddress?: string | null;
+  docLabel: string;
+  number: string;
+  toLabel: string;
+  toName: string;
+  toEmail: string;
+  meta: [string, string][];
+  item: string;
+  amount: string;
+  totals: [string, string][];
+  children?: React.ReactNode;
+}) {
+  return (
+    <div className="min-h-[100dvh] bg-background px-5 pb-16 pt-[66px] text-foreground lg:pt-12 print:min-h-0 print:bg-white print:p-0 print:text-black">
+      <div className="mx-auto w-full max-w-[720px]">
+        <div className="print:hidden">
+          <h1 className="text-[34px] font-bold tracking-[-.035em]">{p.title}</h1>
+          <div className="mt-0.5 text-[15px] text-muted-foreground">{p.subtitle}</div>
         </div>
 
-        <div className="bg-card text-foreground p-10 md:p-14 rounded-3xl shadow-xl border border-border print:shadow-none print:border-none print:p-0">
-
-          <div className="flex justify-between items-start mb-16">
+        <div className="mt-5 rounded-[26px] border border-border bg-card p-6 lg:p-10 print:mt-0 print:rounded-none print:border-0 print:bg-white print:p-0">
+          <div className="flex items-start justify-between gap-4">
             <div>
-              <h2 className="text-2xl font-black tracking-tighter">{booking.tenant.name}</h2>
-              <p className="text-sm text-slate-500 mt-1">{booking.tenant.address || ""}</p>
+              <div className="text-[24px] font-bold tracking-[-.03em]">{p.clubName}</div>
+              {p.clubAddress && <div className="mt-0.5 text-[14px] text-muted-foreground print:text-black/60">{p.clubAddress}</div>}
             </div>
             <div className="text-right">
-              <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-1">Quittung</h3>
-              <p className="font-mono text-lg">#{invoiceNumber}</p>
+              <div className={label}>{p.docLabel}</div>
+              <div className="mt-0.5 text-[16px] font-semibold">#{p.number}</div>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-8 mb-16">
+          <div className="mt-10 grid grid-cols-2 gap-6">
             <div>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Gebucht von</p>
-              <p className="font-medium">{booking.organizer.firstName} {booking.organizer.lastName}</p>
-              <p className="text-slate-500 text-sm">{maskedEmail}</p>
+              <div className={label}>{p.toLabel}</div>
+              <div className="mt-1.5 text-[16px] font-semibold">{p.toName}</div>
+              <div className="text-[14px] text-muted-foreground print:text-black/60">{p.toEmail}</div>
             </div>
-            <div className="text-right">
-              <div className="mb-4">
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Datum</p>
-                <p className="font-medium">{bookingDate}</p>
-              </div>
-              <div>
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Status</p>
-                <p className={`font-medium ${isPaid ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}`}>
-                  {isPaid ? "Bezahlt" : "Offen"}
-                </p>
-              </div>
+            <div className="flex flex-col gap-3 text-right">
+              {p.meta.map(([k, v]) => (
+                <div key={k}>
+                  <div className={label}>{k}</div>
+                  <div className="mt-0.5 text-[16px] font-semibold">{v}</div>
+                </div>
+              ))}
             </div>
           </div>
 
-          <div className="border-t border-b border-slate-200 dark:border-white/[0.1] py-4 mb-8">
-            <div className="flex justify-between text-sm font-bold mb-4 px-2 text-slate-400 uppercase tracking-wider">
+          <div className="mt-10 border-y border-border py-4 print:border-black/20">
+            <div className={`flex justify-between ${label}`}>
               <span>Beschreibung</span>
               <span>Betrag</span>
             </div>
-            <div className="flex justify-between font-medium text-lg px-2">
-              <span>{booking.court.name} · {startsAt} – {endsAt}</span>
-              <span>{total.toFixed(2)} {booking.currency}</span>
+            <div className="mt-3 flex justify-between gap-4 text-[16px] font-semibold">
+              <span>{p.item}</span>
+              <span className="shrink-0">{p.amount}</span>
             </div>
           </div>
 
-          <div className="flex justify-end mb-4 px-2">
-            <div className="text-right">
-              <p className="text-2xl font-black text-clay border-t-2 border-slate-900 dark:border-white pt-2 mt-2">
-                Total: {total.toFixed(2)} {booking.currency}
-              </p>
-            </div>
+          <div className="mt-4 flex flex-col items-end gap-1 text-[14px] text-muted-foreground print:text-black/60">
+            {p.totals.map(([k, v]) => (
+              <div key={k}>
+                {k}: {v}
+              </div>
+            ))}
+            <div className="mt-1 text-[24px] font-bold tracking-[-.03em] text-foreground print:text-black">Total: {p.amount}</div>
           </div>
 
-          {/* Print Button */}
-          <div className="mt-12 text-center print:hidden">
-             <PrintButton />
-             <div className="mt-6">
-                <Link href="/" className="text-sm text-slate-500 hover:text-clay underline underline-offset-4">
-                  Zurück zur Startseite
-                </Link>
-             </div>
-          </div>
+          {p.children}
 
+          <div className="mt-8 print:hidden">
+            <PrintButton />
+            <Link href="/" className="mt-4 block text-center text-[15px] font-bold text-clay-text">
+              Zurück zur Startseite
+            </Link>
+          </div>
         </div>
       </div>
     </div>

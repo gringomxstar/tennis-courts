@@ -1,44 +1,20 @@
 "use client"
 
 import { Toaster as Sonner, type ToasterProps } from "sonner"
-import { CircleCheckIcon, InfoIcon, TriangleAlertIcon, OctagonXIcon, Loader2Icon } from "lucide-react"
 
-// This app toggles dark mode itself (see layout.tsx's inline script + theme-toggle.tsx),
-// not via next-themes — all the colors below are CSS vars that already flip with the
-// `.dark` class, so sonner doesn't need its own theme-detection provider.
+// Pill toast from the design: inverted colors, top center, no icons.
 const Toaster = ({ ...props }: ToasterProps) => {
   return (
     <Sonner
-      theme="system"
-      className="toaster group"
-      icons={{
-        success: (
-          <CircleCheckIcon className="size-4" />
-        ),
-        info: (
-          <InfoIcon className="size-4" />
-        ),
-        warning: (
-          <TriangleAlertIcon className="size-4" />
-        ),
-        error: (
-          <OctagonXIcon className="size-4" />
-        ),
-        loading: (
-          <Loader2Icon className="size-4 animate-spin" />
-        ),
-      }}
-      style={
-        {
-          "--normal-bg": "var(--popover)",
-          "--normal-text": "var(--popover-foreground)",
-          "--normal-border": "var(--border)",
-          "--border-radius": "var(--radius)",
-        } as React.CSSProperties
-      }
+      position="top-center"
+      offset={58}
+      mobileOffset={58}
+      icons={{ success: null, info: null, warning: null, error: null, loading: null }}
       toastOptions={{
+        unstyled: true,
         classNames: {
-          toast: "cn-toast",
+          toast:
+            "mx-auto flex w-fit items-center rounded-full bg-foreground px-5 py-3 text-[15px] font-bold text-background shadow-[0_12px_30px_rgba(0,0,0,.3)]",
         },
       }}
       {...props}

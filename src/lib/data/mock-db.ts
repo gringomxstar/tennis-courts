@@ -1138,12 +1138,12 @@ class MockDatabase {
       ],
     });
 
-    // Today 11:00 - 13:00 on Platz 4: "Location Anybuddy (Eric Gräni)"
+    // Today 11:00 - 13:00 on Platz 4: Gastbuchung (Eric Gräni)
     this.bookings.push({
-      id: "booking-marly-anybuddy",
+      id: "booking-marly-guest",
       tenantId: "tenant-marly",
       courtId: "court-marly-4",
-      organizerId: "guest-anybuddy",
+      organizerId: "guest-eric",
       startsAt: makeDate(0, 11, 0),
       endsAt: makeDate(0, 13, 0),
       status: "CONFIRMED",
@@ -1151,18 +1151,18 @@ class MockDatabase {
       hasBallMachine: false,
       hasLighting: false,
       totalCost: 60,
-      notes: "Location Anybuddy",
+      notes: "Gastbuchung",
       organizer: {
-        id: "guest-anybuddy",
+        id: "guest-eric",
         firstName: "Eric",
         lastName: "Gräni",
         email: "eric.graeni@gmail.com",
       },
       participants: [
         {
-          id: "part-m-anybuddy",
-          bookingId: "booking-marly-anybuddy",
-          guestName: "Eric Gräni (Location Anybuddy)",
+          id: "part-m-guest",
+          bookingId: "booking-marly-guest",
+          guestName: "Eric Gräni (Gast)",
           role: "ORGANIZER",
           invitationStatus: "ACCEPTED",
         },
@@ -1319,6 +1319,27 @@ class MockDatabase {
       const cbStartMs = new Date(cb.startsAt).getTime();
       return cbStartMs >= startOfDayMs && cbStartMs < endOfDayMs;
     });
+  }
+
+  getBookingsInRange(tenantId: string, fromIso: string, toIso: string): Booking[] {
+    const from = new Date(fromIso).getTime();
+    const to = new Date(toIso).getTime();
+    return this.bookings.filter((b) => {
+      if (b.tenantId !== tenantId || b.status === "CANCELLED") return false;
+      const start = new Date(b.startsAt).getTime();
+      return start >= from && start < to;
+    });
+  }
+
+  getBlocksInRange(tenantId: string, fromIso: string, toIso: string): CourtBlock[] {
+    const from = new Date(fromIso).getTime();
+    const to = new Date(toIso).getTime();
+    return this.courtBlocks.filter(
+      (cb) =>
+        cb.tenantId === tenantId &&
+        new Date(cb.startsAt).getTime() < to &&
+        new Date(cb.endsAt).getTime() > from
+    );
   }
 
   getAllUserBookings(userId: string): Booking[] {
@@ -1603,6 +1624,12 @@ class MockDatabase {
     if (!b) return false;
     b.status = "CANCELLED";
     return Boolean(_cancelledById || true);
+  }
+
+  deleteCourtBlock(id: string): boolean {
+    const before = this.courtBlocks.length;
+    this.courtBlocks = this.courtBlocks.filter((cb) => cb.id !== id);
+    return this.courtBlocks.length < before;
   }
 
   createCourtBlock(block: Omit<CourtBlock, "id">): CourtBlock {

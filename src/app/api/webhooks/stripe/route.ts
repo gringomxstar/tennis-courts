@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { getStripe } from "@/lib/stripe";
-import { prisma } from "@/lib/prisma"; // Assuming standard prisma export
+import { prisma } from "@/lib/prisma";
+import { markBookingPaid, releaseUnpaidBooking } from "@/lib/booking-payment";
 
 // This secret is found in the Stripe Dashboard -> Developers -> Webhooks
 const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -74,31 +75,14 @@ export async function POST(req: Request) {
   }
 }
 
-/**
- * Gast-Platzbuchung bezahlt: Buchung von PENDING/UNPAID auf CONFIRMED/PAID heben.
- * Atomarer, idempotenter Guard (WHERE paymentStatus != PAID) statt read-then-write,
- * damit ein von Stripe erneut zugestelltes Event keinen doppelten Effekt hat.
- */
 async function handleBookingPaymentSuccess(bookingId: string, stripeSessionId: string) {
-  const result = await prisma.booking.updateMany({
-    where: { id: bookingId, paymentStatus: { not: "PAID" } },
-    data: { status: "CONFIRMED", paymentStatus: "PAID", stripeSessionId },
-  });
-  if (result.count > 0) {
+  if (await markBookingPaid(bookingId, stripeSessionId)) {
     console.log(`✅ Buchung ${bookingId} bezahlt und bestätigt.`);
   }
 }
 
-/**
- * Checkout für eine Gast-Platzbuchung wurde nicht rechtzeitig bezahlt (Stripe-Ablauf nach
- * 30 Min, siehe expires_at in booking.ts) — Slot wieder freigeben, sofern noch PENDING.
- */
 async function handleBookingCheckoutExpired(bookingId: string) {
-  const result = await prisma.booking.updateMany({
-    where: { id: bookingId, status: "PENDING" },
-    data: { status: "CANCELLED", cancelledAt: new Date() },
-  });
-  if (result.count > 0) {
+  if (await releaseUnpaidBooking(bookingId)) {
     console.log(`⌛ Checkout für Buchung ${bookingId} abgelaufen, Slot freigegeben.`);
   }
 }

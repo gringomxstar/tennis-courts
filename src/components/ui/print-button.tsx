@@ -1,16 +1,13 @@
 "use client";
 
-import { Printer } from "lucide-react";
-import { Button } from "@/components/ui/button";
-
 export function PrintButton() {
   return (
-    <Button
+    <button
+      type="button"
       onClick={() => window.print()}
-      className="h-auto px-6 py-3 rounded-xl shadow-lg"
+      className="flex h-[60px] w-full items-center justify-center rounded-[20px] bg-clay text-[18px] font-bold text-white active:scale-[.97]"
     >
-      <Printer className="w-5 h-5" />
-      Rechnung als PDF speichern / Drucken
-    </Button>
+      Als PDF speichern / Drucken
+    </button>
   );
 }

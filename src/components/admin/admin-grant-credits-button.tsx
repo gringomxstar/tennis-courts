@@ -2,8 +2,6 @@
 
 import { useState } from "react";
 import { grantAdminCreditsAction } from "@/app/actions/booking";
-import { Button } from "@/components/ui/button";
-import { Coins, Loader2, Check } from "lucide-react";
 
 interface AdminGrantCreditsButtonProps {
   clubSlug: string;
@@ -35,27 +33,16 @@ export function AdminGrantCreditsButton({
   };
 
   return (
-    <Button
-      variant="outline"
-      size="sm"
+    <button
+      type="button"
       onClick={handleGrant}
       disabled={loading || success}
-      className="text-[11px] h-7 px-2.5 rounded-lg gap-1.5 border-emerald-200 hover:bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:text-emerald-300 cursor-pointer"
+      className={`shrink-0 rounded-[12px] px-3.5 py-2 text-[14px] font-bold ${
+        success ? "bg-paid-bg text-paid-fg" : "bg-inset text-clay-text disabled:opacity-60"
+      }`}
       title={`+25 CHF Credits gutschreiben für ${userName}`}
     >
-      {loading ? (
-        <Loader2 className="w-3 h-3 animate-spin" />
-      ) : success ? (
-        <>
-          <Check className="w-3 h-3 text-emerald-600" />
-          <span>+25 CHF gebucht!</span>
-        </>
-      ) : (
-        <>
-          <Coins className="w-3 h-3 text-amber-500" />
-          <span>+25 CHF Gutschrift</span>
-        </>
-      )}
-    </Button>
+      {loading ? "Bucht…" : success ? "+25 CHF gebucht" : "+25 CHF Gutschrift"}
+    </button>
   );
 }

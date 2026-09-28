@@ -3,12 +3,16 @@
 import { useActionState, useState } from "react";
 import Link from "next/link";
 import { loginWithCredentials, quickDemoLogin } from "@/app/actions/auth";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { AlertCircle, ShieldCheck, UserCheck, Sparkles, Loader2 } from "lucide-react";
+import { Avatar, Chevron, Spinner } from "@/components/app/avatar";
+
+const label = "text-[13px] font-bold uppercase tracking-[.06em] text-muted-foreground";
+const input = "h-[50px] w-full rounded-[15px] border border-border bg-inset px-4 text-[16px] text-foreground outline-none focus-visible:border-clay";
+
+const DEMOS = [
+  { email: "member@marly.ch", ini: "RF", name: "Roger Federer", role: "Mitglied" },
+  { email: "clubadmin@marly.ch", ini: "MR", name: "Marc Rosset", role: "Club-Admin" },
+  { email: "admin@tennisapp.ch", ini: "PA", name: "Plattform-Administrator", role: "Super-Admin" },
+];
 
 export default function LoginPage() {
   const [state, formAction, isPending] = useActionState(loginWithCredentials, undefined);
@@ -20,139 +24,65 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col justify-center py-12 sm:px-6 lg:px-8 bg-background">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
-        <Link href="/" className="inline-flex items-center gap-2 group mb-4">
-          <div className="h-10 w-10 rounded-xl bg-clay flex items-center justify-center text-white font-bold text-xl shadow-md group-hover:scale-105 transition-transform">
-            🎾
+    <main className="mx-auto w-full max-w-[440px] px-5 pb-[max(40px,env(safe-area-inset-bottom))] pt-[max(24px,env(safe-area-inset-top))]">
+      <Link href="/" className="text-[20px] font-bold tracking-[-.03em]">
+        TC Marly
+      </Link>
+      <h1 className="mt-12 text-[48px] font-bold leading-none tracking-[-.045em]">Anmelden</h1>
+
+      <form action={formAction} className="mt-7 flex flex-col gap-2.5">
+        {state?.error && (
+          <div role="alert" className="rounded-[15px] bg-inset px-4 py-3 text-[15px] font-semibold text-clay-text">
+            {state.error}
           </div>
-          <span className="font-bold text-2xl tracking-tight text-foreground">
-            TennisCourts
-          </span>
+        )}
+        <label htmlFor="email" className="sr-only">E-Mail</label>
+        <input id="email" name="email" type="email" autoComplete="email" placeholder="E-Mail" required className={input} />
+        <label htmlFor="password" className="sr-only">Passwort</label>
+        <input id="password" name="password" type="password" autoComplete="current-password" placeholder="Passwort" required className={input} />
+        <button
+          type="submit"
+          disabled={isPending}
+          className="mt-2 flex h-[56px] w-full items-center justify-center gap-2.5 rounded-[18px] bg-clay text-[17px] font-bold text-white disabled:opacity-70"
+        >
+          {isPending && <Spinner />}
+          Anmelden
+        </button>
+      </form>
+
+      <p className="mt-5 text-center text-[15px] text-muted-foreground">
+        Noch kein Konto?{" "}
+        <Link href="/register" className="font-semibold text-clay-text">
+          Registrieren
         </Link>
-        <h2 className="text-2xl font-bold tracking-tight text-foreground">
-          Im Tennisclub anmelden
-        </h2>
-        <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-          Reserviere Plätze, verwalte Matches und organisiere deinen Club
-        </p>
+      </p>
+
+      <div className="mt-12 flex items-baseline justify-between">
+        <div className={label}>Demo-Zugänge</div>
+        <div className="text-[13px] text-muted-foreground">Ein Tap meldet dich an</div>
       </div>
-
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md px-4">
-        {/* Quick Demo Login Box */}
-        <Card className="mb-6 border-clay/20 bg-clay/5 dark:bg-clay/10 dark:border-clay/30">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-bold text-clay-hover dark:text-clay flex items-center gap-1.5">
-              <Sparkles className="w-4 h-4 text-clay" />
-              1-Klick Demo Login
-            </CardTitle>
-            <CardDescription className="text-xs text-clay-hover/80 dark:text-clay/80">
-              Wähle eine vordefinierte Rolle zum sofortigen Ausprobieren:
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full justify-between bg-white text-xs hover:bg-clay/10 dark:bg-slate-900"
-              onClick={() => handleQuickDemo("member@marly.ch")}
-              disabled={Boolean(demoLoading)}
-            >
-              <span className="flex items-center gap-2">
-                <UserCheck className="w-3.5 h-3.5 text-clay" />
-                Roger Federer
-              </span>
-              <Badge className="bg-clay text-[10px]">Mitglied</Badge>
-            </Button>
-
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full justify-between bg-white text-xs hover:bg-amber-100 dark:bg-slate-900"
-              onClick={() => handleQuickDemo("clubadmin@marly.ch")}
-              disabled={Boolean(demoLoading)}
-            >
-              <span className="flex items-center gap-2">
-                <ShieldCheck className="w-3.5 h-3.5 text-amber-600" />
-                Marc Rosset
-              </span>
-              <Badge className="bg-amber-600 text-[10px]">Club Admin</Badge>
-            </Button>
-
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full justify-between bg-white text-xs hover:bg-purple-100 dark:bg-slate-900"
-              onClick={() => handleQuickDemo("admin@tennisapp.ch")}
-              disabled={Boolean(demoLoading)}
-            >
-              <span className="flex items-center gap-2">
-                <ShieldCheck className="w-3.5 h-3.5 text-purple-600" />
-                Plattform Administrator
-              </span>
-              <Badge className="bg-purple-600 text-[10px]">Super Admin</Badge>
-            </Button>
-          </CardContent>
-        </Card>
-
-        {/* Regular Login Form */}
-        <Card>
-          <CardContent className="pt-6">
-            <form action={formAction} className="space-y-4">
-              {state?.error && (
-                <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm flex items-start gap-2">
-                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                  <span>{state.error}</span>
-                </div>
-              )}
-
-              <div>
-                <Label htmlFor="email">E-Mail-Adresse</Label>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  placeholder="member@marly.ch"
-                  required
-                  className="mt-1.5"
-                />
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="password">Passwort</Label>
-                  <span className="text-xs text-slate-500">Demo PW: tennis12345</span>
-                </div>
-                <Input
-                  id="password"
-                  name="password"
-                  type="password"
-                  autoComplete="current-password"
-                  placeholder="••••••••"
-                  required
-                  className="mt-1.5"
-                />
-              </div>
-
-              <Button type="submit" className="w-full gap-2" disabled={isPending}>
-                {isPending && <Loader2 className="w-4 h-4 animate-spin" />}
-                Anmelden
-              </Button>
-            </form>
-
-            <div className="mt-6 pt-4 text-center border-t border-slate-100 dark:border-slate-800 text-xs text-slate-500">
-              Noch kein Konto?{" "}
-              <Link
-                href="/register"
-                className="font-semibold text-clay hover:text-clay-hover underline-offset-2 hover:underline"
-              >
-                Jetzt Club-Mitglied werden
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="mt-3 flex flex-col gap-2">
+        {DEMOS.map((d) => (
+          <button
+            key={d.email}
+            type="button"
+            onClick={() => handleQuickDemo(d.email)}
+            disabled={Boolean(demoLoading)}
+            className="flex w-full items-center gap-3.5 rounded-[22px] border border-border bg-card px-4 py-3.5 text-left disabled:opacity-60"
+          >
+            <Avatar ini={d.ini} />
+            <span className="min-w-0 flex-1">
+              <span className="block text-[16px] font-bold">{d.name}</span>
+              <span className="block text-[14px] text-muted-foreground">{d.role}</span>
+            </span>
+            {demoLoading === d.email ? (
+              <span aria-hidden className="h-5 w-5 animate-spin rounded-full border-[3px] border-border border-t-clay" />
+            ) : (
+              <Chevron />
+            )}
+          </button>
+        ))}
       </div>
-    </div>
+    </main>
   );
 }

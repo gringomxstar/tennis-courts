@@ -3,10 +3,11 @@
 import { useState } from "react";
 import { Court, BlockReason } from "@/types";
 import { createCourtBlockAction } from "@/app/actions/booking";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Wrench, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import { Spinner } from "@/components/app/avatar";
+
+const label = "block truncate text-[13px] font-bold uppercase tracking-[.06em] text-muted-foreground";
+const input =
+  "mt-1.5 h-[50px] w-full min-w-0 rounded-[15px] border border-border bg-inset px-4 text-[16px] text-foreground outline-none placeholder:text-muted-foreground focus-visible:border-clay";
 
 interface CreateCourtBlockFormProps {
   clubSlug: string;
@@ -51,84 +52,47 @@ export function CreateCourtBlockForm({ clubSlug, courts }: CreateCourtBlockFormP
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="mt-5 flex flex-col gap-4">
       {message && (
         <div
-          className={`p-3 rounded-lg text-sm flex items-start gap-2 ${
-            message.type === "success"
-              ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
-              : "bg-red-50 text-red-800 border border-red-200"
+          role="status"
+          className={`rounded-[18px] px-4 py-3 text-[15px] font-semibold ${
+            message.type === "success" ? "bg-paid-bg text-paid-fg" : "bg-clay text-white"
           }`}
         >
-          {message.type === "success" ? (
-            <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0" />
-          ) : (
-            <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
-          )}
-          <span>{message.text}</span>
+          {message.text}
         </div>
       )}
 
-      <div>
-        <Label htmlFor="blockCourt">Platz auswählen</Label>
-        <select
-          id="blockCourt"
-          value={courtId}
-          onChange={(e) => setCourtId(e.target.value)}
-          className="mt-1.5 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-xs focus:ring-2 focus:ring-amber-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-        >
+      <label className="block">
+        <span className={label}>Platz</span>
+        <select id="blockCourt" value={courtId} onChange={(e) => setCourtId(e.target.value)} className={input}>
           {courts.map((court) => (
             <option key={court.id} value={court.id}>
               {court.name}
             </option>
           ))}
         </select>
+      </label>
+
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <label className="col-span-2 block sm:col-span-1">
+          <span className={label}>Datum</span>
+          <input id="blockDate" type="date" value={dateStr} onChange={(e) => setDateStr(e.target.value)} className={input} required />
+        </label>
+        <label className="block">
+          <span className={label}>Von</span>
+          <input id="blockStart" type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className={input} required />
+        </label>
+        <label className="block">
+          <span className={label}>Bis</span>
+          <input id="blockEnd" type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className={input} required />
+        </label>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div>
-          <Label htmlFor="blockDate">Datum</Label>
-          <Input
-            id="blockDate"
-            type="date"
-            value={dateStr}
-            onChange={(e) => setDateStr(e.target.value)}
-            className="mt-1.5"
-            required
-          />
-        </div>
-        <div>
-          <Label htmlFor="blockStart">Von</Label>
-          <Input
-            id="blockStart"
-            type="time"
-            value={startTime}
-            onChange={(e) => setStartTime(e.target.value)}
-            className="mt-1.5"
-            required
-          />
-        </div>
-        <div>
-          <Label htmlFor="blockEnd">Bis</Label>
-          <Input
-            id="blockEnd"
-            type="time"
-            value={endTime}
-            onChange={(e) => setEndTime(e.target.value)}
-            className="mt-1.5"
-            required
-          />
-        </div>
-      </div>
-
-      <div>
-        <Label htmlFor="blockReason">Grund der Sperre</Label>
-        <select
-          id="blockReason"
-          value={reason}
-          onChange={(e) => setReason(e.target.value as BlockReason)}
-          className="mt-1.5 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-xs focus:ring-2 focus:ring-amber-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-        >
+      <label className="block">
+        <span className={label}>Grund</span>
+        <select id="blockReason" value={reason} onChange={(e) => setReason(e.target.value as BlockReason)} className={input}>
           <option value="MAINTENANCE">Wartung / Platzpflege / Walzen</option>
           <option value="TOURNAMENT">Clubturnier / Interclub-Match</option>
           <option value="RAIN">Regen / Nässe / Witterung</option>
@@ -136,24 +100,28 @@ export function CreateCourtBlockForm({ clubSlug, courts }: CreateCourtBlockFormP
           <option value="EVENT">Veranstaltung / Plauschanlass</option>
           <option value="OTHER">Sonstiges</option>
         </select>
-      </div>
+      </label>
 
-      <div>
-        <Label htmlFor="blockDesc">Beschreibung / Hinweis für Mitglieder</Label>
-        <Input
+      <label className="block">
+        <span className={label}>Hinweis für Mitglieder</span>
+        <input
           id="blockDesc"
           type="text"
           placeholder="z.B. Sandplatz wird gewässert und geebnet"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          className="mt-1.5"
+          className={input}
         />
-      </div>
+      </label>
 
-      <Button type="submit" disabled={loading} className="w-full gap-2 bg-amber-600 hover:bg-amber-700 text-white">
-        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wrench className="w-4 h-4" />}
+      <button
+        type="submit"
+        disabled={loading}
+        className="mt-1 flex h-[54px] w-full items-center justify-center gap-2.5 rounded-[17px] bg-clay text-[17px] font-bold text-white active:scale-[.97] disabled:opacity-70"
+      >
+        {loading && <Spinner />}
         Platzsperre aktivieren
-      </Button>
+      </button>
     </form>
   );
 }

@@ -3,143 +3,84 @@
 import { useActionState } from "react";
 import Link from "next/link";
 import { registerUserAction } from "@/app/actions/auth";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent } from "@/components/ui/card";
-import { AlertCircle, Loader2 } from "lucide-react";
+import { Chevron, Spinner } from "@/components/app/avatar";
+
+const label = "mb-1.5 block text-[13px] font-bold uppercase tracking-[.06em] text-muted-foreground";
+const input = "h-[50px] w-full rounded-[15px] border border-border bg-inset px-4 text-[16px] text-foreground outline-none focus-visible:border-clay";
 
 export default function RegisterPage() {
   const [state, formAction, isPending] = useActionState(registerUserAction, undefined);
 
   return (
-    <div className="min-h-screen flex flex-col justify-center py-12 sm:px-6 lg:px-8 bg-background">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
-        <Link href="/" className="inline-flex items-center gap-2 group mb-4">
-          <div className="h-10 w-10 rounded-xl bg-clay flex items-center justify-center text-white font-bold text-xl shadow-md group-hover:scale-105 transition-transform">
-            🎾
+    <main className="mx-auto w-full max-w-[440px] px-5 pb-[max(40px,env(safe-area-inset-bottom))] pt-[max(24px,env(safe-area-inset-top))]">
+      <Link href="/" className="text-[20px] font-bold tracking-[-.03em]">
+        TC Marly
+      </Link>
+      <h1 className="mt-12 text-[48px] font-bold leading-none tracking-[-.045em]">
+        Konto
+        <br />
+        erstellen
+      </h1>
+
+      <form action={formAction} className="mt-7 flex flex-col gap-4">
+        {state?.error && (
+          <div role="alert" className="rounded-[15px] bg-inset px-4 py-3 text-[15px] font-semibold text-clay-text">
+            {state.error}
           </div>
-          <span className="font-bold text-2xl tracking-tight text-foreground">
-            TennisCourts
-          </span>
+        )}
+
+        <div className="relative">
+          <label htmlFor="tenantSlug" className={label}>Club</label>
+          <select id="tenantSlug" name="tenantSlug" defaultValue="tc-marly" className={`${input} appearance-none`}>
+            <option value="tc-marly">Tennis Club Marly</option>
+            <option value="tc-rot-weiss">TC Rot-Weiss Zürich</option>
+            <option value="tc-obersee">Tennis Club Obersee</option>
+          </select>
+          <Chevron className="pointer-events-none absolute bottom-4 right-4 rotate-90" />
+        </div>
+
+        <div className="grid grid-cols-2 gap-2.5">
+          <div>
+            <label htmlFor="firstName" className={label}>Vorname</label>
+            <input id="firstName" name="firstName" type="text" autoComplete="given-name" required className={input} />
+          </div>
+          <div>
+            <label htmlFor="lastName" className={label}>Nachname</label>
+            <input id="lastName" name="lastName" type="text" autoComplete="family-name" required className={input} />
+          </div>
+        </div>
+
+        <div>
+          <label htmlFor="email" className={label}>E-Mail</label>
+          <input id="email" name="email" type="email" autoComplete="email" placeholder="name@beispiel.ch" required className={input} />
+        </div>
+
+        <div>
+          <label htmlFor="phone" className={label}>Telefon (optional)</label>
+          <input id="phone" name="phone" type="tel" autoComplete="tel" placeholder="+41 79 000 00 00" className={input} />
+        </div>
+
+        <div>
+          <label htmlFor="password" className={label}>Passwort (min. 6 Zeichen)</label>
+          <input id="password" name="password" type="password" autoComplete="new-password" minLength={6} required className={input} />
+        </div>
+
+        <button
+          type="submit"
+          disabled={isPending}
+          className="mt-2 flex h-[56px] w-full items-center justify-center gap-2.5 rounded-[18px] bg-clay text-[17px] font-bold text-white disabled:opacity-70"
+        >
+          {isPending && <Spinner />}
+          Konto erstellen
+        </button>
+      </form>
+
+      <p className="mt-5 text-center text-[15px] text-muted-foreground">
+        Schon registriert?{" "}
+        <Link href="/login" className="font-semibold text-clay-text">
+          Anmelden
         </Link>
-        <h2 className="text-2xl font-bold tracking-tight text-foreground">
-          Neues Mitgliedskonto erstellen
-        </h2>
-        <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-          Wähle deinen Tennisclub und starte direkt mit Platzbuchungen
-        </p>
-      </div>
-
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md px-4">
-        <Card>
-          <CardContent className="pt-6">
-            <form action={formAction} className="space-y-4">
-              {state?.error && (
-                <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm flex items-start gap-2">
-                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                  <span>{state.error}</span>
-                </div>
-              )}
-
-              {/* Club Selection */}
-              <div>
-                <Label htmlFor="tenantSlug">Tennisclub wählen</Label>
-                <select
-                  id="tenantSlug"
-                  name="tenantSlug"
-                  defaultValue="tc-rot-weiss"
-                  className="mt-1.5 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-xs focus:ring-2 focus:ring-clay dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                >
-                  <option value="tc-rot-weiss">TC Rot-Weiss Zürich</option>
-                  <option value="tc-obersee">Tennis Club Obersee</option>
-                </select>
-              </div>
-
-              {/* Name fields */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label htmlFor="firstName">Vorname</Label>
-                  <Input
-                    id="firstName"
-                    name="firstName"
-                    type="text"
-                    placeholder="Roger"
-                    required
-                    className="mt-1.5"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="lastName">Nachname</Label>
-                  <Input
-                    id="lastName"
-                    name="lastName"
-                    type="text"
-                    placeholder="Federer"
-                    required
-                    className="mt-1.5"
-                  />
-                </div>
-              </div>
-
-              {/* Email */}
-              <div>
-                <Label htmlFor="email">E-Mail-Adresse</Label>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  placeholder="name@beispiel.ch"
-                  required
-                  className="mt-1.5"
-                />
-              </div>
-
-              {/* Phone */}
-              <div>
-                <Label htmlFor="phone">Telefonnummer (optional)</Label>
-                <Input
-                  id="phone"
-                  name="phone"
-                  type="tel"
-                  placeholder="+41 79 000 00 00"
-                  className="mt-1.5"
-                />
-              </div>
-
-              {/* Password */}
-              <div>
-                <Label htmlFor="password">Passwort (min. 6 Zeichen)</Label>
-                <Input
-                  id="password"
-                  name="password"
-                  type="password"
-                  placeholder="••••••••"
-                  minLength={6}
-                  required
-                  className="mt-1.5"
-                />
-              </div>
-
-              <Button type="submit" className="w-full gap-2 mt-2" disabled={isPending}>
-                {isPending && <Loader2 className="w-4 h-4 animate-spin" />}
-                Registrieren & Beitreten
-              </Button>
-            </form>
-
-            <div className="mt-6 pt-4 text-center border-t border-slate-100 dark:border-slate-800 text-xs text-slate-500">
-              Bereits registriert?{" "}
-              <Link
-                href="/login"
-                className="font-semibold text-clay hover:text-clay-hover underline-offset-2 hover:underline"
-              >
-                Hier anmelden
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+      </p>
+    </main>
   );
 }

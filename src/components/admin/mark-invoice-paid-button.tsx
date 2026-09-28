@@ -2,8 +2,6 @@
 
 import { useState } from "react";
 import { markInvoiceAsPaidManually } from "@/actions/admin-billing";
-import { Button } from "@/components/ui/button";
-import { Receipt, Loader2, Check } from "lucide-react";
 import { toast } from "sonner";
 
 interface MarkInvoicePaidButtonProps {
@@ -37,29 +35,19 @@ export function MarkInvoicePaidButton({
 
   if (success) {
     return (
-      <span className="inline-flex items-center gap-1.5 text-[11px] h-7 px-2.5 text-emerald-700 dark:text-emerald-400 font-semibold">
-        <Check className="w-3 h-3" /> Freigeschaltet
-      </span>
+      <span className="shrink-0 rounded-full bg-paid-bg px-3 py-1 text-[13px] font-bold text-paid-fg">Freigeschaltet</span>
     );
   }
 
   return (
-    <Button
-      variant="outline"
-      size="sm"
+    <button
+      type="button"
       onClick={handleMark}
       disabled={loading}
-      className="text-[11px] h-7 px-2.5 rounded-lg gap-1.5 border-amber-200 hover:bg-amber-50 text-amber-800 dark:border-amber-800 dark:text-amber-300 cursor-pointer"
+      className="shrink-0 rounded-[12px] bg-clay px-3.5 py-2 text-[14px] font-bold text-white active:scale-[.97] disabled:opacity-70"
       title={`${planName} für ${userName} als bezahlt markieren`}
     >
-      {loading ? (
-        <Loader2 className="w-3 h-3 animate-spin" />
-      ) : (
-        <>
-          <Receipt className="w-3 h-3" />
-          <span>Rechnung als bezahlt markieren</span>
-        </>
-      )}
-    </Button>
+      {loading ? "Markiert…" : "Rechnung bezahlt"}
+    </button>
   );
 }
