@@ -23,6 +23,15 @@ import {
 // Determine if we should attempt database connection
 const hasDbConfigured = Boolean(process.env.DATABASE_URL);
 
+/**
+ * mockDb is a dev convenience. In production a DB error must surface — silently serving
+ * mock rows (wrong tenant ids) is what broke guest/Twint bookings under connection pressure.
+ */
+function dbFailed(e: unknown) {
+  if (process.env.NODE_ENV === "production") throw e;
+  console.warn("Prisma query failed, falling back to mockDb:", e);
+}
+
 export async function getTenantBySlug(slug: string): Promise<Tenant | null> {
   if (hasDbConfigured) {
     try {
@@ -44,7 +53,7 @@ export async function getTenantBySlug(slug: string): Promise<Tenant | null> {
         };
       }
     } catch (e) {
-      console.warn("Prisma query failed, falling back to mockDb:", e);
+      dbFailed(e);
     }
   }
   return mockDb.getTenantBySlug(slug) || null;
@@ -71,7 +80,7 @@ export async function getAllTenants(): Promise<Tenant[]> {
         }));
       }
     } catch (e) {
-      console.warn("Prisma query failed, falling back to mockDb:", e);
+      dbFailed(e);
     }
   }
   return mockDb.tenants;
@@ -100,7 +109,7 @@ export async function getCourtsByTenantId(tenantId: string): Promise<Court[]> {
         }));
       }
     } catch (e) {
-      console.warn("Prisma query failed, falling back to mockDb:", e);
+      dbFailed(e);
     }
   }
   return mockDb.getCourtsByTenantId(tenantId);
@@ -184,7 +193,7 @@ export async function getBookingsInRange(
       });
       return mergeById(dbBookings.map(mapPrismaBooking), mock);
     } catch (e) {
-      console.warn("Prisma query failed, falling back to mockDb:", e);
+      dbFailed(e);
     }
   }
   return mock;
@@ -209,7 +218,7 @@ export async function getCourtBookings(
       });
       return mergeById(dbBookings.map(mapPrismaBooking), mockDb.getBookings(tenantId, dateStr));
     } catch (e) {
-      console.warn("Prisma query failed, falling back to mockDb:", e);
+      dbFailed(e);
     }
   }
   return mockDb.getBookings(tenantId, dateStr);
@@ -255,7 +264,7 @@ export async function getBlocksInRange(
       });
       return mergeById(blocks.map(mapPrismaBlock), mock);
     } catch (e) {
-      console.warn("Prisma query failed, falling back to mockDb:", e);
+      dbFailed(e);
     }
   }
   return mock;
@@ -278,7 +287,7 @@ export async function getCourtBlocks(
       });
       return mergeById(blocks.map(mapPrismaBlock), mockDb.getCourtBlocks(tenantId, dateStr));
     } catch (e) {
-      console.warn("Prisma query failed, falling back to mockDb:", e);
+      dbFailed(e);
     }
   }
   return mockDb.getCourtBlocks(tenantId, dateStr);
@@ -302,7 +311,7 @@ export async function getTenantMembers(tenantId: string): Promise<UserSummary[]>
         }));
       }
     } catch (e) {
-      console.warn("Prisma query failed, falling back to mockDb:", e);
+      dbFailed(e);
     }
   }
   return mockDb.getUsersByTenantId(tenantId);
@@ -324,7 +333,7 @@ export async function getUserBookings(userId: string, tenantId: string): Promise
       });
       return mergeById(dbBookings.map(mapPrismaBooking), mock);
     } catch (e) {
-      console.warn("Prisma query failed, falling back to mockDb:", e);
+      dbFailed(e);
     }
   }
   return mock;
@@ -353,7 +362,7 @@ export async function getMembershipPlansByTenantId(tenantId: string): Promise<Me
         }));
       }
     } catch (e) {
-      console.warn("Prisma query failed, falling back to mockDb:", e);
+      dbFailed(e);
     }
   }
   return mockDb.getMembershipPlans(tenantId);
@@ -390,7 +399,7 @@ export async function updateTenantSettings(
         };
       }
     } catch (e) {
-      console.warn("Prisma updateTenantSettings failed, falling back to mockDb:", e);
+      dbFailed(e);
     }
   }
   return updatedMock;
@@ -432,7 +441,7 @@ export async function createMembershipPlan(
         allowedDurations: dbPlan.allowedDurations,
       };
     } catch (e) {
-      console.warn("Prisma createMembershipPlan failed, falling back to mockDb:", e);
+      dbFailed(e);
     }
   }
   return mockPlan;
@@ -475,7 +484,7 @@ export async function updateMembershipPlan(
         allowedDurations: dbPlan.allowedDurations,
       };
     } catch (e) {
-      console.warn("Prisma updateMembershipPlan failed, falling back to mockDb:", e);
+      dbFailed(e);
     }
   }
   return mockUpdated;
@@ -491,7 +500,7 @@ export async function deleteMembershipPlan(planId: string): Promise<boolean> {
       });
       return true;
     } catch (e) {
-      console.warn("Prisma deleteMembershipPlan failed, falling back to mockDb:", e);
+      dbFailed(e);
     }
   }
   return mockDeleted;
@@ -535,7 +544,7 @@ export async function getUserWallet(
         };
       }
     } catch (e) {
-      console.warn("Prisma getUserWallet failed, falling back to mockDb:", e);
+      dbFailed(e);
     }
   }
   if (typeof mockDb.getWallet === "function") {
@@ -621,7 +630,7 @@ export async function topUpUserWallet(
         })),
       };
     } catch (e) {
-      console.warn("Prisma topUpUserWallet failed, falling back to mockDb:", e);
+      dbFailed(e);
     }
   }
   return mockRes;
@@ -674,7 +683,7 @@ export async function grantAdminCredits(
         },
       });
     } catch (e) {
-      console.warn("Prisma grantAdminCredits failed, falling back to mockDb:", e);
+      dbFailed(e);
     }
   }
   return mockRes;

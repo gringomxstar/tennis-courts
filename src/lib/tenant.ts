@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { getTenantBySlug } from "@/lib/data";
 import { redirect } from "next/navigation";
+import { cache } from "react";
 import { Tenant, TenantRole } from "@/types";
 
 export interface TenantContext {
@@ -26,7 +27,8 @@ export async function getCurrentUser() {
   return session?.user ?? null;
 }
 
-export async function getTenantContext(slug: string): Promise<TenantContext> {
+// cache(): layout + page both call this per request — dedupe the tenant query.
+export const getTenantContext = cache(async function getTenantContext(slug: string): Promise<TenantContext> {
   const tenant = await getTenantBySlug(slug);
   if (!tenant) {
     redirect("/?error=TenantNotFound");
@@ -74,7 +76,7 @@ export async function getTenantContext(slug: string): Promise<TenantContext> {
     isPlatformAdmin,
     canBook: true,
   };
-}
+});
 
 export async function requirePlatformAdmin() {
   const session = await auth();

@@ -86,7 +86,7 @@ export function BookingSheet({
       participants: players.map((userId) => ({ type: "MEMBER" as const, userId })),
       hasLighting: light,
       ...(isAnon ? { guestFirstName: guest.first, guestLastName: guest.last, guestEmail: guest.email } : {}),
-    });
+    }).catch(() => ({ success: false as const, error: "Verbindung fehlgeschlagen. Bitte erneut versuchen." }));
     if (!res.success) {
       setPhase("form");
       toast(res.error ?? "Buchung fehlgeschlagen");
