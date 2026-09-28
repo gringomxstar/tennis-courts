@@ -29,6 +29,7 @@ model User {
   timezone      String      @default("Europe/Zurich")
   status        UserStatus  @default(ACTIVE)
   image         String?
+  stripeCustomerId String?  @unique
   emailVerified DateTime?
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
@@ -259,6 +260,7 @@ model Membership {
   startsAt         DateTime
   endsAt           DateTime?
   status           MembershipStatus @default(ACTIVE)
+  stripeSubscriptionId String?      @unique
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
 
@@ -303,6 +305,8 @@ model Booking {
   endsAt         DateTime
   status         BookingStatus @default(CONFIRMED)
   bookingType    BookingType   @default(MEMBER)
+  paymentStatus  PaymentStatus @default(UNPAID)
+  stripeSessionId String?      @unique
   price          Decimal       @default(0.0) @db.Decimal(10, 2)
   totalCost      Decimal       @default(0.0) @db.Decimal(10, 2)
   hasBallMachine Boolean       @default(false)

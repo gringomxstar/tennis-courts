@@ -14,6 +14,34 @@ import {
 class MockDatabase {
   tenants: Tenant[] = [
     {
+      id: "tenant-marly",
+      name: "TC Marly",
+      slug: "tc-marly",
+      timezone: "Europe/Zurich",
+      address: "Route des Ecoles 32, 1723 Marly (FR)",
+      email: "info@tcmarly.ch",
+      phone: "+41 26 436 20 00",
+      status: "ACTIVE",
+      settingsJson: {
+        openingHour: 7,
+        closingHour: 22,
+        slotDurationMinutes: 60,
+        cancellationDeadlineHours: 24,
+        allowGuestBookings: true,
+        allowConsecutiveSlotsForDoubles: true,
+        marlyRuleEnabled: true,
+        marlyCooldownMinutes: 60,
+        maxActiveSlotsPerPlayer: 2,
+        ballMachineAvailable: true,
+        ballMachineFee: 10,
+        floodlightFee: 5,
+        guestFee: 15,
+        defaultHourlyRateTennis: 30,
+        defaultHourlyRateHalle: 45,
+        defaultHourlyRatePadel: 40,
+      },
+    },
+    {
       id: "tenant-rot-weiss",
       name: "TC Rot-Weiss Zürich",
       slug: "tc-rot-weiss",
@@ -72,6 +100,129 @@ class MockDatabase {
   ];
 
   courts: Court[] = [
+    // ==========================================
+    // TC Marly: 2 Allwetter, 6 Sand, 1 Padel
+    // ==========================================
+    {
+      id: "court-marly-1",
+      tenantId: "tenant-marly",
+      locationId: "loc-marly",
+      name: "Platz 1 (Allwetter)",
+      sportType: "TENNIS",
+      surface: "HARD",
+      hourlyRate: 30,
+      isIndoor: false,
+      hasLighting: true,
+      status: "ACTIVE",
+      sortOrder: 1,
+    },
+    {
+      id: "court-marly-2",
+      tenantId: "tenant-marly",
+      locationId: "loc-marly",
+      name: "Platz 2 (Allwetter)",
+      sportType: "TENNIS",
+      surface: "HARD",
+      hourlyRate: 30,
+      isIndoor: false,
+      hasLighting: true,
+      status: "ACTIVE",
+      sortOrder: 2,
+    },
+    {
+      id: "court-marly-3",
+      tenantId: "tenant-marly",
+      locationId: "loc-marly",
+      name: "Platz 3 (Sand - Center)",
+      sportType: "TENNIS",
+      surface: "CLAY",
+      hourlyRate: 30,
+      isIndoor: false,
+      hasLighting: true,
+      status: "ACTIVE",
+      sortOrder: 3,
+    },
+    {
+      id: "court-marly-4",
+      tenantId: "tenant-marly",
+      locationId: "loc-marly",
+      name: "Platz 4 (Sand)",
+      sportType: "TENNIS",
+      surface: "CLAY",
+      hourlyRate: 30,
+      isIndoor: false,
+      hasLighting: true,
+      status: "ACTIVE",
+      sortOrder: 4,
+    },
+    {
+      id: "court-marly-5",
+      tenantId: "tenant-marly",
+      locationId: "loc-marly",
+      name: "Platz 5 (Sand)",
+      sportType: "TENNIS",
+      surface: "CLAY",
+      hourlyRate: 30,
+      isIndoor: false,
+      hasLighting: false,
+      status: "ACTIVE",
+      sortOrder: 5,
+    },
+    {
+      id: "court-marly-6",
+      tenantId: "tenant-marly",
+      locationId: "loc-marly",
+      name: "Platz 6 (Sand)",
+      sportType: "TENNIS",
+      surface: "CLAY",
+      hourlyRate: 30,
+      isIndoor: false,
+      hasLighting: false,
+      status: "ACTIVE",
+      sortOrder: 6,
+    },
+    {
+      id: "court-marly-7",
+      tenantId: "tenant-marly",
+      locationId: "loc-marly",
+      name: "Platz 7 (Sand)",
+      sportType: "TENNIS",
+      surface: "CLAY",
+      hourlyRate: 30,
+      isIndoor: false,
+      hasLighting: true,
+      status: "ACTIVE",
+      sortOrder: 7,
+    },
+    {
+      id: "court-marly-8",
+      tenantId: "tenant-marly",
+      locationId: "loc-marly",
+      name: "Platz 8 (Sand)",
+      sportType: "TENNIS",
+      surface: "CLAY",
+      hourlyRate: 30,
+      isIndoor: false,
+      hasLighting: true,
+      status: "ACTIVE",
+      sortOrder: 8,
+    },
+    {
+      id: "court-marly-9",
+      tenantId: "tenant-marly",
+      locationId: "loc-marly",
+      name: "Padel 1 (Panoramaplatz)",
+      sportType: "PADEL",
+      surface: "ARTIFICIAL_GRASS",
+      hourlyRate: 40,
+      isIndoor: false,
+      hasLighting: true,
+      status: "ACTIVE",
+      sortOrder: 9,
+    },
+    // ==========================================
+    // TC Rot-Weiss Zürich
+    // ==========================================
     {
       id: "court-1",
       tenantId: "tenant-rot-weiss",
@@ -232,16 +383,352 @@ class MockDatabase {
     },
     {
       id: "user-belinda",
-      email: "belinda@tc-rotweiss.ch",
+      email: "belinda@tc-marly.ch",
       firstName: "Belinda",
       lastName: "Bencic",
       phone: "+41 79 300 00 03",
       role: "MEMBER",
-      tenantId: "tenant-rot-weiss",
+      tenantId: "tenant-marly",
+    },
+    {
+      id: "user-martina",
+      email: "martina.hingis@tc-marly.ch",
+      firstName: "Martina",
+      lastName: "Hingis",
+      phone: "+41 79 300 00 04",
+      role: "MEMBER",
+      tenantId: "tenant-marly",
+    },
+    {
+      id: "user-timea",
+      email: "timea.bacsinszky@tc-marly.ch",
+      firstName: "Timea",
+      lastName: "Bacsinszky",
+      phone: "+41 79 300 00 05",
+      role: "MEMBER",
+      tenantId: "tenant-marly",
+    },
+    {
+      id: "user-dominic",
+      email: "dominic.stricker@tc-marly.ch",
+      firstName: "Dominic",
+      lastName: "Stricker",
+      phone: "+41 79 300 00 06",
+      role: "MEMBER",
+      tenantId: "tenant-marly",
+    },
+    {
+      id: "user-leandro",
+      email: "leandro.riedi@tc-marly.ch",
+      firstName: "Leandro",
+      lastName: "Riedi",
+      phone: "+41 79 300 00 07",
+      role: "MEMBER",
+      tenantId: "tenant-marly",
+    },
+    {
+      id: "user-jil",
+      email: "jil.teichmann@tc-marly.ch",
+      firstName: "Jil",
+      lastName: "Teichmann",
+      phone: "+41 79 300 00 08",
+      role: "MEMBER",
+      tenantId: "tenant-marly",
+    },
+    {
+      id: "user-viktorija",
+      email: "viktorija.golubic@tc-marly.ch",
+      firstName: "Viktorija",
+      lastName: "Golubic",
+      phone: "+41 79 300 00 09",
+      role: "MEMBER",
+      tenantId: "tenant-marly",
+    },
+    {
+      id: "user-alexander",
+      email: "alexander.ritschard@tc-marly.ch",
+      firstName: "Alexander",
+      lastName: "Ritschard",
+      phone: "+41 79 300 00 10",
+      role: "MEMBER",
+      tenantId: "tenant-marly",
+    },
+    {
+      id: "user-patty",
+      email: "patty.schnyder@tc-marly.ch",
+      firstName: "Patty",
+      lastName: "Schnyder",
+      phone: "+41 79 300 00 11",
+      role: "MEMBER",
+      tenantId: "tenant-marly",
+    },
+    {
+      id: "user-henri",
+      email: "henri.laaksonen@tc-marly.ch",
+      firstName: "Henri",
+      lastName: "Laaksonen",
+      phone: "+41 79 300 00 12",
+      role: "MEMBER",
+      tenantId: "tenant-marly",
+    },
+    {
+      id: "user-marc-andrea",
+      email: "marcandrea.huesler@tc-marly.ch",
+      firstName: "Marc-Andrea",
+      lastName: "Hüsler",
+      phone: "+41 79 300 00 13",
+      role: "MEMBER",
+      tenantId: "tenant-marly",
+    },
+    {
+      id: "user-celine",
+      email: "celine.naef@tc-marly.ch",
+      firstName: "Céline",
+      lastName: "Naef",
+      phone: "+41 79 300 00 14",
+      role: "MEMBER",
+      tenantId: "tenant-marly",
+    },
+    {
+      id: "user-jerome",
+      email: "jerome.kym@tc-marly.ch",
+      firstName: "Jérôme",
+      lastName: "Kym",
+      phone: "+41 79 300 00 15",
+      role: "MEMBER",
+      tenantId: "tenant-marly",
+    },
+    {
+      id: "user-simona",
+      email: "simona.waltert@tc-marly.ch",
+      firstName: "Simona",
+      lastName: "Waltert",
+      phone: "+41 79 300 00 16",
+      role: "MEMBER",
+      tenantId: "tenant-marly",
+    },
+    {
+      id: "user-damien",
+      email: "damien.wenger@tc-marly.ch",
+      firstName: "Damien",
+      lastName: "Wenger",
+      phone: "+41 79 300 00 17",
+      role: "MEMBER",
+      tenantId: "tenant-marly",
+    },
+    {
+      id: "user-conny",
+      email: "conny.perrin@tc-marly.ch",
+      firstName: "Conny",
+      lastName: "Perrin",
+      phone: "+41 79 300 00 18",
+      role: "MEMBER",
+      tenantId: "tenant-marly",
+    },
+    {
+      id: "user-luca",
+      email: "luca.margaroli@tc-marly.ch",
+      firstName: "Luca",
+      lastName: "Margaroli",
+      phone: "+41 79 300 00 19",
+      role: "MEMBER",
+      tenantId: "tenant-marly",
+    },
+    {
+      id: "user-heinz",
+      email: "heinz.guenthardt@tc-marly.ch",
+      firstName: "Heinz",
+      lastName: "Günthardt",
+      phone: "+41 79 300 00 20",
+      role: "MEMBER",
+      tenantId: "tenant-marly",
+    },
+    {
+      id: "user-stefanie",
+      email: "stefanie.voegele@tc-marly.ch",
+      firstName: "Stefanie",
+      lastName: "Vögele",
+      phone: "+41 79 300 00 21",
+      role: "MEMBER",
+      tenantId: "tenant-marly",
+    },
+    {
+      id: "user-jakub",
+      email: "jakub.paul@tc-marly.ch",
+      firstName: "Jakub",
+      lastName: "Paul",
+      phone: "+41 79 300 00 22",
+      role: "MEMBER",
+      tenantId: "tenant-marly",
+    },
+    {
+      id: "user-didier",
+      email: "didier.cuche@tc-marly.ch",
+      firstName: "Didier",
+      lastName: "Cuche",
+      phone: "+41 79 400 00 01",
+      role: "MEMBER",
+      tenantId: "tenant-marly",
+    },
+    {
+      id: "user-alain",
+      email: "alain.berset@tc-marly.ch",
+      firstName: "Alain",
+      lastName: "Berset",
+      phone: "+41 79 400 00 02",
+      role: "MEMBER",
+      tenantId: "tenant-marly",
+    },
+    {
+      id: "user-marco",
+      email: "marco.odermatt@tc-marly.ch",
+      firstName: "Marco",
+      lastName: "Odermatt",
+      phone: "+41 79 400 00 03",
+      role: "MEMBER",
+      tenantId: "tenant-marly",
+    },
+    {
+      id: "user-lara",
+      email: "lara.gut@tc-marly.ch",
+      firstName: "Lara",
+      lastName: "Gut-Behrami",
+      phone: "+41 79 400 00 04",
+      role: "MEMBER",
+      tenantId: "tenant-marly",
+    },
+    {
+      id: "user-beat",
+      email: "beat.feuz@tc-marly.ch",
+      firstName: "Beat",
+      lastName: "Feuz",
+      phone: "+41 79 400 00 05",
+      role: "MEMBER",
+      tenantId: "tenant-marly",
+    },
+    {
+      id: "user-corinne",
+      email: "corinne.suter@tc-marly.ch",
+      firstName: "Corinne",
+      lastName: "Suter",
+      phone: "+41 79 400 00 06",
+      role: "MEMBER",
+      tenantId: "tenant-marly",
+    },
+    {
+      id: "user-wendy",
+      email: "wendy.holdener@tc-marly.ch",
+      firstName: "Wendy",
+      lastName: "Holdener",
+      phone: "+41 79 400 00 07",
+      role: "MEMBER",
+      tenantId: "tenant-marly",
+    },
+    {
+      id: "user-fabian",
+      email: "fabian.cancellara@tc-marly.ch",
+      firstName: "Fabian",
+      lastName: "Cancellara",
+      phone: "+41 79 400 00 08",
+      role: "MEMBER",
+      tenantId: "tenant-marly",
+    },
+    {
+      id: "user-nino",
+      email: "nino.schurter@tc-marly.ch",
+      firstName: "Nino",
+      lastName: "Schurter",
+      phone: "+41 79 400 00 09",
+      role: "MEMBER",
+      tenantId: "tenant-marly",
+    },
+    {
+      id: "user-stephane",
+      email: "stephane.chapuisat@tc-marly.ch",
+      firstName: "Stéphane",
+      lastName: "Chapuisat",
+      phone: "+41 79 400 00 10",
+      role: "MEMBER",
+      tenantId: "tenant-marly",
+    },
+    {
+      id: "user-alexander-f",
+      email: "alexander.frei@tc-marly.ch",
+      firstName: "Alexander",
+      lastName: "Frei",
+      phone: "+41 79 400 00 11",
+      role: "MEMBER",
+      tenantId: "tenant-marly",
+    },
+    {
+      id: "user-granit",
+      email: "granit.xhaka@tc-marly.ch",
+      firstName: "Granit",
+      lastName: "Xhaka",
+      phone: "+41 79 400 00 12",
+      role: "MEMBER",
+      tenantId: "tenant-marly",
+    },
+    {
+      id: "user-xherdan",
+      email: "xherdan.shaqiri@tc-marly.ch",
+      firstName: "Xherdan",
+      lastName: "Shaqiri",
+      phone: "+41 79 400 00 13",
+      role: "MEMBER",
+      tenantId: "tenant-marly",
+    },
+    {
+      id: "user-yann",
+      email: "yann.sommer@tc-marly.ch",
+      firstName: "Yann",
+      lastName: "Sommer",
+      phone: "+41 79 400 00 14",
+      role: "MEMBER",
+      tenantId: "tenant-marly",
     },
   ];
 
   membershipPlans: MembershipPlan[] = [
+    {
+      id: "plan-marly-aktiv",
+      tenantId: "tenant-marly",
+      name: "Aktivmitglied Marly",
+      description: "Unbeschränktes Spielrecht auf allen 8 Tennisplätzen",
+      price: 480,
+      currency: "CHF",
+      bookingWindowDays: 7,
+      simultaneousBookingLimit: 3,
+      dailyBookingLimit: 2,
+      weeklyBookingLimit: 6,
+      allowedDurations: [60, 90, 120],
+    },
+    {
+      id: "plan-marly-junior",
+      tenantId: "tenant-marly",
+      name: "Junior Marly",
+      description: "Für Jugendliche bis 18 Jahre (werktags bis 17:00 Uhr)",
+      price: 200,
+      currency: "CHF",
+      bookingWindowDays: 5,
+      simultaneousBookingLimit: 2,
+      dailyBookingLimit: 1,
+      weeklyBookingLimit: 4,
+      allowedDurations: [60],
+    },
+    {
+      id: "plan-marly-padel",
+      tenantId: "tenant-marly",
+      name: "Padel Saisonabo",
+      description: "Flatrate Spielrecht für den Padel-Panorama Court",
+      price: 350,
+      currency: "CHF",
+      bookingWindowDays: 14,
+      simultaneousBookingLimit: 2,
+      dailyBookingLimit: 1,
+      weeklyBookingLimit: 4,
+      allowedDurations: [60, 90],
+    },
     {
       id: "plan-aktiv",
       tenantId: "tenant-rot-weiss",
@@ -535,6 +1022,257 @@ class MockDatabase {
         },
       ],
     });
+
+    // ==========================================
+    // TC MARLY DEMO DATA (Matching Reference Layout)
+    // ==========================================
+    // Today 09:00 - 10:00 on Platz 3 (Roger & Stan - Einzel Match)
+    this.bookings.push({
+      id: "booking-marly-1",
+      tenantId: "tenant-marly",
+      courtId: "court-marly-3",
+      organizerId: "user-roger",
+      startsAt: makeDate(0, 9, 0),
+      endsAt: makeDate(0, 10, 0),
+      status: "CONFIRMED",
+      bookingType: "MEMBER",
+      hasBallMachine: false,
+      hasLighting: false,
+      totalCost: 0,
+      notes: "Warmup Match",
+      organizer: {
+        id: "user-roger",
+        firstName: "Roger",
+        lastName: "Federer",
+        email: "roger@tc-rotweiss.ch",
+      },
+      participants: [
+        {
+          id: "part-m-1",
+          bookingId: "booking-marly-1",
+          userId: "user-roger",
+          role: "ORGANIZER",
+          invitationStatus: "ACCEPTED",
+          user: {
+            id: "user-roger",
+            firstName: "Roger",
+            lastName: "Federer",
+            email: "roger@tc-rotweiss.ch",
+          },
+        },
+        {
+          id: "part-m-2",
+          bookingId: "booking-marly-1",
+          userId: "user-stan",
+          role: "PLAYER",
+          invitationStatus: "ACCEPTED",
+          user: {
+            id: "user-stan",
+            firstName: "Stan",
+            lastName: "Wawrinka",
+            email: "stan@tc-rotweiss.ch",
+          },
+        },
+      ],
+    });
+
+    // Today 10:00 - 14:00 on Platz 3: "Championnat Suisse universitaire" (Tournament block - Cyan)
+    this.bookings.push({
+      id: "booking-marly-tournament",
+      tenantId: "tenant-marly",
+      courtId: "court-marly-3",
+      organizerId: "user-clubadmin",
+      startsAt: makeDate(0, 10, 0),
+      endsAt: makeDate(0, 14, 0),
+      status: "CONFIRMED",
+      bookingType: "TOURNAMENT",
+      hasBallMachine: false,
+      hasLighting: false,
+      totalCost: 0,
+      notes: "Championnat Suisse universitaire",
+      organizer: {
+        id: "user-clubadmin",
+        firstName: "Championnat",
+        lastName: "Universitaire",
+        email: "tournoi@swisstennis.ch",
+      },
+      participants: [
+        {
+          id: "part-m-tourn",
+          bookingId: "booking-marly-tournament",
+          guestName: "Championnat Suisse universitaire",
+          role: "ORGANIZER",
+          invitationStatus: "ACCEPTED",
+        },
+      ],
+    });
+
+    // Today 08:00 - 10:00 on Platz 4: "Réservé"
+    this.bookings.push({
+      id: "booking-marly-4a",
+      tenantId: "tenant-marly",
+      courtId: "court-marly-4",
+      organizerId: "user-belinda",
+      startsAt: makeDate(0, 8, 0),
+      endsAt: makeDate(0, 10, 0),
+      status: "CONFIRMED",
+      bookingType: "MEMBER",
+      hasBallMachine: false,
+      hasLighting: false,
+      totalCost: 0,
+      notes: "Früh-Training",
+      organizer: {
+        id: "user-belinda",
+        firstName: "Belinda",
+        lastName: "Bencic",
+        email: "belinda@tc-rotweiss.ch",
+      },
+      participants: [
+        {
+          id: "part-m-bel",
+          bookingId: "booking-marly-4a",
+          userId: "user-belinda",
+          role: "ORGANIZER",
+          invitationStatus: "ACCEPTED",
+        },
+      ],
+    });
+
+    // Today 11:00 - 13:00 on Platz 4: "Location Anybuddy (Eric Gräni)"
+    this.bookings.push({
+      id: "booking-marly-anybuddy",
+      tenantId: "tenant-marly",
+      courtId: "court-marly-4",
+      organizerId: "guest-anybuddy",
+      startsAt: makeDate(0, 11, 0),
+      endsAt: makeDate(0, 13, 0),
+      status: "CONFIRMED",
+      bookingType: "GUEST",
+      hasBallMachine: false,
+      hasLighting: false,
+      totalCost: 60,
+      notes: "Location Anybuddy",
+      organizer: {
+        id: "guest-anybuddy",
+        firstName: "Eric",
+        lastName: "Gräni",
+        email: "eric.graeni@gmail.com",
+      },
+      participants: [
+        {
+          id: "part-m-anybuddy",
+          bookingId: "booking-marly-anybuddy",
+          guestName: "Eric Gräni (Location Anybuddy)",
+          role: "ORGANIZER",
+          invitationStatus: "ACCEPTED",
+        },
+      ],
+    });
+
+    // Today 09:00 - 12:00 on Platz 5: "Réservé (Doppel)"
+    this.bookings.push({
+      id: "booking-marly-5a",
+      tenantId: "tenant-marly",
+      courtId: "court-marly-5",
+      organizerId: "user-clubadmin",
+      startsAt: makeDate(0, 9, 0),
+      endsAt: makeDate(0, 12, 0),
+      status: "CONFIRMED",
+      bookingType: "MEMBER",
+      hasBallMachine: false,
+      hasLighting: false,
+      totalCost: 0,
+      notes: "Club-Doppel",
+      organizer: {
+        id: "user-clubadmin",
+        firstName: "Marc",
+        lastName: "Rosset",
+        email: "clubadmin@tc-rotweiss.ch",
+      },
+      participants: [
+        {
+          id: "part-m-5a",
+          bookingId: "booking-marly-5a",
+          userId: "user-clubadmin",
+          role: "ORGANIZER",
+          invitationStatus: "ACCEPTED",
+        },
+      ],
+    });
+
+    // Today 14:00 - 15:00 on Platz 5: "Réservé"
+    this.bookings.push({
+      id: "booking-marly-5b",
+      tenantId: "tenant-marly",
+      courtId: "court-marly-5",
+      organizerId: "user-stan",
+      startsAt: makeDate(0, 14, 0),
+      endsAt: makeDate(0, 15, 0),
+      status: "CONFIRMED",
+      bookingType: "MEMBER",
+      hasBallMachine: false,
+      hasLighting: false,
+      totalCost: 0,
+      notes: "Sparring",
+      organizer: {
+        id: "user-stan",
+        firstName: "Stan",
+        lastName: "Wawrinka",
+        email: "stan@tc-rotweiss.ch",
+      },
+      participants: [
+        {
+          id: "part-m-5b",
+          bookingId: "booking-marly-5b",
+          userId: "user-stan",
+          role: "ORGANIZER",
+          invitationStatus: "ACCEPTED",
+        },
+      ],
+    });
+
+    // Today 12:00 - 13:00 on Platz 6: Platzpflege
+    this.courtBlocks.push({
+      id: "block-marly-1",
+      tenantId: "tenant-marly",
+      courtId: "court-marly-6",
+      startsAt: makeDate(0, 12, 0),
+      endsAt: makeDate(0, 13, 0),
+      reason: "MAINTENANCE",
+      description: "Platzpflege & Bewässerung",
+      createdById: "user-clubadmin",
+    });
+
+    // Today 17:00 - 18:30 on Padel 1
+    this.bookings.push({
+      id: "booking-marly-padel",
+      tenantId: "tenant-marly",
+      courtId: "court-marly-9",
+      organizerId: "user-roger",
+      startsAt: makeDate(0, 17, 0),
+      endsAt: makeDate(0, 18, 30),
+      status: "CONFIRMED",
+      bookingType: "MEMBER",
+      hasBallMachine: false,
+      hasLighting: true,
+      totalCost: 40,
+      notes: "Padel Afterwork Match",
+      organizer: {
+        id: "user-roger",
+        firstName: "Roger",
+        lastName: "Federer",
+        email: "roger@tc-rotweiss.ch",
+      },
+      participants: [
+        {
+          id: "part-m-p1",
+          bookingId: "booking-marly-padel",
+          userId: "user-roger",
+          role: "ORGANIZER",
+          invitationStatus: "ACCEPTED",
+        },
+      ],
+    });
   }
 
   // Query helpers
@@ -549,7 +1287,9 @@ class MockDatabase {
   }
 
   getUsersByTenantId(tenantId: string): UserSummary[] {
-    return this.users.filter((u) => u.tenantId === tenantId);
+    return this.users.filter(
+      (u) => u.tenantId === tenantId || tenantId === "tenant-marly" || u.tenantId === "tenant-rot-weiss"
+    );
   }
 
   getUserByEmail(email: string): (UserSummary & { tenantId: string }) | undefined {
@@ -561,19 +1301,25 @@ class MockDatabase {
   }
 
   getBookings(tenantId: string, dateString: string): Booking[] {
-    // dateString format YYYY-MM-DD
+    // Check using local time bounds to prevent timezone day-shift bugs
+    const startOfDayMs = new Date(`${dateString}T00:00:00`).getTime();
+    const endOfDayMs = startOfDayMs + 24 * 60 * 60 * 1000;
+    
     return this.bookings.filter((b) => {
       if (b.tenantId !== tenantId || b.status === "CANCELLED") return false;
-      const bDate = b.startsAt.split("T")[0];
-      return bDate === dateString;
+      const bStartMs = new Date(b.startsAt).getTime();
+      return bStartMs >= startOfDayMs && bStartMs < endOfDayMs;
     });
   }
 
   getCourtBlocks(tenantId: string, dateString: string): CourtBlock[] {
+    const startOfDayMs = new Date(`${dateString}T00:00:00`).getTime();
+    const endOfDayMs = startOfDayMs + 24 * 60 * 60 * 1000;
+    
     return this.courtBlocks.filter((cb) => {
       if (cb.tenantId !== tenantId) return false;
-      const cbDate = cb.startsAt.split("T")[0];
-      return cbDate === dateString;
+      const cbStartMs = new Date(cb.startsAt).getTime();
+      return cbStartMs >= startOfDayMs && cbStartMs < endOfDayMs;
     });
   }
 

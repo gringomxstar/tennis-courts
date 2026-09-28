@@ -136,45 +136,52 @@ export async function getCourtBookings(
         },
       });
 
-      if (dbBookings.length > 0) {
-        return dbBookings.map((b) => ({
-          id: b.id,
-          tenantId: b.tenantId,
-          courtId: b.courtId,
-          organizerId: b.organizerId,
-          startsAt: b.startsAt.toISOString(),
-          endsAt: b.endsAt.toISOString(),
-          status: b.status as BookingStatus,
-          bookingType: b.bookingType as BookingType,
-          notes: b.notes,
-          hasBallMachine: Boolean((b as { hasBallMachine?: boolean }).hasBallMachine),
-          hasLighting: Boolean((b as { hasLighting?: boolean }).hasLighting),
-          totalCost: Number((b as { totalCost?: unknown }).totalCost || 0),
-          organizer: {
-            id: b.organizer.id,
-            firstName: b.organizer.firstName,
-            lastName: b.organizer.lastName,
-            email: b.organizer.email,
-          },
-          participants: b.participants.map((p) => ({
-            id: p.id,
-            bookingId: p.bookingId,
-            userId: p.userId,
-            guestName: p.guestName,
-            guestEmail: p.guestEmail,
-            role: p.role as ParticipantRole,
-            invitationStatus: p.invitationStatus as InvitationStatus,
-            user: p.user
-              ? {
-                  id: p.user.id,
-                  firstName: p.user.firstName,
-                  lastName: p.user.lastName,
-                  email: p.user.email,
-                }
-              : null,
-          })),
-        }));
+      const prismaMapped: Booking[] = dbBookings.map((b) => ({
+        id: b.id,
+        tenantId: b.tenantId,
+        courtId: b.courtId,
+        organizerId: b.organizerId,
+        startsAt: b.startsAt.toISOString(),
+        endsAt: b.endsAt.toISOString(),
+        status: b.status as BookingStatus,
+        bookingType: b.bookingType as BookingType,
+        notes: b.notes || null,
+        hasBallMachine: Boolean((b as { hasBallMachine?: boolean }).hasBallMachine),
+        hasLighting: Boolean((b as { hasLighting?: boolean }).hasLighting),
+        totalCost: Number((b as { totalCost?: unknown }).totalCost || 0),
+        organizer: {
+          id: b.organizer.id,
+          firstName: b.organizer.firstName,
+          lastName: b.organizer.lastName,
+          email: b.organizer.email,
+        },
+        participants: b.participants.map((p) => ({
+          id: p.id,
+          bookingId: p.bookingId,
+          userId: p.userId,
+          guestName: p.guestName,
+          guestEmail: p.guestEmail,
+          role: p.role as ParticipantRole,
+          invitationStatus: p.invitationStatus as InvitationStatus,
+          user: p.user
+            ? {
+                id: p.user.id,
+                firstName: p.user.firstName,
+                lastName: p.user.lastName,
+                email: p.user.email,
+              }
+            : null,
+        })),
+      }));
+      
+      const mockBookings = mockDb.getBookings(tenantId, dateStr);
+      const merged = [...prismaMapped];
+      for (const mb of mockBookings) {
+        if (!merged.some(pb => pb.id === mb.id)) {
+          merged.push(mb);
+        }
       }
+      return merged;
     } catch (e) {
       console.warn("Prisma query failed, falling back to mockDb:", e);
     }
@@ -202,16 +209,25 @@ export async function getCourtBlocks(
       });
 
       if (blocks.length > 0) {
-        return blocks.map((b) => ({
+        const prismaMapped: CourtBlock[] = blocks.map((b) => ({
           id: b.id,
           tenantId: b.tenantId,
           courtId: b.courtId,
           startsAt: b.startsAt.toISOString(),
           endsAt: b.endsAt.toISOString(),
           reason: b.reason as BlockReason,
-          description: b.description,
+          description: b.description || null,
           createdById: b.createdById,
         }));
+        
+        const mockBlocks = mockDb.getCourtBlocks(tenantId, dateStr);
+        const merged = [...prismaMapped];
+        for (const mb of mockBlocks) {
+          if (!merged.some(pb => pb.id === mb.id)) {
+            merged.push(mb);
+          }
+        }
+        return merged;
       }
     } catch (e) {
       console.warn("Prisma query failed, falling back to mockDb:", e);
@@ -260,7 +276,7 @@ export async function getMembershipPlansByTenantId(tenantId: string): Promise<Me
           id: p.id,
           tenantId: p.tenantId,
           name: p.name,
-          description: p.description,
+          description: p.description || null,
           price: Number(p.price),
           currency: p.currency,
           bookingWindowDays: p.bookingWindowDays,
