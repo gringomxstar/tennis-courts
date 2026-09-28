@@ -83,7 +83,7 @@ export default async function DashboardPage() {
                 </p>
                 {activeMembership.status === "PENDING" && (
                   <p className="text-xs text-slate-400 mt-2">
-                    Dein Abo ist noch auf "Ausstehend" (Rechnung unbezahlt). Sobald die Zahlung eintrifft, schaltet es auf ACTIVE.
+                    Dein Abo ist noch auf &quot;Ausstehend&quot; (Rechnung unbezahlt). Sobald die Zahlung eintrifft, schaltet es auf ACTIVE.
                   </p>
                 )}
               </div>

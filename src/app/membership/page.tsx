@@ -1,4 +1,4 @@
-import { CheckCircle2, Check } from "lucide-react";
+import { Check } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { CheckoutButton } from "@/components/ui/checkout-button";

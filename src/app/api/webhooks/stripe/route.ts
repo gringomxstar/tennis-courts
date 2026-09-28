@@ -19,9 +19,10 @@ export async function POST(req: Request) {
     }
     // Verify that this request actually came from Stripe
     event = getStripe().webhooks.constructEvent(payload, signature, endpointSecret);
-  } catch (err: any) {
-    console.error(`❌ Webhook Error: ${err.message}`);
-    return NextResponse.json({ error: `Webhook Error: ${err.message}` }, { status: 400 });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    console.error(`❌ Webhook Error: ${message}`);
+    return NextResponse.json({ error: `Webhook Error: ${message}` }, { status: 400 });
   }
 
   try {
@@ -56,7 +57,9 @@ export async function POST(req: Request) {
       // 3. Rechnung abgelaufen / Nicht bezahlt
       case "invoice.payment_failed": {
         const failedInvoice = event.data.object as Stripe.Invoice;
-        await handlePaymentFailed(failedInvoice.customer as string, (failedInvoice as any).subscription as string);
+        const subscriptionRef = failedInvoice.parent?.subscription_details?.subscription;
+        const subscriptionId = typeof subscriptionRef === "string" ? subscriptionRef : subscriptionRef?.id;
+        await handlePaymentFailed(failedInvoice.customer as string, subscriptionId);
         break;
       }
 

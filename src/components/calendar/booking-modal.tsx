@@ -69,7 +69,7 @@ export function BookingModal({
   selectedTimeStr,
   existingBookings = [],
 }: BookingModalProps) {
-  const [courtId, setCourtId] = useState(selectedCourtId || courts[0]?.id || "");
+  const courtId = selectedCourtId || courts[0]?.id || "";
   const [time, setTime] = useState(selectedTimeStr || "10:00");
   const [durationMinutes, setDurationMinutes] = useState(60);
   const [matchType, setMatchType] = useState<"SINGLE" | "DOUBLE">("SINGLE");
@@ -86,7 +86,6 @@ export function BookingModal({
   const [guestLastName, setGuestLastName] = useState("");
   const [guestEmail, setGuestEmail] = useState("");
 
-  const defaultOpponent = members.find((m) => m.id !== currentUserId);
   const [participants, setParticipants] = useState<ParticipantSlot[]>([]);
 
   const [memberSearchQuery, setMemberSearchQuery] = useState("");

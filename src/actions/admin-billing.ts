@@ -74,8 +74,8 @@ export async function markInvoiceAsPaidManually(tenantId: string, userId: string
 
     return { success: true, message: "User erfolgreich als bezahlt markiert & freigeschaltet." };
 
-  } catch (error: any) {
+  } catch (error) {
     console.error("Admin Payment Error:", error);
-    return { success: false, error: error.message };
+    return { success: false, error: error instanceof Error ? error.message : "Unbekannter Fehler" };
   }
 }

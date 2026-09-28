@@ -29,7 +29,7 @@ export async function POST(req: Request) {
     }
 
     // 2. Hole oder erstelle den Stripe Customer
-    let user = await prisma.user.findUnique({
+    const user = await prisma.user.findUnique({
       where: { email: session.user.email },
     });
 
@@ -125,8 +125,9 @@ export async function POST(req: Request) {
       url: checkoutSession.url,
     });
     
-  } catch (error: any) {
+  } catch (error) {
     console.error("Checkout Error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

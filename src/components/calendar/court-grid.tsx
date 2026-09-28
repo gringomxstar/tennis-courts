@@ -1,7 +1,7 @@
 "use client";
 
 import { Court, Booking, CourtBlock } from "@/types";
-import { Clock, Plus, Wrench, Trophy, Sparkles, Lightbulb } from "lucide-react";
+import { Clock, Plus, Wrench, Trophy, Lightbulb } from "lucide-react";
 import { formatTime24 } from "@/lib/utils";
 
 interface CourtGridProps {

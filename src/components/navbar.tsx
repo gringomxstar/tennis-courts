@@ -1,12 +1,10 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { logoutAction } from "@/app/actions/auth";
-import { topUpWalletAction } from "@/app/actions/booking";
 import {
   Calendar,
   Shield,
@@ -15,7 +13,6 @@ import {
   Sparkles,
   MapPin,
   Coins,
-  Loader2,
 } from "lucide-react";
 import { Tenant, TenantRole } from "@/types";
 import { ThemeToggle } from "./theme-toggle";
@@ -37,21 +34,7 @@ interface NavbarProps {
 
 export function Navbar({ currentTenant, user, wallet }: NavbarProps) {
   const pathname = usePathname();
-  const [topUpLoading, setTopUpLoading] = useState(false);
-  const [optimisticBalance, setOptimisticBalance] = useState<number | null>(null);
-
-  const currentBalance =
-    optimisticBalance !== null ? optimisticBalance : (wallet?.balance ?? 0);
-
-  const handleTopUp = async () => {
-    if (!currentTenant) return;
-    setTopUpLoading(true);
-    const res = await topUpWalletAction({ clubSlug: currentTenant.slug, amount: 50 });
-    setTopUpLoading(false);
-    if (res.success && res.balance !== undefined) {
-      setOptimisticBalance(res.balance);
-    }
-  };
+  const currentBalance = wallet?.balance ?? 0;
 
   const getRoleBadge = (role?: TenantRole, isPlatformAdmin?: boolean) => {
     if (isPlatformAdmin || role === "PLATFORM_ADMIN") {
