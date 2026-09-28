@@ -75,7 +75,7 @@ export default async function Home() {
 
             <Link
               href="/membership"
-              className="flex items-center justify-center gap-2 w-full sm:w-auto px-8 py-4 bg-white dark:bg-[#111111] border border-slate-200 dark:border-white/10 hover:border-clay/50 font-bold rounded-2xl transition-all shadow-sm hover:shadow-clay/10 group"
+              className="flex items-center justify-center gap-2 w-full sm:w-auto px-8 py-4 bg-card border border-border hover:border-clay/50 font-bold rounded-2xl transition-all shadow-sm hover:shadow-clay/10 group"
             >
               Abo kaufen (Twint/Rechnung)
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />

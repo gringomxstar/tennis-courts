@@ -39,7 +39,7 @@ export function ThemeToggle() {
 
   if (!isClient) {
     return (
-      <div className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-[#141A26] border border-slate-200 dark:border-white/[0.08]" />
+      <div className="w-8 h-8 rounded-xl bg-card border border-border" />
     );
   }
 
@@ -48,12 +48,12 @@ export function ThemeToggle() {
       onClick={toggleTheme}
       type="button"
       title={isDark ? "Zu hellem Modus wechseln" : "Zu Roland Garros Nocturne Dark Mode wechseln"}
-      className="w-8 h-8 rounded-xl flex items-center justify-center transition-all bg-slate-100 hover:bg-slate-200 text-slate-600 dark:bg-[#141A26] dark:hover:bg-[#1A2232] dark:text-amber-400 border border-slate-200/80 dark:border-white/[0.08] shadow-2xs cursor-pointer hover:scale-105"
+      className="w-8 h-8 rounded-xl flex items-center justify-center transition-all bg-secondary hover:bg-accent text-muted-foreground dark:text-amber-400 border border-border shadow-2xs cursor-pointer hover:scale-105"
     >
       {isDark ? (
         <Sun className="w-3.5 h-3.5 text-amber-400 transition-transform" />
       ) : (
-        <Moon className="w-3.5 h-3.5 text-slate-700 transition-transform" />
+        <Moon className="w-3.5 h-3.5 text-foreground transition-transform" />
       )}
     </button>
   );

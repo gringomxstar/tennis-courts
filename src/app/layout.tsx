@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import Script from "next/script";
 import "./globals.css";
 import { cn } from "@/lib/utils";
+import { Toaster } from "@/components/ui/sonner";
 
 export const metadata: Metadata = {
   title: "Tennis Reservation App",
@@ -39,8 +40,9 @@ export default function RootLayout({
           `}
         </Script>
       </head>
-      <body className="min-h-full flex flex-col font-sans bg-slate-50 text-slate-900 dark:bg-[#080B11] dark:text-slate-100 antialiased">
+      <body className="min-h-full flex flex-col font-sans bg-background text-foreground antialiased">
         {children}
+        <Toaster />
       </body>
     </html>
   );

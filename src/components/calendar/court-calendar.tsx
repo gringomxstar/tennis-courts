@@ -15,6 +15,8 @@ import {
   MapPin,
   Clock,
   Loader2,
+  Trophy,
+  Lightbulb,
 } from "lucide-react";
 
 interface CourtCalendarProps {
@@ -135,14 +137,14 @@ export function CourtCalendar({
   return (
     <div className="flex-1 h-full min-h-0 flex flex-col space-y-4 p-4 md:p-6 lg:p-8">
       {/* Club Top Banner: Roland Garros Nocturne Night Stadium */}
-      <div className="relative overflow-hidden rounded-3xl border border-slate-200/80 dark:border-white/[0.06] bg-white/90 dark:bg-[#141A26]/90 shadow-sm p-6 backdrop-blur-xl">
-        <div className="absolute top-0 right-0 -mt-12 -mr-12 w-72 h-72 rounded-full bg-[#E25B36]/10 blur-3xl pointer-events-none" />
+      <div className="relative overflow-hidden rounded-3xl border border-border bg-card shadow-sm p-6 backdrop-blur-xl">
+        <div className="absolute top-0 right-0 -mt-12 -mr-12 w-72 h-72 rounded-full bg-clay/10 blur-3xl pointer-events-none" />
         <div className="absolute bottom-0 left-1/3 -mb-12 w-56 h-56 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
 
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-2.5">
-              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-slate-100">
+              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
                 {tenant.name}
               </h1>
               <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/10 text-amber-600 dark:bg-amber-400/15 dark:text-amber-300 border border-amber-500/20 dark:border-amber-400/30">
@@ -151,19 +153,19 @@ export function CourtCalendar({
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-slate-500 dark:text-slate-400">
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-muted-foreground">
               {tenant.address && (
                 <span className="flex items-center gap-1.5">
-                  <MapPin className="w-3.5 h-3.5 text-[#E25B36]" />
+                  <MapPin className="w-3.5 h-3.5 text-clay" />
                   {tenant.address}
                 </span>
               )}
               <span className="flex items-center gap-1.5">
-                <Clock className="w-3.5 h-3.5 text-slate-400" />
+                <Clock className="w-3.5 h-3.5 text-muted-foreground" />
                 {tenant.settingsJson?.openingHour || 7}:00 – {tenant.settingsJson?.closingHour || 22}:00 Uhr
               </span>
-              <span className="inline-flex items-center gap-1 font-semibold text-slate-700 dark:text-slate-300">
-                🎾 {courts.length} Plätze bespielbar
+              <span className="inline-flex items-center gap-1 font-semibold text-muted-foreground">
+                <Trophy className="w-3.5 h-3.5" /> {courts.length} Plätze bespielbar
               </span>
             </div>
           </div>
@@ -175,7 +177,7 @@ export function CourtCalendar({
                 setSelectedTime("10:00");
                 setBookingModalOpen(true);
               }}
-              className="bg-[#E25B36] hover:bg-[#C84B2B] text-white font-semibold text-xs h-10 px-4 rounded-xl shadow-md shadow-[#E25B36]/25 gap-2 transition-all hover:scale-102 cursor-pointer"
+              className="bg-clay hover:bg-clay-hover text-white font-semibold text-xs h-10 px-4 rounded-xl shadow-md shadow-clay/25 gap-2 transition-all hover:scale-102 cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               Platz reservieren
@@ -185,14 +187,14 @@ export function CourtCalendar({
       </div>
 
       {/* Date Carousel & Filter Bar */}
-      <div className="rounded-3xl border border-slate-200/80 dark:border-white/[0.06] bg-white/90 dark:bg-[#141A26]/90 shadow-sm p-4 backdrop-blur-xl space-y-4">
+      <div className="rounded-3xl border border-border bg-card shadow-sm p-4 backdrop-blur-xl space-y-4">
         {/* Top: 7-Day Carousel Strip */}
         <div className="flex items-center justify-between gap-2 overflow-x-auto pb-1 scrollbar-none">
           <Button
             variant="outline"
             size="icon"
             onClick={() => handleDateChange(-1)}
-            className="shrink-0 h-11 w-11 rounded-2xl border-slate-200 dark:border-white/[0.08] dark:bg-[#18202F] text-slate-700 dark:text-slate-300 hover:text-[#E25B36] cursor-pointer"
+            className="shrink-0 h-11 w-11 rounded-2xl border-border dark:bg-secondary text-muted-foreground hover:text-clay cursor-pointer"
             title="Vorheriger Tag"
           >
             <ChevronLeft className="w-4 h-4" />
@@ -205,11 +207,11 @@ export function CourtCalendar({
                 onClick={() => navigateToDate(day.dateStr)}
                 className={`flex flex-col items-center justify-center py-2 px-3.5 min-w-[62px] rounded-2xl transition-all cursor-pointer ${
                   day.isSelected
-                    ? "bg-[#E25B36] text-white shadow-md shadow-[#E25B36]/30 scale-105 font-bold"
-                    : "bg-slate-100/70 hover:bg-slate-200/70 dark:bg-[#18202F] dark:hover:bg-[#1F2B3E] text-slate-700 dark:text-slate-300 border border-transparent dark:border-white/[0.03]"
+                    ? "bg-clay text-white shadow-md shadow-clay/30 scale-105 font-bold"
+                    : "bg-secondary hover:bg-accent text-muted-foreground border border-border"
                 }`}
               >
-                <span className={`text-[10px] uppercase font-bold tracking-wider ${day.isSelected ? "text-white/80" : "text-slate-400"}`}>
+                <span className={`text-[10px] uppercase font-bold tracking-wider ${day.isSelected ? "text-white/80" : "text-muted-foreground"}`}>
                   {day.weekday}
                 </span>
                 <span className="text-base font-extrabold leading-tight mt-0.5">
@@ -228,7 +230,7 @@ export function CourtCalendar({
             variant="outline"
             size="icon"
             onClick={() => handleDateChange(1)}
-            className="shrink-0 h-11 w-11 rounded-2xl border-slate-200 dark:border-white/[0.08] dark:bg-[#18202F] text-slate-700 dark:text-slate-300 hover:text-[#E25B36] cursor-pointer"
+            className="shrink-0 h-11 w-11 rounded-2xl border-border dark:bg-secondary text-muted-foreground hover:text-clay cursor-pointer"
             title="Nächster Tag"
           >
             <ChevronRight className="w-4 h-4" />
@@ -236,13 +238,13 @@ export function CourtCalendar({
         </div>
 
         {/* Bottom: Date title & Segmented Filters */}
-        <div className="pt-3 border-t border-slate-100 dark:border-white/[0.06] flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div className="pt-3 border-t border-border flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div className="relative flex items-center gap-2">
-            <CalendarIcon className="w-4 h-4 text-[#E25B36]" />
-            <span className="text-sm font-bold text-slate-900 dark:text-slate-100 capitalize">
+            <CalendarIcon className="w-4 h-4 text-clay" />
+            <span className="text-sm font-bold text-foreground capitalize">
               {formattedDisplayDate}
             </span>
-            {isPending && <Loader2 className="w-4 h-4 animate-spin text-[#E25B36]" />}
+            {isPending && <Loader2 className="w-4 h-4 animate-spin text-clay" />}
             <input
               type="date"
               value={selectedDate}
@@ -250,7 +252,7 @@ export function CourtCalendar({
               className="opacity-0 absolute inset-0 cursor-pointer w-full"
               title="Anderes Datum wählen"
             />
-            <span className="text-[11px] text-slate-400 hover:text-[#E25B36] underline cursor-pointer">
+            <span className="text-[11px] text-muted-foreground hover:text-clay underline cursor-pointer">
               (Kalender)
             </span>
           </div>
@@ -258,7 +260,7 @@ export function CourtCalendar({
           {/* Clean Segmented Filter Controls */}
           <div className="flex flex-wrap items-center gap-2">
             {/* Quick Sport & Surface Pills */}
-            <div className="flex items-center p-1 rounded-2xl bg-slate-100 dark:bg-[#101522] border border-slate-200/80 dark:border-white/[0.06]">
+            <div className="flex items-center p-1 rounded-2xl bg-muted border border-border">
               <button
                 onClick={() => {
                   setSportFilter("ALL");
@@ -267,8 +269,8 @@ export function CourtCalendar({
                 }}
                 className={`px-3 py-1 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
                   sportFilter === "ALL" && surfaceFilter === "ALL" && indoorFilter === "ALL"
-                    ? "bg-white dark:bg-[#1C2536] text-[#E25B36] dark:text-[#F37957] shadow-xs"
-                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                    ? "bg-card dark:bg-accent text-clay dark:text-clay-hover shadow-xs"
+                    : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 Alle Plätze
@@ -281,8 +283,8 @@ export function CourtCalendar({
                 }}
                 className={`px-3 py-1 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
                   surfaceFilter === "CLAY"
-                    ? "bg-white dark:bg-[#1C2536] text-[#E25B36] dark:text-[#F37957] shadow-xs font-bold"
-                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                    ? "bg-card dark:bg-accent text-clay dark:text-clay-hover shadow-xs font-bold"
+                    : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 Sand (Clay)
@@ -295,8 +297,8 @@ export function CourtCalendar({
                 }}
                 className={`px-3 py-1 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
                   sportFilter === "PADEL"
-                    ? "bg-white dark:bg-[#1C2536] text-cyan-600 dark:text-cyan-400 shadow-xs font-bold"
-                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                    ? "bg-card dark:bg-accent text-cyan-600 dark:text-cyan-400 shadow-xs font-bold"
+                    : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 Padel
@@ -309,8 +311,8 @@ export function CourtCalendar({
                 }}
                 className={`px-3 py-1 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
                   indoorFilter === "INDOOR"
-                    ? "bg-white dark:bg-[#1C2536] text-indigo-600 dark:text-indigo-400 shadow-xs font-bold"
-                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                    ? "bg-card dark:bg-accent text-indigo-600 dark:text-indigo-400 shadow-xs font-bold"
+                    : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 Halle
@@ -322,11 +324,11 @@ export function CourtCalendar({
               onClick={() => setLightingOnly(!lightingOnly)}
               className={`px-3 py-1.5 rounded-2xl text-xs font-semibold border transition-all cursor-pointer flex items-center gap-1.5 ${
                 lightingOnly
-                  ? "bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/40 shadow-xs"
-                  : "border-slate-200/80 dark:border-white/[0.06] text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-[#18202F]"
+                  ? "bg-floodlight/20 text-floodlight border-floodlight/40 shadow-xs"
+                  : "border-border text-muted-foreground hover:bg-secondary"
               }`}
             >
-              <span>💡</span>
+              <Lightbulb className="w-3.5 h-3.5" />
               <span>Flutlicht</span>
             </button>
           </div>

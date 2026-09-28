@@ -54,7 +54,7 @@ export default async function DashboardPage() {
         <div className="grid md:grid-cols-2 gap-8">
           
           {/* Status Card */}
-          <div className="bg-white dark:bg-[#111111] p-8 rounded-3xl border border-slate-200 dark:border-white/10 shadow-sm">
+          <div className="bg-card p-8 rounded-3xl border border-border shadow-sm">
             <div className="flex items-center gap-4 mb-6">
               <div className="w-12 h-12 bg-clay/10 text-clay rounded-full flex items-center justify-center">
                 <UserIcon className="w-6 h-6" />
@@ -99,7 +99,7 @@ export default async function DashboardPage() {
           </div>
 
           {/* Actions Card */}
-          <div className="bg-white dark:bg-[#111111] p-8 rounded-3xl border border-slate-200 dark:border-white/10 shadow-sm flex flex-col justify-center items-center text-center">
+          <div className="bg-card p-8 rounded-3xl border border-border shadow-sm flex flex-col justify-center items-center text-center">
             <div className="w-16 h-16 bg-clay/10 text-clay rounded-2xl flex items-center justify-center mb-6">
               <Calendar className="w-8 h-8" />
             </div>

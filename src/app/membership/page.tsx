@@ -15,7 +15,7 @@ export default async function MembershipPage() {
 
   if (!tenant) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-[#0A0A0A]">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <p className="text-slate-500">Systemfehler: Kein aktiver Club gefunden.</p>
       </div>
     );
@@ -60,8 +60,8 @@ export default async function MembershipPage() {
                   key={plan.id}
                   className={`relative rounded-3xl p-8 transition-all hover:scale-[1.02] ${
                     isPopular
-                      ? "bg-white dark:bg-[#0A0A0A] border-2 border-clay shadow-2xl transform md:-translate-y-4 z-10"
-                      : "bg-slate-50 dark:bg-[#111111] border border-slate-200 dark:border-white/[0.05] hover:shadow-xl"
+                      ? "bg-card border-2 border-clay shadow-2xl transform md:-translate-y-4 z-10"
+                      : "bg-card border border-border hover:shadow-xl"
                   }`}
                 >
                   {isPopular && (

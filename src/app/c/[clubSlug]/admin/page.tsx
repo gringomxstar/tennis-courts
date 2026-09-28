@@ -41,7 +41,7 @@ export default async function ClubAdminPage({ params }: ClubAdminPageProps) {
   ]);
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-[#0B0F17]">
+    <div className="min-h-screen flex flex-col bg-background">
       <Navbar currentTenant={tenant} user={context.user} wallet={wallet} />
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
@@ -50,7 +50,7 @@ export default async function ClubAdminPage({ params }: ClubAdminPageProps) {
           <div>
             <Link
               href={`/c/${tenant.slug}`}
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#E25B36] hover:text-[#C84B2B] mb-2 transition-colors"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-clay hover:text-clay-hover mb-2 transition-colors"
             >
               <ChevronLeft className="w-3.5 h-3.5" />
               Zurück zum Buchungskalender
@@ -163,7 +163,7 @@ export default async function ClubAdminPage({ params }: ClubAdminPageProps) {
           <Card className="border-slate-200 dark:border-slate-800 shadow-xs">
             <CardHeader>
               <CardTitle className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                🎾 Plätze & Multi-Sport ({courts.length})
+                Plätze & Multi-Sport ({courts.length})
               </CardTitle>
               <CardDescription className="text-xs">
                 Übersicht aller bespielbaren Tennis- und Padel-Plätze mit Stundensätzen

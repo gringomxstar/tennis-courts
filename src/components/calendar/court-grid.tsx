@@ -1,7 +1,7 @@
 "use client";
 
 import { Court, Booking, CourtBlock } from "@/types";
-import { Clock, Plus, Wrench, Trophy, Sparkles } from "lucide-react";
+import { Clock, Plus, Wrench, Trophy, Sparkles, Lightbulb } from "lucide-react";
 import { formatTime24 } from "@/lib/utils";
 
 interface CourtGridProps {
@@ -88,9 +88,9 @@ export function CourtGrid({
       case "CLAY":
         return {
           label: "Sand (Clay)",
-          dotColor: "bg-[#FF6E40]",
-          color: "text-orange-900 bg-orange-100 border-orange-300 dark:text-[#FF8A65] dark:bg-orange-950/80 dark:border-orange-500/40",
-          barColor: "bg-[#FF6E40] shadow-[0_0_10px_rgba(255,110,64,0.5)]",
+          dotColor: "bg-clay",
+          color: "text-orange-900 bg-orange-100 border-orange-300 dark:text-clay-hover dark:bg-orange-950/80 dark:border-orange-500/40",
+          barColor: "bg-clay shadow-[0_0_10px_var(--tennis-clay)]",
         };
       default:
         return {
@@ -122,7 +122,7 @@ export function CourtGrid({
       return (
         <div
           key={`${court.id}-${hour}`}
-          className="relative h-20 p-2.5 rounded-xl border border-amber-500/30 bg-[#241A08] text-amber-200 flex flex-col justify-between overflow-hidden shadow-sm m-0.5"
+          className="relative h-20 p-2.5 rounded-xl border border-amber-500/30 bg-amber-950/70 text-amber-200 flex flex-col justify-between overflow-hidden shadow-sm m-0.5"
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-amber-300 flex items-center gap-1.5 truncate">
@@ -180,11 +180,11 @@ export function CourtGrid({
 
       // Card Styles: Vercel/Linear Minimalist Pastel (Soft, clean, glassmorphic)
       let cardContainerStyle =
-        "bg-orange-100/60 border border-orange-200/60 text-orange-900 shadow-[0_1px_2px_rgba(0,0,0,0.02)] dark:bg-[#FF6E40]/10 dark:border-[#FF6E40]/20 dark:text-orange-200";
+        "bg-orange-100/60 border border-orange-200/60 text-orange-900 shadow-[0_1px_2px_rgba(0,0,0,0.02)] dark:bg-clay/10 dark:border-clay/20 dark:text-orange-200";
       let tagText = "Réservé";
       let tagStyle =
-        "bg-orange-500/10 text-orange-700 font-semibold dark:bg-[#FF6E40]/20 dark:text-orange-300";
-      let avatarBg = "bg-orange-400 dark:bg-[#FF6E40]";
+        "bg-orange-500/10 text-orange-700 font-semibold dark:bg-clay/20 dark:text-orange-300";
+      let avatarBg = "bg-orange-400 dark:bg-clay";
 
       if (isTournament) {
         cardContainerStyle =
@@ -203,7 +203,7 @@ export function CourtGrid({
           "bg-blue-100/60 border border-blue-200/60 text-blue-900 shadow-[0_1px_2px_rgba(0,0,0,0.02)] dark:bg-blue-500/10 dark:border-blue-500/20 dark:text-blue-200";
         tagText = "Mein Match";
         tagStyle = "bg-blue-500/10 text-blue-700 font-semibold dark:bg-blue-500/20 dark:text-blue-300";
-        avatarBg = "bg-[#2563EB]";
+        avatarBg = "bg-blue-600";
       }
 
       return (
@@ -220,7 +220,7 @@ export function CourtGrid({
               >
                 {isTournament ? "🇨🇭" : organizerInitials}
               </div>
-              <span className="font-bold text-xs text-slate-900 dark:text-white truncate tracking-tight">
+              <span className="font-bold text-xs text-foreground truncate tracking-tight">
                 {isTournament ? (booking.notes || "Turnier") : organizerName}
               </span>
             </div>
@@ -231,29 +231,29 @@ export function CourtGrid({
           </div>
 
           {/* Middle: Opponent or Notes */}
-          <div className="flex items-center justify-between text-[11px] text-slate-700 dark:text-slate-200 gap-1 truncate font-medium">
+          <div className="flex items-center justify-between text-[11px] opacity-80 gap-1 truncate font-medium">
             {opponentName ? (
               <span className="truncate opacity-90">vs. {opponentName}</span>
             ) : booking.notes && !isTournament ? (
-              <span className="truncate italic text-slate-600 dark:text-slate-300 text-[10px]">„{booking.notes}“</span>
+              <span className="truncate italic text-[10px]">„{booking.notes}“</span>
             ) : (
               <span className="opacity-70 text-[10px]">{isTournament ? "Gesperrt für Event" : "Einzel"}</span>
             )}
 
             {booking.hasBallMachine && (
-              <span className="text-[8px] font-bold px-1 rounded bg-amber-400 text-slate-950 shrink-0">
-                🎾 Ball
+              <span className="text-[8px] font-bold px-1 rounded bg-amber-400 text-slate-950 shrink-0 flex items-center gap-0.5">
+                <Trophy className="w-2.5 h-2.5" /> Ball
               </span>
             )}
           </div>
 
           {/* Bottom: Time */}
-          <div className="flex items-center justify-between text-[10px] text-slate-600 dark:text-slate-300 font-mono">
+          <div className="flex items-center justify-between text-[10px] opacity-75 font-mono">
             <span className="flex items-center gap-1">
-              <Clock className="w-3 h-3 text-slate-400" />
+              <Clock className="w-3 h-3" />
               {formatTime24(booking.startsAt)} - {formatTime24(booking.endsAt)}
             </span>
-            {booking.hasLighting && <span>💡</span>}
+            {booking.hasLighting && <Lightbulb className="w-3 h-3" />}
           </div>
         </div>
       );
@@ -267,12 +267,12 @@ export function CourtGrid({
         className={`group relative h-20 rounded-[12px] transition-all duration-200 ease-out flex flex-col items-center justify-center p-2 select-none m-0.5 ${
           past
             ? "opacity-30 cursor-not-allowed"
-            : "bg-transparent hover:bg-slate-50 border border-transparent hover:border-slate-200/60 dark:hover:bg-white/[0.02] dark:hover:border-white/[0.05] active:scale-[0.98] cursor-pointer"
+            : "bg-transparent hover:bg-secondary border border-transparent hover:border-border active:scale-[0.98] cursor-pointer"
         }`}
       >
         {!past && (
           <div className="flex flex-col items-center justify-center text-center w-full opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-            <span className="text-xs font-mono font-medium text-slate-500 dark:text-slate-400 group-hover:text-blue-600 dark:group-hover:text-blue-400">
+            <span className="text-xs font-mono font-medium text-muted-foreground group-hover:text-blue-600 dark:group-hover:text-blue-400">
               {timeStr}
             </span>
             <span className="inline-flex items-center gap-1 mt-1 text-[10px] font-semibold text-blue-700 bg-blue-100 dark:bg-blue-500/20 dark:text-blue-300 px-2 py-0.5 rounded-full">
@@ -286,15 +286,15 @@ export function CourtGrid({
 
   if (courts.length === 0) {
     return (
-      <div className="py-20 text-center rounded-3xl bg-[#0D121D] border border-white/5 p-8 text-slate-400">
-        <span className="text-3xl mb-2 block">🎾</span>
-        <h3 className="text-base font-bold text-white">Keine Plätze für diese Kategorie</h3>
+      <div className="py-20 text-center rounded-3xl bg-card border border-border p-8 text-muted-foreground">
+        <Trophy className="w-8 h-8 mx-auto mb-2" />
+        <h3 className="text-base font-bold text-foreground">Keine Plätze für diese Kategorie</h3>
       </div>
     );
   }
 
   return (
-    <div className="relative w-full h-full flex-1 min-h-0 overflow-x-auto overflow-y-auto rounded-3xl bg-white dark:bg-[#0A0A0A] border border-slate-200 dark:border-white/[0.08] shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-none overscroll-contain select-none transition-colors scrollbar-hide">
+    <div className="relative w-full h-full flex-1 min-h-0 overflow-x-auto overflow-y-auto rounded-3xl bg-card border border-border shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-none overscroll-contain select-none transition-colors scrollbar-hide">
       <div
         className="min-w-max"
         style={{
@@ -305,8 +305,8 @@ export function CourtGrid({
         {/* ======================================================== */}
         {/* Top-Left Corner Intersection (Sticky Top + Sticky Left) */}
         {/* ======================================================== */}
-        <div className="sticky top-0 left-0 z-40 bg-white/80 dark:bg-[#0A0A0A]/80 backdrop-blur-xl p-3 border-b border-r border-slate-200 dark:border-white/[0.08] flex flex-col items-center justify-center transition-colors">
-          <span className="font-semibold text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-widest font-mono">
+        <div className="sticky top-0 left-0 z-40 bg-card backdrop-blur-xl p-3 border-b border-r border-border flex flex-col items-center justify-center transition-colors">
+          <span className="font-semibold text-[10px] text-muted-foreground uppercase tracking-widest font-mono">
             Zeit
           </span>
         </div>
@@ -319,7 +319,7 @@ export function CourtGrid({
           return (
             <div
               key={`header-${court.id}`}
-              className="sticky top-0 z-30 bg-white/80 dark:bg-[#0A0A0A]/80 backdrop-blur-xl p-3 border-b border-r border-slate-200 dark:border-white/[0.08] last:border-r-0 relative overflow-hidden transition-colors"
+              className="sticky top-0 z-30 bg-card backdrop-blur-xl p-3 border-b border-r border-border last:border-r-0 relative overflow-hidden transition-colors"
             >
               {/* Surface Accent Bar - Softened */}
               <div className={`absolute top-0 left-0 right-0 h-1 opacity-50 ${surfaceMeta.barColor}`} />
@@ -327,7 +327,7 @@ export function CourtGrid({
               <div className="flex items-center justify-between gap-1 mb-1 mt-1">
                 <div className="flex items-center gap-1.5 truncate">
                   <span className={`w-2 h-2 rounded-full ${surfaceMeta.dotColor} shrink-0 opacity-80`} />
-                  <span className="font-bold text-[13px] text-slate-800 dark:text-slate-200 truncate tracking-tight">
+                  <span className="font-bold text-[13px] text-foreground truncate tracking-tight">
                     {court.name}
                   </span>
                 </div>
@@ -337,8 +337,12 @@ export function CourtGrid({
                 <span className={`px-2 py-0.5 rounded-md text-[9px] font-medium border ${surfaceMeta.color} opacity-80`}>
                   {surfaceMeta.label}
                 </span>
-                <span className="flex items-center gap-1 text-slate-400 dark:text-slate-500 font-mono">
-                  {court.hasLighting && <span title="Flutlicht vorhanden" className="opacity-70">💡</span>}
+                <span className="flex items-center gap-1 text-muted-foreground font-mono">
+                  {court.hasLighting && (
+                    <span title="Flutlicht vorhanden">
+                      <Lightbulb className="w-3 h-3 opacity-70" />
+                    </span>
+                  )}
                   <span>{court.hourlyRate}.-</span>
                 </span>
               </div>
@@ -352,8 +356,8 @@ export function CourtGrid({
         {hours.map((hour) => (
           <div key={`row-${hour}`} className="contents">
             {/* Sticky Time Column Cell (Sticky Left) */}
-            <div className="sticky left-0 z-20 bg-white/80 dark:bg-[#0A0A0A]/80 backdrop-blur-md p-2 border-b border-r border-slate-200 dark:border-white/[0.08] flex flex-col items-center justify-center transition-colors">
-              <span className="text-[11px] font-medium text-slate-600 dark:text-slate-400 font-mono">
+            <div className="sticky left-0 z-20 bg-card backdrop-blur-md p-2 border-b border-r border-border flex flex-col items-center justify-center transition-colors">
+              <span className="text-[11px] font-medium text-muted-foreground font-mono">
                 {formatHour(hour)}
               </span>
             </div>
@@ -362,7 +366,7 @@ export function CourtGrid({
             {displayedCourts.map((court) => (
               <div
                 key={`slot-${court.id}-${hour}`}
-                className="p-1 border-b border-r border-slate-200/80 dark:border-white/[0.07] last:border-r-0 bg-transparent"
+                className="p-1 border-b border-r border-border last:border-r-0 bg-transparent"
               >
                 {renderSlotCell(court, hour)}
               </div>

@@ -97,7 +97,7 @@ export function Navbar({ currentTenant, user, wallet }: NavbarProps) {
   };
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-slate-200/80 dark:border-white/[0.06] bg-white/85 dark:bg-[#0B0F17]/90 backdrop-blur-xl transition-all">
+    <header className="sticky top-0 z-40 w-full border-b border-border bg-background/85 dark:bg-background/90 backdrop-blur-xl transition-all">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
         {/* Left: Brand & Tenant Info */}
         <div className="flex items-center gap-3">
@@ -107,24 +107,24 @@ export function Navbar({ currentTenant, user, wallet }: NavbarProps) {
             </div>
             <div className="flex flex-col">
               <div className="flex items-center gap-1.5">
-                <span className="font-extrabold text-base tracking-tight text-slate-900 dark:text-white">
-                  Tennis<span className="text-[#E25B36]">Courts</span>
+                <span className="font-extrabold text-base tracking-tight text-foreground">
+                  Tennis<span className="text-clay">Courts</span>
                 </span>
-                <span className="inline-flex items-center px-1.5 py-0.2 text-[9px] font-bold uppercase tracking-wider bg-[#E25B36]/15 text-[#E25B36] dark:bg-[#E25B36]/20 dark:text-[#F37957] rounded border border-[#E25B36]/25">
+                <span className="inline-flex items-center px-1.5 py-0.2 text-[9px] font-bold uppercase tracking-wider bg-clay/15 text-clay dark:bg-clay/20 dark:text-clay-hover rounded border border-clay/25">
                   Nocturne
                 </span>
               </div>
-              <span className="text-[10px] text-slate-400 font-medium">Grand Slam OS</span>
+              <span className="text-[10px] text-muted-foreground font-medium">Grand Slam OS</span>
             </div>
           </Link>
 
           {currentTenant && (
-            <div className="hidden sm:flex items-center gap-2 pl-4 border-l border-slate-200 dark:border-slate-800">
+            <div className="hidden sm:flex items-center gap-2 pl-4 border-l border-border">
               <Link
                 href={`/c/${currentTenant.slug}`}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-300 bg-slate-100/80 dark:bg-[#141A26] hover:bg-[#E25B36]/10 hover:text-[#E25B36] dark:hover:bg-[#1A2232] dark:hover:text-[#F37957] transition-colors border border-transparent dark:border-white/[0.04]"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold text-muted-foreground bg-card hover:bg-clay/10 hover:text-clay dark:hover:bg-clay/15 dark:hover:text-clay-hover transition-colors border border-border"
               >
-                <MapPin className="w-3.5 h-3.5 text-[#E25B36]" />
+                <MapPin className="w-3.5 h-3.5 text-clay" />
                 <span>{currentTenant.name}</span>
               </Link>
             </div>
@@ -133,16 +133,16 @@ export function Navbar({ currentTenant, user, wallet }: NavbarProps) {
 
         {/* Center: Navigation Links inside Club */}
         {currentTenant && (
-          <nav className="hidden md:flex items-center gap-1 p-1 bg-slate-100/70 dark:bg-[#141A26]/80 rounded-xl border border-slate-200/50 dark:border-white/[0.06]">
+          <nav className="hidden md:flex items-center gap-1 p-1 bg-card rounded-xl border border-border">
             <Link href={`/c/${currentTenant.slug}`}>
               <button
                 className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                   pathname === `/c/${currentTenant.slug}`
-                    ? "bg-white dark:bg-[#1C2536] text-[#E25B36] dark:text-[#F37957] shadow-xs"
-                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                    ? "bg-card dark:bg-accent text-clay dark:text-clay-hover shadow-xs"
+                    : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                <Calendar className="w-3.5 h-3.5 text-[#E25B36]" />
+                <Calendar className="w-3.5 h-3.5 text-clay" />
                 Kalender
               </button>
             </Link>
@@ -152,8 +152,8 @@ export function Navbar({ currentTenant, user, wallet }: NavbarProps) {
                 <button
                   className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                     pathname.includes("/bookings")
-                      ? "bg-white dark:bg-[#1C2536] text-[#E25B36] dark:text-[#F37957] shadow-xs"
-                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                      ? "bg-card dark:bg-accent text-clay dark:text-clay-hover shadow-xs"
+                      : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
                   <Trophy className="w-3.5 h-3.5 text-amber-500" />
@@ -167,8 +167,8 @@ export function Navbar({ currentTenant, user, wallet }: NavbarProps) {
                 <button
                   className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                     pathname.includes("/admin")
-                      ? "bg-white dark:bg-[#1C2536] text-amber-600 dark:text-amber-400 shadow-xs"
-                      : "text-slate-600 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400"
+                      ? "bg-card dark:bg-accent text-amber-600 dark:text-amber-400 shadow-xs"
+                      : "text-muted-foreground hover:text-amber-600 dark:hover:text-amber-400"
                   }`}
                 >
                   <Shield className="w-3.5 h-3.5 text-amber-500" />
@@ -183,9 +183,9 @@ export function Navbar({ currentTenant, user, wallet }: NavbarProps) {
         <div className="flex items-center gap-2.5">
           {/* User Credits Wallet Pill */}
           {user && currentTenant && (
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100/90 dark:bg-[#141A26] border border-slate-200/80 dark:border-white/[0.08] text-xs font-semibold shadow-2xs">
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-card border border-border text-xs font-semibold shadow-2xs">
               <Coins className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-              <span className="text-slate-800 dark:text-slate-200 font-mono font-bold">
+              <span className="text-foreground font-mono font-bold">
                 {currentBalance.toFixed(0)} CHF
               </span>
 
@@ -203,7 +203,7 @@ export function Navbar({ currentTenant, user, wallet }: NavbarProps) {
                 </div>
 
                 <div className="hidden sm:flex flex-col">
-                  <span className="text-xs font-bold text-slate-900 dark:text-white leading-tight">
+                  <span className="text-xs font-bold text-foreground leading-tight">
                     {user.name || user.email.split("@")[0]}
                   </span>
                   <div className="mt-0.5">{getRoleBadge(user.role, user.isPlatformAdmin)}</div>
@@ -228,7 +228,7 @@ export function Navbar({ currentTenant, user, wallet }: NavbarProps) {
                   size="sm"
                   type="submit"
                   title="Abmelden"
-                  className="h-8 px-2.5 text-xs text-slate-600 hover:text-rose-600 border-slate-200 dark:border-slate-800"
+                  className="h-8 px-2.5 text-xs text-muted-foreground hover:text-rose-600 border-border"
                 >
                   <LogOut className="w-3.5 h-3.5" />
                 </Button>
@@ -257,16 +257,16 @@ export function Navbar({ currentTenant, user, wallet }: NavbarProps) {
 
       {/* Mobile Sub-Navigation for Clubs */}
       {currentTenant && (
-        <div className="md:hidden flex items-center justify-around border-t border-slate-100 dark:border-white/[0.06] px-2 py-1.5 bg-slate-50/90 dark:bg-[#0B0F17]/95 backdrop-blur-md">
+        <div className="md:hidden flex items-center justify-around border-t border-border px-2 py-1.5 bg-background/90 dark:bg-background/95 backdrop-blur-md">
           <Link
             href={`/c/${currentTenant.slug}`}
             className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl transition-all ${
               pathname === `/c/${currentTenant.slug}`
-                ? "bg-white dark:bg-[#1C2536] text-[#E25B36] dark:text-[#F37957] shadow-xs"
-                : "text-slate-600 dark:text-slate-400"
+                ? "bg-card dark:bg-accent text-clay dark:text-clay-hover shadow-xs"
+                : "text-muted-foreground"
             }`}
           >
-            <Calendar className="w-3.5 h-3.5 text-[#E25B36]" />
+            <Calendar className="w-3.5 h-3.5 text-clay" />
             Kalender
           </Link>
 
@@ -275,8 +275,8 @@ export function Navbar({ currentTenant, user, wallet }: NavbarProps) {
               href={`/c/${currentTenant.slug}/bookings`}
               className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl transition-all ${
                 pathname.includes("/bookings")
-                  ? "bg-white dark:bg-[#1C2536] text-[#E25B36] dark:text-[#F37957] shadow-xs"
-                  : "text-slate-600 dark:text-slate-400"
+                  ? "bg-card dark:bg-accent text-clay dark:text-clay-hover shadow-xs"
+                  : "text-muted-foreground"
               }`}
             >
               <Trophy className="w-3.5 h-3.5 text-amber-500" />
@@ -289,8 +289,8 @@ export function Navbar({ currentTenant, user, wallet }: NavbarProps) {
               href={`/c/${currentTenant.slug}/admin`}
               className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl transition-all ${
                 pathname.includes("/admin")
-                  ? "bg-white dark:bg-[#1C2536] text-amber-600 dark:text-amber-400 shadow-xs"
-                  : "text-slate-600 dark:text-slate-400"
+                  ? "bg-card dark:bg-accent text-amber-600 dark:text-amber-400 shadow-xs"
+                  : "text-muted-foreground"
               }`}
             >
               <Shield className="w-3.5 h-3.5 text-amber-500" />
