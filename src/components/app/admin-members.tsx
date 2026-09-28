@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Avatar } from "@/components/app/avatar";
-import { markInvoiceAsPaidManually } from "@/actions/admin-billing";
+import { markInvoiceAsPaidManually, sendPaymentReminderAction } from "@/actions/admin-billing";
 import { initials } from "@/lib/courts";
 import { cn } from "@/lib/utils";
 
@@ -38,8 +38,15 @@ export function AdminMembers({ tenantId, members }: { tenantId: string; members:
     router.refresh();
   }
 
-  function remind(m: MemberRow) {
-    // ponytail: no reminder email backend yet, this only flips the badge
+  async function remind(m: MemberRow) {
+    if (busy) return;
+    setBusy(m.id);
+    const res = await sendPaymentReminderAction(tenantId, m.id);
+    setBusy(null);
+    if (!res.success) {
+      toast.error(res.error || "Erinnerung konnte nicht gesendet werden.");
+      return;
+    }
     setReminded((r) => [...r, m.id]);
     toast("Zahlungserinnerung gesendet");
   }
@@ -74,6 +81,7 @@ export function AdminMembers({ tenantId, members }: { tenantId: string; members:
               <button
                 type="button"
                 onClick={() => remind(m)}
+                disabled={busy === m.id}
                 aria-label={`Zahlungserinnerung an ${m.name} senden`}
                 className={cn(pill, "bg-clay text-white")}
               >

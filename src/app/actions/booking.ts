@@ -8,6 +8,7 @@ import { getStripe } from "@/lib/stripe";
 import { revalidatePath } from "next/cache";
 import { computeBookingCost } from "@/lib/pricing";
 import { BookingType, BlockReason, BookingParticipant } from "@/types";
+import { sendBookingConfirmation } from "@/lib/mail";
 
 export interface CreateBookingParticipantInput {
   type: "MEMBER" | "GUEST";
@@ -380,6 +381,7 @@ export async function createBookingAction(input: CreateBookingInput) {
     }
   }
 
+  if (prismaSuccess && createdBookingId) await sendBookingConfirmation(createdBookingId);
   return { success: true, totalCost };
 }
 

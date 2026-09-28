@@ -1,5 +1,6 @@
 import { getStripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
+import { sendBookingConfirmation } from "@/lib/mail";
 
 /**
  * Gast-Platzbuchung bezahlt: Buchung von PENDING/UNPAID auf CONFIRMED/PAID heben.
@@ -11,6 +12,8 @@ export async function markBookingPaid(bookingId: string, stripeSessionId: string
     where: { id: bookingId, paymentStatus: { not: "PAID" } },
     data: { status: "CONFIRMED", paymentStatus: "PAID", stripeSessionId },
   });
+  // Nur beim tatsächlichen Übergang senden — Webhook-Retries/Abgleich lösen keine Doppel-Mail aus.
+  if (result.count > 0) await sendBookingConfirmation(bookingId);
   return result.count > 0;
 }
 
