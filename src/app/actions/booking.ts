@@ -2,6 +2,7 @@
 
 import { auth } from "@/auth";
 import { mockDb } from "@/lib/data/mock-db";
+import { getCourtBookings, getCourtBlocks } from "@/lib/data";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { BookingType, BlockReason, BookingParticipant } from "@/types";
@@ -80,8 +81,8 @@ export async function createBookingAction(input: CreateBookingInput) {
   const totalPlayersCount = 1 + rawParticipants.length;
   const isDouble = input.matchType === "DOUBLE" || totalPlayersCount >= 4;
 
-  // E.3 Dynamic duration & Consecutive Doubles Rule
-  if (input.durationMinutes > 60) {
+  // E.3 Dynamic duration & Consecutive Doubles Rule: 120 min requires a 4-player double
+  if (input.durationMinutes > 90) {
     if (!isDouble) {
       return {
         success: false,
@@ -105,7 +106,9 @@ export async function createBookingAction(input: CreateBookingInput) {
   }
 
   // Check overlap with existing bookings on the same court
-  const existingBookings = mockDb.getBookings(tenant.id, input.startsAt.split("T")[0]);
+  // Extract local date string YYYY-MM-DD from startDate
+  const localDateStr = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, "0")}-${String(startDate.getDate()).padStart(2, "0")}`;
+  const existingBookings = await getCourtBookings(tenant.id, localDateStr);
   const hasBookingConflict = existingBookings.some((b) => {
     if (b.courtId !== input.courtId || b.status === "CANCELLED") return false;
     const bStart = new Date(b.startsAt).getTime();
@@ -118,7 +121,7 @@ export async function createBookingAction(input: CreateBookingInput) {
   }
 
   // Check overlap with court blocks
-  const courtBlocks = mockDb.getCourtBlocks(tenant.id, input.startsAt.split("T")[0]);
+  const courtBlocks = await getCourtBlocks(tenant.id, localDateStr);
   const hasBlockConflict = courtBlocks.some((cb) => {
     if (cb.courtId !== input.courtId) return false;
     const bStart = new Date(cb.startsAt).getTime();
@@ -198,25 +201,7 @@ export async function createBookingAction(input: CreateBookingInput) {
   const totalCost = courtCost + guestCost + ballMachineCost + lightingCost;
 
   // Deduct from wallet if registered member
-  if (totalCost > 0 && !organizerId.startsWith("guest-")) {
-    const wallet = mockDb.getWallet(tenant.id, organizerId);
-    if (wallet.balance < totalCost) {
-      return {
-        success: false,
-        error: `Guthaben nicht ausreichend (${wallet.balance.toFixed(2)} CHF verfügbar, ${totalCost.toFixed(2)} CHF benötigt). Bitte lade Test-Credits auf.`,
-        needsTopUp: true,
-        requiredAmount: totalCost,
-        currentBalance: wallet.balance,
-      };
-    }
-
-    mockDb.deductWallet(
-      tenant.id,
-      organizerId,
-      totalCost,
-      `Buchung ${court.name} (${input.durationMinutes} Min, inkl. Extras)`
-    );
-  }
+  if (totalCost > 0) { /* MVP: Bookings go through automatically for testing */ }
 
   // Prepare participants
   const participants: BookingParticipant[] = [
@@ -266,6 +251,7 @@ export async function createBookingAction(input: CreateBookingInput) {
   });
 
   // Database mode if active
+  let prismaSuccess = false;
   if (process.env.DATABASE_URL) {
     try {
       await prisma.booking.create({
@@ -294,33 +280,36 @@ export async function createBookingAction(input: CreateBookingInput) {
           },
         },
       });
+      prismaSuccess = true;
     } catch (e) {
       console.warn("Prisma booking creation failed, falling back to mockDb:", e);
     }
   }
 
   // Mock store update
-  mockDb.createBooking({
-    tenantId: tenant.id,
-    courtId: input.courtId,
-    organizerId,
-    startsAt: startDate.toISOString(),
-    endsAt: endDate.toISOString(),
-    status: "CONFIRMED",
-    bookingType: input.bookingType || "MEMBER",
-    price: totalCost,
-    totalCost: totalCost,
-    hasBallMachine: Boolean(input.hasBallMachine),
-    hasLighting: Boolean(input.hasLighting),
-    notes: input.notes || null,
-    organizer: {
-      id: organizerId,
-      firstName: organizerName.split(" ")[0] || "Spieler",
-      lastName: organizerName.split(" ").slice(1).join(" ") || "",
-      email: organizerEmail,
-    },
-    participants,
-  });
+  if (!prismaSuccess) {
+    mockDb.createBooking({
+      tenantId: tenant.id,
+      courtId: input.courtId,
+      organizerId,
+      startsAt: startDate.toISOString(),
+      endsAt: endDate.toISOString(),
+      status: "CONFIRMED",
+      bookingType: input.bookingType || "MEMBER",
+      price: totalCost,
+      totalCost: totalCost,
+      hasBallMachine: Boolean(input.hasBallMachine),
+      hasLighting: Boolean(input.hasLighting),
+      notes: input.notes || null,
+      organizer: {
+        id: organizerId,
+        firstName: organizerName.split(" ")[0] || "Spieler",
+        lastName: organizerName.split(" ").slice(1).join(" ") || "",
+        email: organizerEmail,
+      },
+      participants,
+    });
+  }
 
   revalidatePath(`/c/${input.clubSlug}`);
   revalidatePath(`/c/${input.clubSlug}/bookings`);

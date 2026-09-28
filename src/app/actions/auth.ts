@@ -22,7 +22,7 @@ export async function loginWithCredentials(
 ) {
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
-  const callbackUrl = (formData.get("callbackUrl") as string) || "/c/tc-rot-weiss";
+  const callbackUrl = (formData.get("callbackUrl") as string) || "/c/tc-marly";
 
   try {
     await signIn("credentials", {
@@ -43,7 +43,7 @@ export async function loginWithCredentials(
   }
 }
 
-export async function quickDemoLogin(email: string, targetSlug: string = "tc-rot-weiss") {
+export async function quickDemoLogin(email: string, targetSlug: string = "tc-marly") {
   const password = email.includes("admin@tennisapp.ch") ? "admin12345" : "tennis12345";
   const callbackUrl = email.includes("admin@tennisapp.ch")
     ? "/admin"
