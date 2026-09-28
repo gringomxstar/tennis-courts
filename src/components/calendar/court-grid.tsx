@@ -294,7 +294,7 @@ export function CourtGrid({
   }
 
   return (
-    <div className="relative w-full h-full flex-1 min-h-0 overflow-x-auto overflow-y-auto rounded-3xl bg-white dark:bg-[#0A0A0A] border border-slate-100 dark:border-white/[0.03] shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-none overscroll-contain select-none transition-colors scrollbar-hide">
+    <div className="relative w-full h-full flex-1 min-h-0 overflow-x-auto overflow-y-auto rounded-3xl bg-white dark:bg-[#0A0A0A] border border-slate-200 dark:border-white/[0.08] shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-none overscroll-contain select-none transition-colors scrollbar-hide">
       <div
         className="min-w-max"
         style={{
@@ -305,7 +305,7 @@ export function CourtGrid({
         {/* ======================================================== */}
         {/* Top-Left Corner Intersection (Sticky Top + Sticky Left) */}
         {/* ======================================================== */}
-        <div className="sticky top-0 left-0 z-40 bg-white/80 dark:bg-[#0A0A0A]/80 backdrop-blur-xl p-3 border-b border-r border-slate-100 dark:border-white/[0.03] flex flex-col items-center justify-center transition-colors">
+        <div className="sticky top-0 left-0 z-40 bg-white/80 dark:bg-[#0A0A0A]/80 backdrop-blur-xl p-3 border-b border-r border-slate-200 dark:border-white/[0.08] flex flex-col items-center justify-center transition-colors">
           <span className="font-semibold text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-widest font-mono">
             Zeit
           </span>
@@ -319,7 +319,7 @@ export function CourtGrid({
           return (
             <div
               key={`header-${court.id}`}
-              className="sticky top-0 z-30 bg-white/80 dark:bg-[#0A0A0A]/80 backdrop-blur-xl p-3 border-b border-r border-slate-100 dark:border-white/[0.03] last:border-r-0 relative overflow-hidden transition-colors"
+              className="sticky top-0 z-30 bg-white/80 dark:bg-[#0A0A0A]/80 backdrop-blur-xl p-3 border-b border-r border-slate-200 dark:border-white/[0.08] last:border-r-0 relative overflow-hidden transition-colors"
             >
               {/* Surface Accent Bar - Softened */}
               <div className={`absolute top-0 left-0 right-0 h-1 opacity-50 ${surfaceMeta.barColor}`} />
@@ -352,7 +352,7 @@ export function CourtGrid({
         {hours.map((hour) => (
           <div key={`row-${hour}`} className="contents">
             {/* Sticky Time Column Cell (Sticky Left) */}
-            <div className="sticky left-0 z-20 bg-white/80 dark:bg-[#0A0A0A]/80 backdrop-blur-md p-2 border-b border-r border-slate-100 dark:border-white/[0.03] flex flex-col items-center justify-center transition-colors">
+            <div className="sticky left-0 z-20 bg-white/80 dark:bg-[#0A0A0A]/80 backdrop-blur-md p-2 border-b border-r border-slate-200 dark:border-white/[0.08] flex flex-col items-center justify-center transition-colors">
               <span className="text-[11px] font-medium text-slate-600 dark:text-slate-400 font-mono">
                 {formatHour(hour)}
               </span>
@@ -362,7 +362,7 @@ export function CourtGrid({
             {displayedCourts.map((court) => (
               <div
                 key={`slot-${court.id}-${hour}`}
-                className="p-1 border-b border-r border-slate-100/50 dark:border-white/[0.02] last:border-r-0 bg-transparent"
+                className="p-1 border-b border-r border-slate-200/80 dark:border-white/[0.07] last:border-r-0 bg-transparent"
               >
                 {renderSlotCell(court, hour)}
               </div>
