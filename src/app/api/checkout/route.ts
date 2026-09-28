@@ -52,6 +52,14 @@ export async function POST(req: Request) {
       });
     }
 
+    // Self-service join: stellt sicher, dass der User im Ziel-Tenant existiert, bevor ein
+    // tenant-scopetes Membership erstellt wird (verhindert inkonsistente (userId, tenantId) Paare).
+    await prisma.tenantUser.upsert({
+      where: { tenantId_userId: { tenantId: plan.tenantId, userId: user!.id } },
+      update: {},
+      create: { tenantId: plan.tenantId, userId: user!.id, role: "GUEST" },
+    });
+
     // ==========================================
     // MODE A: KAUF AUF RECHNUNG (Offline E-Banking)
     // ==========================================

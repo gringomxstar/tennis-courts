@@ -38,7 +38,7 @@ export async function POST(req: Request) {
       // 2. Kauf auf Rechnung bezahlt (Bank Transfer / E-Banking via QR-Code)
       case "invoice.paid":
         const invoice = event.data.object as Stripe.Invoice;
-        await handlePaymentSuccess(invoice.customer as string);
+        await handlePaymentSuccess(invoice.customer as string, invoice.metadata as Record<string, string>);
         break;
 
       // 3. Rechnung abgelaufen / Nicht bezahlt
@@ -62,12 +62,12 @@ export async function POST(req: Request) {
  * Auto-Unlock Logic: Wird gefeuert, sobald Geld eingegangen ist 
  * (Egal ob Twint in 2 Sekunden, oder E-Banking nach 14 Tagen)
  */
-async function handlePaymentSuccess(stripeCustomerId: string, sessionMetadata?: Record<string, string>) {
+async function handlePaymentSuccess(stripeCustomerId: string, metadata?: Record<string, string>) {
   if (!stripeCustomerId) return;
 
   const user = await prisma.user.findUnique({
     where: { stripeCustomerId },
-    include: { tenantUsers: true } 
+    include: { tenantUsers: true }
   });
 
   if (!user) {
@@ -77,29 +77,52 @@ async function handlePaymentSuccess(stripeCustomerId: string, sessionMetadata?: 
 
   console.log(`✅ Zahlung erfolgreich für ${user.email}. Schalte Abo frei.`);
 
-  // 1. Wenn wir planId im Metadata haben, erstellen wir das aktive Abo
-  if (sessionMetadata?.planId && sessionMetadata?.tenantId) {
-    await prisma.membership.create({
-      data: {
-        userId: user.id,
-        tenantId: sessionMetadata.tenantId,
-        membershipPlanId: sessionMetadata.planId,
-        startsAt: new Date(),
-        status: "ACTIVE"
-      }
+  // Tenant muss immer aus verifizierten Metadaten kommen — niemals aus tenantUsers[0] raten
+  let tenantId = metadata?.tenantId;
+
+  // 1. Wenn wir planId im Metadata haben, erstellen wir das aktive Abo (idempotent bei Webhook-Retries)
+  if (metadata?.planId && tenantId) {
+    const existing = await prisma.membership.findFirst({
+      where: { userId: user.id, tenantId, membershipPlanId: metadata.planId, status: { in: ["ACTIVE", "PENDING"] } }
     });
+    if (!existing) {
+      await prisma.membership.create({
+        data: {
+          userId: user.id,
+          tenantId,
+          membershipPlanId: metadata.planId,
+          startsAt: new Date(),
+          status: "ACTIVE"
+        }
+      });
+    } else if (existing.status === "PENDING") {
+      await prisma.membership.update({ where: { id: existing.id }, data: { status: "ACTIVE" } });
+    }
   } else {
-    // 1b. Für normale Invoices (Offline Zahlung) aktualisieren wir bestehende PENDING Abos
-    await prisma.membership.updateMany({
-      where: { userId: user.id, status: { in: ["PENDING", "EXPIRED"] } },
-      data: { status: "ACTIVE" }
+    // 1b. Für normale Invoices (Offline Zahlung) ohne Tenant-Metadata: nur eindeutig zuordenbare Fälle freischalten
+    const pending = await prisma.membership.findMany({
+      where: { userId: user.id, status: { in: ["PENDING", "EXPIRED"] } }
     });
+    const distinctTenants = new Set(pending.map(m => m.tenantId));
+    if (distinctTenants.size === 1) {
+      tenantId = pending[0].tenantId;
+      await prisma.membership.updateMany({
+        where: { userId: user.id, tenantId, status: { in: ["PENDING", "EXPIRED"] } },
+        data: { status: "ACTIVE" }
+      });
+    } else if (distinctTenants.size > 1) {
+      console.error(`Ambiguous tenant for invoice payment, user ${user.id} has pending memberships in multiple tenants — skipping auto-activation.`);
+      return;
+    }
   }
 
-  // 2. User-Rolle im Club auf MEMBER hochstufen
-  if (user.tenantUsers.length > 0) {
+  if (!tenantId) return;
+
+  // 2. User-Rolle im Club auf MEMBER hochstufen (nur im verifizierten Tenant)
+  const tenantUser = user.tenantUsers.find(tu => tu.tenantId === tenantId);
+  if (tenantUser) {
     await prisma.tenantUser.update({
-      where: { id: user.tenantUsers[0].id },
+      where: { id: tenantUser.id },
       data: { role: "MEMBER" }
     });
   }
@@ -120,21 +143,24 @@ async function handlePaymentFailed(stripeCustomerId: string, subscriptionId?: st
 
   console.log(`❌ Zahlung gescheitert für ${user.email}. Sperre Abo.`);
 
-  // 1. Abonnement auf EXPIRED / PENDING setzen
-  if (subscriptionId) {
-    await prisma.membership.updateMany({
-      where: { 
-        userId: user.id,
-        stripeSubscriptionId: subscriptionId
-      },
-      data: { status: "EXPIRED" }
-    });
-  }
+  if (!subscriptionId) return;
 
-  // 2. User-Rolle im Club zurück auf GUEST setzen
-  if (user.tenantUsers.length > 0) {
+  // 1. Abonnement auf EXPIRED setzen und dessen Tenant ermitteln (nie raten via tenantUsers[0])
+  const membership = await prisma.membership.findFirst({
+    where: { userId: user.id, stripeSubscriptionId: subscriptionId }
+  });
+  if (!membership) return;
+
+  await prisma.membership.update({
+    where: { id: membership.id },
+    data: { status: "EXPIRED" }
+  });
+
+  // 2. User-Rolle im betroffenen Club zurück auf GUEST setzen
+  const tenantUser = user.tenantUsers.find(tu => tu.tenantId === membership.tenantId);
+  if (tenantUser) {
     await prisma.tenantUser.update({
-      where: { id: user.tenantUsers[0].id },
+      where: { id: tenantUser.id },
       data: { role: "GUEST" } // Muss wieder für Plätze bezahlen
     });
   }

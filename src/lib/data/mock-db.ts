@@ -1287,9 +1287,7 @@ class MockDatabase {
   }
 
   getUsersByTenantId(tenantId: string): UserSummary[] {
-    return this.users.filter(
-      (u) => u.tenantId === tenantId || tenantId === "tenant-marly" || u.tenantId === "tenant-rot-weiss"
-    );
+    return this.users.filter((u) => u.tenantId === tenantId);
   }
 
   getUserByEmail(email: string): (UserSummary & { tenantId: string }) | undefined {

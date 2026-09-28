@@ -9,9 +9,9 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "sk_test_fallback_so_
   apiVersion: "2026-08-26.dahlia",
 });
 
-export async function markInvoiceAsPaidManually(userId: string, stripeCustomerId: string) {
+export async function markInvoiceAsPaidManually(tenantId: string, userId: string, stripeCustomerId: string) {
   try {
-    // 1. Admin-Check (Sicherheit)
+    // 1. Admin-Check (Sicherheit) — muss PLATFORM_ADMIN sein, oder CLUB_ADMIN im selben Tenant
     const session = await auth();
     if (!session?.user?.email) {
       throw new Error("Unauthorized");
@@ -23,14 +23,27 @@ export async function markInvoiceAsPaidManually(userId: string, stripeCustomerId
     });
 
     const isAdmin = adminUser?.tenantUsers.some(
-      t => t.role === "PLATFORM_ADMIN" || t.role === "CLUB_ADMIN"
+      t => t.role === "PLATFORM_ADMIN" || (t.role === "CLUB_ADMIN" && t.tenantId === tenantId)
     );
 
     if (!isAdmin) {
-      throw new Error("Du hast keine Admin-Rechte für diese Aktion.");
+      throw new Error("Du hast keine Admin-Rechte für diesen Club.");
     }
 
-    // 2. Stripe: Finde die offene Rechnung für diesen Kunden
+    // 2. Zielnutzer im selben Tenant verifizieren, inkl. Stripe-Customer-Match
+    const targetUser = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { tenantUsers: { where: { tenantId } } }
+    });
+
+    if (!targetUser || targetUser.tenantUsers.length === 0) {
+      throw new Error("User gehört nicht zu diesem Tenant.");
+    }
+    if (targetUser.stripeCustomerId !== stripeCustomerId) {
+      throw new Error("Stripe Customer stimmt nicht mit dem User überein.");
+    }
+
+    // 3. Stripe: Finde die offene Rechnung für diesen Kunden
     const invoices = await stripe.invoices.list({
       customer: stripeCustomerId,
       status: "open",
@@ -39,7 +52,7 @@ export async function markInvoiceAsPaidManually(userId: string, stripeCustomerId
 
     if (invoices.data.length > 0) {
       const openInvoice = invoices.data[0];
-      
+
       // Sag Stripe: "Wurde außerhalb von Stripe bezahlt (z.B. bar oder manuell überwiesen)"
       // So stoppen wir die automatischen Mahnungen!
       await stripe.invoices.pay(openInvoice.id, {
@@ -48,27 +61,20 @@ export async function markInvoiceAsPaidManually(userId: string, stripeCustomerId
       console.log(`✅ Stripe Rechnung ${openInvoice.id} als out-of-band bezahlt markiert.`);
     }
 
-    // 3. Prisma DB Update: Schalte den User sofort frei
+    // 4. Prisma DB Update: Schalte den User sofort frei (nur innerhalb des verifizierten Tenants)
     await prisma.membership.updateMany({
-      where: { userId: userId, status: { in: ["PENDING", "EXPIRED"] } },
+      where: { userId, tenantId, status: { in: ["PENDING", "EXPIRED"] } },
       data: { status: "ACTIVE" }
     });
 
-    const targetUser = await prisma.user.findUnique({
-      where: { id: userId },
-      include: { tenantUsers: true }
+    await prisma.tenantUser.update({
+      where: { tenantId_userId: { tenantId, userId } },
+      data: { role: "MEMBER" }
     });
 
-    if (targetUser && targetUser.tenantUsers.length > 0) {
-      await prisma.tenantUser.update({
-        where: { id: targetUser.tenantUsers[0].id },
-        data: { role: "MEMBER" }
-      });
-    }
-
-    // 4. UI aktualisieren (Next.js Cache leeren)
+    // 5. UI aktualisieren (Next.js Cache leeren)
     revalidatePath("/admin/users");
-    
+
     return { success: true, message: "User erfolgreich als bezahlt markiert & freigeschaltet." };
 
   } catch (error: any) {
