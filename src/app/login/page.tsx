@@ -20,17 +20,17 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col justify-center py-12 sm:px-6 lg:px-8 bg-slate-50 dark:bg-slate-950">
+    <div className="min-h-screen flex flex-col justify-center py-12 sm:px-6 lg:px-8 bg-background">
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
         <Link href="/" className="inline-flex items-center gap-2 group mb-4">
-          <div className="h-10 w-10 rounded-xl bg-emerald-600 flex items-center justify-center text-white font-bold text-xl shadow-md group-hover:scale-105 transition-transform">
+          <div className="h-10 w-10 rounded-xl bg-clay flex items-center justify-center text-white font-bold text-xl shadow-md group-hover:scale-105 transition-transform">
             🎾
           </div>
-          <span className="font-bold text-2xl tracking-tight text-slate-900 dark:text-white">
+          <span className="font-bold text-2xl tracking-tight text-foreground">
             TennisCourts
           </span>
         </Link>
-        <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+        <h2 className="text-2xl font-bold tracking-tight text-foreground">
           Im Tennisclub anmelden
         </h2>
         <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
@@ -40,13 +40,13 @@ export default function LoginPage() {
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md px-4">
         {/* Quick Demo Login Box */}
-        <Card className="mb-6 border-emerald-200 bg-emerald-50/60 dark:bg-emerald-950/40 dark:border-emerald-800">
+        <Card className="mb-6 border-clay/20 bg-clay/5 dark:bg-clay/10 dark:border-clay/30">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-bold text-emerald-900 dark:text-emerald-200 flex items-center gap-1.5">
-              <Sparkles className="w-4 h-4 text-emerald-600" />
+            <CardTitle className="text-sm font-bold text-clay-hover dark:text-clay flex items-center gap-1.5">
+              <Sparkles className="w-4 h-4 text-clay" />
               1-Klick Demo Login
             </CardTitle>
-            <CardDescription className="text-xs text-emerald-700 dark:text-emerald-300">
+            <CardDescription className="text-xs text-clay-hover/80 dark:text-clay/80">
               Wähle eine vordefinierte Rolle zum sofortigen Ausprobieren:
             </CardDescription>
           </CardHeader>
@@ -54,15 +54,15 @@ export default function LoginPage() {
             <Button
               variant="outline"
               size="sm"
-              className="w-full justify-between bg-white text-xs hover:bg-emerald-100 dark:bg-slate-900"
+              className="w-full justify-between bg-white text-xs hover:bg-clay/10 dark:bg-slate-900"
               onClick={() => handleQuickDemo("roger@tc-rotweiss.ch")}
               disabled={Boolean(demoLoading)}
             >
               <span className="flex items-center gap-2">
-                <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
+                <UserCheck className="w-3.5 h-3.5 text-clay" />
                 Roger Federer
               </span>
-              <Badge className="bg-emerald-600 text-[10px]">Mitglied</Badge>
+              <Badge className="bg-clay text-[10px]">Mitglied</Badge>
             </Button>
 
             <Button
@@ -145,7 +145,7 @@ export default function LoginPage() {
               Noch kein Konto?{" "}
               <Link
                 href="/register"
-                className="font-semibold text-emerald-600 hover:text-emerald-700 underline-offset-2 hover:underline"
+                className="font-semibold text-clay hover:text-clay-hover underline-offset-2 hover:underline"
               >
                 Jetzt Club-Mitglied werden
               </Link>

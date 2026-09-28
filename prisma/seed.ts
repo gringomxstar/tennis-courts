@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient, SportType, CourtSurface } from '@prisma/client'
 import { hash } from 'bcryptjs'
 
 const prisma = new PrismaClient()
@@ -14,7 +14,7 @@ const MEMBERSHIP_PLANS = [
   { id: "guest-pass", name: "Gast (Pay & Play)", price: 0, description: "Ohne Grundgebühr, pro Platz zahlen." },
 ]
 
-const COURTS = [
+const COURTS: { id: string; name: string; sportType: SportType; surface: CourtSurface; hasLighting: boolean; sortOrder: number }[] = [
   { id: "court-marly-1", name: "Platz 1 (Allwetter)", sportType: "TENNIS", surface: "HARD", hasLighting: true, sortOrder: 1 },
   { id: "court-marly-2", name: "Platz 2 (Allwetter)", sportType: "TENNIS", surface: "HARD", hasLighting: true, sortOrder: 2 },
   { id: "court-marly-3", name: "Platz 3 (Sand - Center)", sportType: "TENNIS", surface: "CLAY", hasLighting: true, sortOrder: 3 },
@@ -104,8 +104,8 @@ async function main() {
         tenantId: TENANT_ID,
         locationId: LOCATION_ID,
         name: c.name,
-        sportType: c.sportType as any,
-        surface: c.surface as any,
+        sportType: c.sportType,
+        surface: c.surface,
         isIndoor: false,
         hasLighting: c.hasLighting,
         status: "ACTIVE",

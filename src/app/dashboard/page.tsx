@@ -30,13 +30,13 @@ export default async function DashboardPage() {
   const role = user.tenantUsers[0]?.role || "GUEST";
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-[#0A0A0A] py-12 px-4 selection:bg-blue-500/30">
+    <div className="min-h-screen bg-background py-12 px-4 selection:bg-clay/30">
       <div className="max-w-4xl mx-auto">
-        
+
         {/* Header */}
         <div className="flex justify-between items-center mb-12">
           <div>
-            <h1 className="text-3xl font-black text-slate-900 dark:text-white">Mein Profil</h1>
+            <h1 className="text-3xl font-black text-foreground">Mein Profil</h1>
             <p className="text-slate-500 mt-1">Willkommen zurück, {user.firstName || user.email}</p>
           </div>
           
@@ -56,7 +56,7 @@ export default async function DashboardPage() {
           {/* Status Card */}
           <div className="bg-white dark:bg-[#111111] p-8 rounded-3xl border border-slate-200 dark:border-white/10 shadow-sm">
             <div className="flex items-center gap-4 mb-6">
-              <div className="w-12 h-12 bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 rounded-full flex items-center justify-center">
+              <div className="w-12 h-12 bg-clay/10 text-clay rounded-full flex items-center justify-center">
                 <UserIcon className="w-6 h-6" />
               </div>
               <div>
@@ -90,7 +90,7 @@ export default async function DashboardPage() {
             ) : (
               <div className="pt-6 border-t border-slate-100 dark:border-white/5">
                 <p className="text-slate-500 text-sm mb-4">Du hast momentan kein aktives Abo.</p>
-                <Link href="/membership" className="inline-flex items-center gap-2 text-sm font-bold text-blue-600 dark:text-blue-400 hover:underline">
+                <Link href="/membership" className="inline-flex items-center gap-2 text-sm font-bold text-clay hover:underline">
                   <CreditCard className="w-4 h-4" />
                   Abo kaufen
                 </Link>
@@ -100,16 +100,16 @@ export default async function DashboardPage() {
 
           {/* Actions Card */}
           <div className="bg-white dark:bg-[#111111] p-8 rounded-3xl border border-slate-200 dark:border-white/10 shadow-sm flex flex-col justify-center items-center text-center">
-            <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-2xl flex items-center justify-center mb-6">
+            <div className="w-16 h-16 bg-clay/10 text-clay rounded-2xl flex items-center justify-center mb-6">
               <Calendar className="w-8 h-8" />
             </div>
             <h2 className="font-bold text-xl mb-2">Auf den Platz!</h2>
             <p className="text-slate-500 text-sm mb-8">
               Reserviere deinen Court. Gäste zahlen direkt per Twint/Kreditkarte, Mitglieder buchen kostenlos.
             </p>
-            <Link 
-              href="/c/tc-marly" 
-              className="w-full py-4 px-6 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-200 text-white dark:text-black font-bold rounded-xl transition-all shadow-lg"
+            <Link
+              href="/c/tc-marly"
+              className="w-full py-4 px-6 bg-clay hover:bg-clay-hover text-white font-bold rounded-xl transition-all shadow-lg"
             >
               Zum Kalender
             </Link>

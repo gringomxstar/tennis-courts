@@ -2,16 +2,19 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Button, type buttonVariants } from "@/components/ui/button";
+import type { VariantProps } from "class-variance-authority";
 
 interface CheckoutButtonProps {
   planId: string;
   paymentMethod: "STRIPE" | "OFFLINE_INVOICE";
   isLoggedIn: boolean;
   label: string;
+  variant?: VariantProps<typeof buttonVariants>["variant"];
   className?: string;
 }
 
-export function CheckoutButton({ planId, paymentMethod, isLoggedIn, label, className }: CheckoutButtonProps) {
+export function CheckoutButton({ planId, paymentMethod, isLoggedIn, label, variant = "default", className }: CheckoutButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
@@ -46,12 +49,13 @@ export function CheckoutButton({ planId, paymentMethod, isLoggedIn, label, class
   };
 
   return (
-    <button 
-      onClick={handleCheckout} 
+    <Button
+      variant={variant}
+      onClick={handleCheckout}
       disabled={isLoading}
-      className={`transition-all ${className} ${isLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
+      className={`h-auto transition-all ${className} ${isLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
     >
       {isLoading ? "Wird geladen..." : label}
-    </button>
+    </Button>
   );
 }

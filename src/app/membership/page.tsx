@@ -28,12 +28,12 @@ export default async function MembershipPage() {
   });
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0A0A0A] text-slate-900 dark:text-slate-100 py-24 selection:bg-blue-500/30">
+    <div className="min-h-screen bg-background text-foreground py-24 selection:bg-clay/30">
       <div className="max-w-6xl mx-auto px-6 lg:px-8">
-        
+
         {/* Header Section */}
         <div className="text-center max-w-3xl mx-auto mb-20">
-          <h2 className="text-blue-600 dark:text-blue-500 font-semibold tracking-wide uppercase text-sm mb-3">
+          <h2 className="text-clay font-semibold tracking-wide uppercase text-sm mb-3">
             Mitgliedschaften bei {tenant.name}
           </h2>
           <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight mb-6">
@@ -59,13 +59,13 @@ export default async function MembershipPage() {
                 <div 
                   key={plan.id}
                   className={`relative rounded-3xl p-8 transition-all hover:scale-[1.02] ${
-                    isPopular 
-                      ? "bg-white dark:bg-[#0A0A0A] border-2 border-blue-500 shadow-2xl transform md:-translate-y-4 z-10" 
+                    isPopular
+                      ? "bg-white dark:bg-[#0A0A0A] border-2 border-clay shadow-2xl transform md:-translate-y-4 z-10"
                       : "bg-slate-50 dark:bg-[#111111] border border-slate-200 dark:border-white/[0.05] hover:shadow-xl"
                   }`}
                 >
                   {isPopular && (
-                    <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-blue-500 text-white px-4 py-1 rounded-full text-xs font-bold tracking-wide">
+                    <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-clay text-white px-4 py-1 rounded-full text-xs font-bold tracking-wide">
                       AM BELIEBTESTEN
                     </div>
                   )}
@@ -83,33 +83,33 @@ export default async function MembershipPage() {
                   {/* Dummy Features - In a real app, these would come from plan.rulesJson */}
                   <ul className="space-y-4 mb-8 text-sm font-medium">
                     <li className="flex items-center gap-3">
-                      <Check className="w-5 h-5 text-blue-500" />
+                      <Check className="w-5 h-5 text-clay" />
                       Unlimitiert spielen
                     </li>
                     <li className="flex items-center gap-3">
-                      <Check className="w-5 h-5 text-blue-500" />
+                      <Check className="w-5 h-5 text-clay" />
                       Bis zu {plan.simultaneousBookingLimit} Vorausbuchungen
                     </li>
                   </ul>
 
                   <div className="space-y-3">
-                    <CheckoutButton 
+                    <CheckoutButton
                       planId={plan.id}
                       paymentMethod="STRIPE"
                       isLoggedIn={isLoggedIn}
                       label="Jetzt abonnieren (Twint/CC)"
+                      variant={isPopular ? "default" : "outline"}
                       className={`block w-full text-center py-3 px-4 rounded-xl font-bold transition-all ${
-                        isPopular 
-                          ? "bg-blue-600 hover:bg-blue-700 text-white shadow-[0_0_15px_rgba(37,99,235,0.3)] hover:shadow-[0_0_25px_rgba(37,99,235,0.5)]" 
-                          : "bg-white dark:bg-[#1A1A1A] border border-slate-200 dark:border-white/[0.1] hover:bg-slate-50 dark:hover:bg-[#222222]"
+                        isPopular ? "shadow-[0_0_15px_var(--tennis-clay-glow)] hover:shadow-[0_0_25px_var(--tennis-clay-glow)]" : ""
                       }`}
                     />
-                    
-                    <CheckoutButton 
+
+                    <CheckoutButton
                       planId={plan.id}
                       paymentMethod="OFFLINE_INVOICE"
                       isLoggedIn={isLoggedIn}
                       label="Auf Rechnung zahlen"
+                      variant="ghost"
                       className="block w-full text-center py-2 px-4 rounded-xl text-sm font-semibold text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors"
                     />
                   </div>
