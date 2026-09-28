@@ -1,11 +1,17 @@
 import { CheckCircle2 } from "lucide-react";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { PrintButton } from "@/components/ui/print-button";
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/auth";
 
 export default async function InvoicePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+
+  const session = await auth();
+  if (!session?.user?.email) {
+    redirect(`/login?callbackUrl=/invoice/${id}`);
+  }
 
   const membership = await prisma.membership.findUnique({
     where: { id },
@@ -13,6 +19,21 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
   });
 
   if (!membership) {
+    notFound();
+  }
+
+  const isOwner = membership.user.email.toLowerCase() === session.user.email.toLowerCase();
+  const isTenantAdmin = isOwner
+    ? false
+    : await prisma.tenantUser.findFirst({
+        where: {
+          tenantId: membership.tenantId,
+          user: { email: session.user.email },
+          role: { in: ["PLATFORM_ADMIN", "CLUB_ADMIN"] },
+        },
+      }).then(Boolean);
+
+  if (!isOwner && !isTenantAdmin) {
     notFound();
   }
 
