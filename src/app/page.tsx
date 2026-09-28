@@ -5,15 +5,13 @@ import {
   getBlocksInRange,
   getBookingsInRange,
   getCourtsByTenantId,
+  getAllTenants,
   getMembershipPlansByTenantId,
-  getTenantBySlug,
 } from "@/lib/data";
 import { courtColor, courtLabel, SURFACE_LABEL, surfaceKind } from "@/lib/courts";
 
 export const dynamic = "force-dynamic";
 
-const SLUG = "tc-marly";
-const base = `/c/${SLUG}`;
 const label = "text-[13px] font-bold uppercase tracking-[.06em] text-muted-foreground";
 const fmt = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(2));
 
@@ -25,7 +23,30 @@ function window3Days() {
 }
 
 export default async function Home() {
-  const tenant = await getTenantBySlug(SLUG);
+  const tenants = await getAllTenants();
+  const tenant = tenants[0];
+
+  if (tenants.length > 1) {
+    return (
+      <main className="mx-auto w-full max-w-[640px] px-5 pb-16 pt-[max(40px,env(safe-area-inset-top))] lg:pt-24">
+        <h1 className="text-[56px] font-bold leading-[.98] tracking-[-.05em]">Wo spielst du?</h1>
+        <p className="mt-3 text-[17px] text-muted-foreground">Wähle deinen Club.</p>
+        <ul className="mt-8 flex flex-col gap-2.5">
+          {tenants.map((t) => (
+            <li key={t.id}>
+              <Link href={`/c/${t.slug}`} className="flex items-center gap-3 rounded-[22px] border border-border bg-card px-5 py-4">
+                <div className="min-w-0 flex-1">
+                  <div className="text-[19px] font-bold tracking-[-.02em]">{t.name}</div>
+                  {t.address && <div className="truncate text-[14px] text-muted-foreground">{t.address}</div>}
+                </div>
+                <Chevron />
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </main>
+    );
+  }
 
   if (!tenant) {
     return (
@@ -36,6 +57,7 @@ export default async function Home() {
     );
   }
 
+  const base = `/c/${tenant.slug}`;
   const { from, to } = window3Days();
   const [allCourts, plans, bookings, blocks] = await Promise.all([
     getCourtsByTenantId(tenant.id),
@@ -145,7 +167,7 @@ export default async function Home() {
             </div>
             {settings?.allowGuestBookings && (
               <div className="mt-3 rounded-[22px] bg-inset px-[18px] py-4 text-[15px] leading-[1.45] text-muted-foreground">
-                Ohne Abo? Als Gast buchst du einzelne Stunden und zahlst mit Twint.
+                Ohne Abo? Als Gast buchst du einzelne Stunden und zahlst online oder vor Ort.
               </div>
             )}
           </section>

@@ -1,20 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Segmented } from "@/components/app/segmented";
 import { Spinner } from "@/components/app/avatar";
 import { SwitchKnob } from "@/components/app/switch";
 import { createBookingAction } from "@/app/actions/booking";
-import { computeBookingCost, needsFloodlight } from "@/lib/pricing";
+import { setFavoritesAction } from "@/app/actions/profile";
+import { computeBookingCost, needsFloodlight, payButtonLabel, payOptions } from "@/lib/pricing";
 import { courtColor, courtLabel, hh, initials, longDate, slotState } from "@/lib/courts";
 import type { Person } from "@/lib/partners";
-import type { Booking, Court, CourtBlock, Tenant } from "@/types";
+import type { Booking, Court, CourtBlock, PaymentMethod, Tenant } from "@/types";
 import { cn } from "@/lib/utils";
 
-const GUEST = "__guest__";
-const FAV_KEY = "tc-favorites";
 const Star = ({ on }: { on: boolean }) => (
   <svg aria-hidden width="20" height="20" viewBox="0 0 24 24" fill={on ? "#f59e0b" : "none"} stroke={on ? "#f59e0b" : "currentColor"} strokeWidth="2" strokeLinejoin="round" className={on ? "" : "text-muted-foreground"}>
     <path d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8-6.2-3.3-6.2 3.3L8 14.2 3 9.3l6.9-1z" />
@@ -31,6 +30,8 @@ export function ReserveView({
   bookings,
   blocks,
   userId,
+  wallet,
+  favoriteUserIds,
 }: {
   tenant: Tenant;
   court: Court;
@@ -41,6 +42,8 @@ export function ReserveView({
   bookings: Booking[];
   blocks: CourtBlock[];
   userId: string;
+  wallet: number;
+  favoriteUserIds: string[];
 }) {
   const router = useRouter();
   const startDate = new Date(start);
@@ -50,33 +53,46 @@ export function ReserveView({
   const [ball, setBall] = useState(false);
   const [search, setSearch] = useState("");
   const [paying, setPaying] = useState(false);
-  // ponytail: favorites live in localStorage (per device); move to DB when they must sync across devices
-  const [favs, setFavs] = useState<string[]>(partners.slice(0, 3).map((p) => p.id));
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem(FAV_KEY);
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- hydrate from storage once
-      if (saved) setFavs(JSON.parse(saved));
-    } catch {}
-  }, []);
+  const [guests, setGuests] = useState<{ name: string; email: string }[]>([]);
+  const [guestForm, setGuestForm] = useState<{ name: string; email: string } | null>(null);
+  const [split, setSplit] = useState(false);
+  const [method, setMethod] = useState<PaymentMethod | null>(null);
+  const [favs, setFavs] = useState<string[]>(
+    favoriteUserIds.length ? favoriteUserIds : partners.slice(0, 3).map((p) => p.id)
+  );
   const saveFavs = (next: string[]) => {
     setFavs(next);
-    try { localStorage.setItem(FAV_KEY, JSON.stringify(next)); } catch {}
+    setFavoritesAction(tenant.slug, next).catch(() => {});
   };
 
   const others = members.filter((m) => m.id !== userId);
   const byId = new Map(others.map((m) => [m.id, m]));
-  const nameOf = (id: string) => (id === GUEST ? "Gast" : byId.get(id)?.name ?? "");
+  const nameOf = (id: string) => byId.get(id)?.name ?? "";
   const max = rtype === "double" ? 3 : 1;
+  const count = players.length + guests.length;
+  const full = () => {
+    if (count < max) return false;
+    toast(max === 1 ? "Einzel: 1 Mitspieler. Für mehr auf Doppel wechseln" : "Maximal 3 Mitspieler");
+    return true;
+  };
   const toggle = (id: string) => {
     if (players.includes(id)) return setPlayers(players.filter((x) => x !== id));
-    if (players.length >= max) {
-      toast(max === 1 ? "Einzel: 1 Mitspieler. Für mehr auf Doppel wechseln" : "Maximal 3 Mitspieler");
-      return;
-    }
-    setPlayers([...players, id]);
+    if (!full()) setPlayers([...players, id]);
+  };
+  const addGuest = () => {
+    const name = guestForm?.name.trim() ?? "";
+    const email = guestForm?.email.trim() ?? "";
+    if (!name) return toast("Bitte den Namen des Gasts angeben");
+    if (email && !/^\S+@\S+\.\S+$/.test(email)) return toast("Ungültige E-Mail-Adresse");
+    if (full()) return;
+    setGuests([...guests, { name, email }]);
+    setGuestForm(null);
   };
   const pickDur = (n: 1 | 2) => {
+    if (n === 2 && rtype === "single") {
+      toast("2 Stunden am Stück gibt es nur im Doppel");
+      return;
+    }
     const next = new Date(startDate.getTime() + 3_600_000);
     const closing = tenant.settingsJson?.closingHour ?? 22;
     if (n === 2 && !(next.getHours() < closing && slotState(court.id, next, 60, bookings, blocks, userId) === "free")) {
@@ -86,17 +102,20 @@ export function ReserveView({
     setDur(n);
   };
 
-  const guestOn = players.includes(GUEST);
   const light = needsFloodlight(court, startDate.getHours()) || (dur === 2 && needsFloodlight(court, startDate.getHours() + 1));
   const cost = computeBookingCost({
     settings: tenant.settingsJson,
     court,
     isGuest: false,
     durationMinutes: dur * 60,
-    guestCount: guestOn ? 1 : 0,
+    guestCount: guests.length,
     hasBallMachine: ball,
     hasLighting: light,
+    start: startDate,
   });
+  const opts = payOptions(tenant.settingsJson, { isAnon: false, wallet, total: cost.total });
+  const pay = method && opts.some(([m]) => m === method) ? method : opts[0][0];
+  const canSplit = cost.total > 0 && players.length > 0 && pay === "WALLET";
   const color = courtColor(court);
   const l = courtLabel(court);
   const q = search.toLowerCase();
@@ -110,12 +129,18 @@ export function ReserveView({
       startsAt: startDate.toISOString(),
       durationMinutes: dur * 60,
       matchType: rtype === "double" ? "DOUBLE" : "SINGLE",
-      participants: players.map((id) =>
-        id === GUEST ? { type: "GUEST" as const, guestName: "Gast" } : { type: "MEMBER" as const, userId: id }
-      ),
+      participants: [
+        ...players.map((userId) => ({ type: "MEMBER" as const, userId })),
+        ...guests.map((g) => ({ type: "GUEST" as const, guestName: g.name, guestEmail: g.email || undefined })),
+      ],
       hasBallMachine: ball,
       hasLighting: light,
+      ...(cost.total > 0 ? { paymentMethod: pay, splitCosts: canSplit && split } : {}),
     }).catch(() => ({ success: false as const, error: "Verbindung fehlgeschlagen. Bitte erneut versuchen." }));
+    if (res.success && "checkoutUrl" in res && res.checkoutUrl) {
+      window.location.assign(res.checkoutUrl);
+      return;
+    }
     setPaying(false);
     if (!res.success) {
       toast(res.error ?? "Reservierung fehlgeschlagen");
@@ -156,19 +181,25 @@ export function ReserveView({
               className="flex-1"
               label="Spielform"
               value={rtype}
-              onChange={(v) => { setRtype(v); setPlayers(players.slice(0, v === "double" ? 3 : 1)); }}
+              onChange={(v) => {
+                setRtype(v);
+                const m = v === "double" ? 3 : 1;
+                setPlayers(players.slice(0, m));
+                setGuests(guests.slice(0, Math.max(0, m - Math.min(players.length, m))));
+                if (v === "single") setDur(1);
+              }}
               options={[["single", "Einzel"], ["double", "Doppel"]] as const}
             />
-            <Segmented size="lg" className="flex-1" label="Dauer" value={dur} onChange={pickDur} options={[[1, "1 Std"], [2, "2 Std"]] as const} />
+            <Segmented size="lg" className="flex-1" label="Dauer" value={dur} onChange={pickDur} options={[[1, "1 Std"], [2, rtype === "double" ? "2 Std" : "2 Std · Doppel"]] as const} />
           </div>
           </div>
 
           <div className="lg:col-start-2 lg:row-span-2 lg:row-start-1">
           <div className="mt-6 flex items-baseline justify-between lg:mt-0">
             <h2 className="text-[20px] font-bold tracking-[-.02em]">Mitspieler</h2>
-            <div className="text-[14px] font-semibold text-muted-foreground">{players.length} von {max}</div>
+            <div className="text-[14px] font-semibold text-muted-foreground">{count} von {max}</div>
           </div>
-          {players.length > 0 && (
+          {count > 0 && (
             <div className="mt-2.5 flex flex-wrap gap-2">
               {players.map((id) => (
                 <button
@@ -179,9 +210,22 @@ export function ReserveView({
                   className="flex animate-[pop_.4s_var(--ease-spring)] items-center gap-2 rounded-full border border-border bg-card py-[5px] pl-[5px] pr-3"
                 >
                   <span className="flex h-[30px] w-[30px] items-center justify-center rounded-full bg-[#e25b36] text-[12px] font-bold text-white">
-                    {id === GUEST ? "G" : initials(nameOf(id))}
+                    {initials(nameOf(id))}
                   </span>
                   <span className="text-[15px] font-semibold">{nameOf(id).split(" ")[0]}</span>
+                  <svg aria-hidden width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" className="text-muted-foreground"><path d="M18 6 6 18M6 6l12 12" /></svg>
+                </button>
+              ))}
+              {guests.map((g, i) => (
+                <button
+                  key={`g${i}`}
+                  type="button"
+                  aria-label={`Gast ${g.name} entfernen`}
+                  onClick={() => setGuests(guests.filter((_, j) => j !== i))}
+                  className="flex animate-[pop_.4s_var(--ease-spring)] items-center gap-2 rounded-full border border-border bg-card py-[5px] pl-[5px] pr-3"
+                >
+                  <span className="flex h-[30px] w-[30px] items-center justify-center rounded-full bg-acc text-[12px] font-bold">G</span>
+                  <span className="text-[15px] font-semibold">{g.name.split(" ")[0]}</span>
                   <svg aria-hidden width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" className="text-muted-foreground"><path d="M18 6 6 18M6 6l12 12" /></svg>
                 </button>
               ))}
@@ -247,15 +291,43 @@ export function ReserveView({
               );
             })}
           </div>
-          <button
-            type="button"
-            aria-pressed={guestOn}
-            onClick={() => toggle(GUEST)}
-            className={cn("mt-2.5 flex w-full items-center justify-between rounded-[18px] px-4 py-3.5 text-[16px] font-semibold transition-[background] duration-300", guestOn ? "bg-[#e25b36] text-white" : "bg-inset text-foreground")}
-          >
-            <span>Gast hinzufügen</span>
-            <span>CHF {tenant.settingsJson?.guestFee ?? 15}</span>
-          </button>
+          {guestForm ? (
+            <div className="mt-2.5 flex flex-col gap-2 rounded-[18px] bg-inset p-3">
+              <input
+                autoFocus
+                aria-label="Name des Gasts"
+                placeholder="Name des Gasts"
+                value={guestForm.name}
+                onChange={(e) => setGuestForm({ ...guestForm, name: e.target.value })}
+                className="h-12 rounded-[14px] border border-border bg-card px-4 text-[16px] text-foreground outline-none"
+              />
+              <input
+                type="email"
+                aria-label="E-Mail des Gasts (optional)"
+                placeholder="E-Mail (optional)"
+                value={guestForm.email}
+                onChange={(e) => setGuestForm({ ...guestForm, email: e.target.value })}
+                className="h-12 rounded-[14px] border border-border bg-card px-4 text-[16px] text-foreground outline-none"
+              />
+              <div className="flex gap-2">
+                <button type="button" onClick={() => setGuestForm(null)} className="h-11 flex-1 rounded-[14px] bg-card text-[15px] font-bold">
+                  Abbrechen
+                </button>
+                <button type="button" onClick={addGuest} className="h-11 flex-1 rounded-[14px] bg-[#e25b36] text-[15px] font-bold text-white">
+                  Hinzufügen
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => !full() && setGuestForm({ name: "", email: "" })}
+              className="mt-2.5 flex w-full items-center justify-between rounded-[18px] bg-inset px-4 py-3.5 text-[16px] font-semibold text-foreground"
+            >
+              <span>Gast hinzufügen</span>
+              <span>CHF {tenant.settingsJson?.guestFee ?? 15}</span>
+            </button>
+          )}
           </div>
 
           <div className="lg:col-start-1 lg:row-start-2">
@@ -279,6 +351,20 @@ export function ReserveView({
             <span>Total</span>
             <span className="text-[17px] font-bold text-foreground">{cost.total ? `CHF ${cost.total}` : "Inklusive"}</span>
           </div>
+          {cost.total > 0 && opts.length > 1 && (
+            <Segmented className="mb-2.5 lg:w-full lg:max-w-md" label="Zahlungsart" value={pay} onChange={setMethod} options={opts} />
+          )}
+          {canSplit && (
+            <button type="button" aria-pressed={split} onClick={() => setSplit(!split)} className="mb-2.5 flex w-full items-center gap-3 rounded-[16px] bg-inset px-4 py-3 text-left lg:max-w-md">
+              <span className="flex-1">
+                <span className="block text-[15px] font-semibold">Kosten teilen</span>
+                <span className="block text-[13px] text-muted-foreground">
+                  CHF {Math.round((cost.total / (players.length + 1)) * 100) / 100} pro Mitglied vom Guthaben
+                </span>
+              </span>
+              <SwitchKnob on={split} />
+            </button>
+          )}
           <button
             type="button"
             onClick={confirm}
@@ -287,7 +373,7 @@ export function ReserveView({
             style={{ background: color, boxShadow: `0 14px 30px -10px ${color}` }}
           >
             {paying && <Spinner />}
-            Reservieren
+            {cost.total > 0 ? payButtonLabel(pay, cost.total) : "Reservieren"}
           </button>
         </div>
       </div>

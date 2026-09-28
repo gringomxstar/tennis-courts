@@ -39,6 +39,17 @@ Stand: 28.09.2026. Grundlage ist `availio-funktionen.md`, Abschnitt 2 (WebApp) p
 - Profil bearbeiten
 - Gäste-Regeln pro Gruppe
 
+## Stand 29.09.2026
+
+Umgesetzt (Branch `feat/phase0-1-2-admin`):
+
+- **Phase 0 komplett.** Regeln prüfen gegen Postgres (`src/lib/booking-rules.ts`, Check: `scripts/check-booking-rules.ts`). Guthaben wird in einer Transaktion abgebucht und beim Storno zurückgebucht (`src/lib/wallet.ts`, Check gegen die DB mit Rollback: `scripts/check-wallet-db.ts`). Aufladen läuft über Stripe Checkout und wird per Webhook oder beim Zurückkehren gutgeschrieben. Plan-Regeln werden durchgesetzt: Vorlauf, Dauern, max. aktiv, pro Tag. «2 Std» gibt es nur im Doppel. Storno-Mail ist neu.
+- **Phase 1:** mehrere Gäste mit Name/E-Mail, Profil bearbeiten (ohne Admin-Freigabe), Favoriten in der DB (`TenantUser.favoriteUserIds`), Club-Kontakt im Profil, `lateBookingMinutes` (Standard 15), Club-Wechsler und Club-Liste auf `/` bei mehreren Clubs. Gäste ohne Konto bekommen in der Mail einen Link auf `/c/{club}/buchung/{id}?t=…` (HMAC-Token) zum Ansehen und Stornieren, mit Stripe-Rückerstattung.
+- **Phase 2:** Button «Bezahlen» statt Twint. Mitglieder zahlen mit Guthaben, oder online, wenn das Guthaben nicht reicht. Vor Ort und Rechnung sind pro Club einschaltbar, der Admin markiert sie unter «Heute» als bezahlt. Preisregeln (Wochentag, Uhrzeit in Zürcher Zeit, Früh-/Last-Minute) gibt es im Admin. Kosten teilen belastet das Guthaben aller Mitglieder. Plan-Feld «Gäste/Woche» liegt in `rulesJson`.
+- **Admin:** Limits für aktive Buchungen pro Rolle (Mitglied/Trainer/Gast) und Sportart (leer = unbegrenzt). Trainer sind von der Marly-Folge-/Pausenregel ausgenommen. Rollen werden unter Admin → Mitglieder vergeben.
+
+Bewusst weggelassen: Admin-Freigabe von Profiländerungen (wenig Nutzen), Phase 3 und 4 (Entscheid vom 28.09.).
+
 ## Phase 0: Fehler zuerst beheben (S, ca. 1 Tag)
 
 Diese Punkte gibt die UI heute schon vor, in der Datenbank passiert aber nichts:

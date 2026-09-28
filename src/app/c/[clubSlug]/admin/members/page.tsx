@@ -38,6 +38,7 @@ export default async function AdminMembersPage({ params }: { params: Promise<{ c
         plan: ms?.planName ?? "Keine Mitgliedschaft",
         state: ms?.status === "ACTIVE" ? "paid" : ms?.status === "PENDING" && ms.stripeCustomerId ? "invoice" : "remind",
         stripeCustomerId: ms?.status === "PENDING" ? ms.stripeCustomerId : null,
+        role: m.role,
       };
     });
 
@@ -47,7 +48,7 @@ export default async function AdminMembersPage({ params }: { params: Promise<{ c
         <h1 className="text-[34px] font-bold tracking-[-.035em]">Mitglieder</h1>
         <div className="mt-0.5 text-[15px] text-muted-foreground">Zahlungen Saison {new Date().getFullYear()}</div>
       </div>
-      <AdminMembers tenantId={tenant.id} members={rows} />
+      <AdminMembers slug={tenant.slug} tenantId={tenant.id} members={rows} />
     </>
   );
 }

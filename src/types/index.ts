@@ -57,7 +57,29 @@ export interface TenantSettings {
   defaultHourlyRateTennis?: number;
   defaultHourlyRateHalle?: number;
   defaultHourlyRatePadel?: number;
+  /** Active-slot limit per role and sport; null = unlimited. A missing role falls back to maxActiveSlotsPerPlayer (Marly). */
+  slotLimits?: Partial<Record<LimitRole, Partial<Record<SportType, number | null>>>>;
+  /** Minutes after a slot's start during which it can still be booked. */
+  lateBookingMinutes?: number;
+  payOnSite?: boolean;
+  payByInvoice?: boolean;
+  priceRules?: PriceRule[];
 }
+
+export type LimitRole = "MEMBER" | "COACH" | "GUEST";
+
+/** Court price adjustment. All set conditions must match; percent is added to the court price (-20 = 20% off). */
+export interface PriceRule {
+  label: string;
+  percent: number;
+  weekdays?: number[]; // 0 = Sunday
+  fromHour?: number;
+  toHour?: number; // exclusive
+  minLeadHours?: number; // early bird: booked at least this long before start
+  maxLeadHours?: number; // last minute: booked at most this long before start
+}
+
+export type PaymentMethod = "WALLET" | "ONLINE" | "ON_SITE" | "INVOICE";
 
 export interface Tenant {
   id: string;
@@ -120,6 +142,8 @@ export interface Booking {
   hasLighting?: boolean;
   currency?: string;
   notes?: string | null;
+  paymentStatus?: "UNPAID" | "PAID" | "WAIVED";
+  paymentMethod?: PaymentMethod;
   organizer?: {
     id: string;
     firstName: string;
@@ -163,6 +187,8 @@ export interface MembershipPlan {
   dailyBookingLimit: number;
   weeklyBookingLimit: number;
   allowedDurations: number[];
+  /** Max. guests the member may bring per calendar week; null/undefined = unlimited. */
+  guestsPerWeek?: number | null;
 }
 
 export type WalletTransactionType =

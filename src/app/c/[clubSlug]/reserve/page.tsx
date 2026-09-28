@@ -27,6 +27,8 @@ export default async function ReservePage({
       bookings={d.bookings}
       blocks={d.blocks}
       userId={d.user.id}
+      wallet={d.wallet}
+      favoriteUserIds={d.favoriteUserIds}
     />
   );
 }

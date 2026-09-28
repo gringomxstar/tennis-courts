@@ -10,6 +10,7 @@ import { MembershipPlansManager } from "@/components/admin/membership-plans-mana
 import { AdminGrantCreditsButton } from "@/components/admin/admin-grant-credits-button";
 import { MarkInvoicePaidButton } from "@/components/admin/mark-invoice-paid-button";
 import { prisma } from "@/lib/prisma";
+import { slotLimitFor } from "@/lib/booking-rules";
 
 const card = "rounded-[26px] border border-border bg-card p-5";
 const label = "text-[13px] font-bold uppercase tracking-[.06em] text-muted-foreground";
@@ -96,7 +97,9 @@ export default async function ClubSettingsPage({ params }: ClubSettingsPageProps
             </div>
             <div className="mt-3 text-[14px] leading-[1.6] text-muted-foreground">
               <div>Zeiten: {tenant.settingsJson?.openingHour || 7}:00 – {tenant.settingsJson?.closingHour || 22}:00 Uhr</div>
-              <div>Max. Slots: {tenant.settingsJson?.maxActiveSlotsPerPlayer || 2} gleichzeitig</div>
+              <div>
+                Max. Slots Mitglied: {Number.isFinite(slotLimitFor(tenant.settingsJson, "MEMBER", "TENNIS")) ? slotLimitFor(tenant.settingsJson, "MEMBER", "TENNIS") : "unbegrenzt"}
+              </div>
               <div>2h Doppel: {tenant.settingsJson?.allowConsecutiveSlotsForDoubles ? "Erlaubt (4 Spieler)" : "Deaktiviert"}</div>
             </div>
           </div>

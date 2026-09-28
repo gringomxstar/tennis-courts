@@ -41,6 +41,7 @@ export function MembershipPlansManager({
   const [bookingWindowDays, setBookingWindowDays] = useState<number>(7);
   const [simultaneousBookingLimit, setSimultaneousBookingLimit] = useState<number>(3);
   const [dailyBookingLimit, setDailyBookingLimit] = useState<number>(1);
+  const [guestsPerWeek, setGuestsPerWeek] = useState("");
   const [allow60, setAllow60] = useState(true);
   const [allow90, setAllow90] = useState(true);
 
@@ -67,6 +68,7 @@ export function MembershipPlansManager({
         dailyBookingLimit: Number(dailyBookingLimit),
         weeklyBookingLimit: Number(simultaneousBookingLimit) * 2,
         allowedDurations,
+        guestsPerWeek: guestsPerWeek === "" ? null : Number(guestsPerWeek),
       });
 
       if (res.success && res.plan) {
@@ -207,7 +209,7 @@ export function MembershipPlansManager({
               />
             </label>
 
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               <label className="block">
                 <span className={label}>Vorlauf</span>
                 <input
@@ -241,6 +243,19 @@ export function MembershipPlansManager({
                   max={5}
                   value={dailyBookingLimit}
                   onChange={(e) => setDailyBookingLimit(Number(e.target.value))}
+                  className={input}
+                />
+              </label>
+              <label className="block">
+                <span className={label}>Gäste/Woche</span>
+                <input
+                  id="guestsPerWeek"
+                  type="number"
+                  min={0}
+                  max={20}
+                  placeholder="∞"
+                  value={guestsPerWeek}
+                  onChange={(e) => setGuestsPerWeek(e.target.value)}
                   className={input}
                 />
               </label>
@@ -297,7 +312,8 @@ export function MembershipPlansManager({
                   </div>
                   {plan.description && <p className="mt-0.5 text-[14px] text-muted-foreground">{plan.description}</p>}
                   <p className="mt-1 text-[13px] text-muted-foreground">
-                    Vorlauf {plan.bookingWindowDays} Tage · Max. aktiv {plan.simultaneousBookingLimit} · {plan.allowedDurations.join("/")} Min.
+                    Vorlauf {plan.bookingWindowDays} Tage · Max. aktiv {plan.simultaneousBookingLimit} · {plan.dailyBookingLimit}/Tag · {plan.allowedDurations.join("/")} Min.
+                    {plan.guestsPerWeek != null ? ` · ${plan.guestsPerWeek} Gäste/Woche` : ""}
                   </p>
                 </div>
                 <button

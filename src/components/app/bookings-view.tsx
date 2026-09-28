@@ -58,7 +58,8 @@ export function BookingsView({
     setBusy(false);
     setArmed(null);
     if (!res.success) return void toast(res.error ?? "Stornieren fehlgeschlagen");
-    toast("Buchung storniert");
+    const refund = "refundAmount" in res ? res.refundAmount : 0;
+    toast(refund ? `Storniert · CHF ${refund} zurückerstattet` : "Buchung storniert");
     router.refresh();
   }
 
@@ -122,6 +123,12 @@ export function BookingsView({
                   </div>
                 </div>
                 {up && players && <div className="mt-2 text-[14px] text-muted-foreground">mit {players}</div>}
+                {up && b.status === "PENDING" && <div className="mt-2 text-[14px] font-semibold text-clay-text">Wartet auf Zahlung</div>}
+                {up && b.paymentStatus === "UNPAID" && (b.paymentMethod === "ON_SITE" || b.paymentMethod === "INVOICE") && (
+                  <div className="mt-2 text-[14px] font-semibold text-muted-foreground">
+                    CHF {b.totalCost} {b.paymentMethod === "ON_SITE" ? "vor Ort zu bezahlen" : "auf Rechnung"}
+                  </div>
+                )}
                 {up ? (
                   <button
                     type="button"

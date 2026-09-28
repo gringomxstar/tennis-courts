@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Avatar, Chevron } from "@/components/app/avatar";
 import { useNow } from "@/components/app/use-now";
-import { cancelBookingAction } from "@/app/actions/booking";
+import { cancelBookingAction, markBookingPaidOfflineAction } from "@/app/actions/booking";
 import { addDays, atHour, courtLabel, hhmm, initials, longDate, slotState } from "@/lib/courts";
 import type { Booking, Court, CourtBlock, TenantSettings } from "@/types";
 
@@ -27,12 +27,14 @@ export function AdminToday({
   courts,
   bookings,
   blocks,
+  openPayments,
 }: {
   slug: string;
   settings: TenantSettings | null | undefined;
   courts: Court[];
   bookings: Booking[];
   blocks: CourtBlock[];
+  openPayments: { id: string; name: string; court: string; startsAt: string; amount: number; method: string }[];
 }) {
   const router = useRouter();
   const { now, today } = useToday();
@@ -81,6 +83,15 @@ export function AdminToday({
         return;
       }
       toast(`Storniert · ${name} informiert`);
+      router.refresh();
+    });
+  }
+
+  function markPaid(id: string) {
+    startTransition(async () => {
+      hide(id);
+      const res = await markBookingPaidOfflineAction(slug, id);
+      toast(res.success ? "Als bezahlt markiert" : (res.error ?? "Fehlgeschlagen"));
       router.refresh();
     });
   }
@@ -148,6 +159,38 @@ export function AdminToday({
             </div>
           );
         })}
+      </div>
+
+      {openPayments.some((p) => !gone.includes(p.id)) && (
+        <>
+          <h2 className="px-5 pb-2.5 pt-6 text-[20px] font-bold tracking-[-.02em]">Offene Zahlungen</h2>
+          <div className="flex flex-col gap-2.5 px-5 lg:grid lg:grid-cols-2">
+            {openPayments
+              .filter((p) => !gone.includes(p.id))
+              .map((p) => (
+                <div key={p.id} className="flex items-center gap-3 rounded-[20px] border border-border bg-card px-4 py-3.5">
+                  <Avatar ini={initials(p.name)} />
+                  <div className="flex-1">
+                    <div className="text-[16px] font-bold">{p.name}</div>
+                    <div className="text-[14px] text-muted-foreground">
+                      {now ? `${longDate(new Date(p.startsAt))}, ${hhmm(new Date(p.startsAt))}` : ""} · CHF {p.amount} · {p.method}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => markPaid(p.id)}
+                    aria-label={`Zahlung von ${p.name} als bezahlt markieren`}
+                    className="rounded-[12px] bg-clay px-3.5 py-[9px] text-[14px] font-bold text-white"
+                  >
+                    Bezahlt
+                  </button>
+                </div>
+              ))}
+          </div>
+        </>
+      )}
+
+      <div className="flex flex-col gap-2.5 px-5 pt-2.5 lg:grid lg:grid-cols-2">
         <Link
           href={`/c/${slug}/admin/settings`}
           className="flex items-center gap-3 rounded-[20px] border border-border bg-card px-4 py-3.5"
