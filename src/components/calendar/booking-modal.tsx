@@ -6,21 +6,14 @@ import { createBookingAction, topUpWalletAction } from "@/app/actions/booking";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import {
   X,
-  Calendar,
-  Clock,
-  ShieldCheck,
   AlertCircle,
   Loader2,
-  SlidersHorizontal,
   Coins,
   Search,
   UserPlus,
-  Users,
-  Sparkles,
-  Zap,
+  Check
 } from "lucide-react";
 
 interface BookingModalProps {
@@ -51,6 +44,11 @@ interface ParticipantSlot {
   email?: string;
 }
 
+const getMockRanking = (id: string) => {
+  const hash = id.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  return `R${(hash % 9) + 1}`;
+};
+
 export function BookingModal({
   isOpen,
   onClose,
@@ -69,42 +67,33 @@ export function BookingModal({
   const [durationMinutes, setDurationMinutes] = useState(60);
   const [matchType, setMatchType] = useState<"SINGLE" | "DOUBLE">("SINGLE");
 
-  // Wallet state with local balance tracking
   const [walletBalance, setWalletBalance] = useState(userWallet?.balance ?? 50);
   const [topUpLoading, setTopUpLoading] = useState(false);
 
-  // Equipment add-ons
   const [hasBallMachine, setHasBallMachine] = useState(false);
   const [hasLighting, setHasLighting] = useState(false);
 
-  // Participants list (excluding organizer)
-  const defaultOpponent = members.find((m) => m.id !== currentUserId);
-  const [participants, setParticipants] = useState<ParticipantSlot[]>(
-    defaultOpponent
-      ? [
-          {
-            id: `part-${defaultOpponent.id}`,
-            type: "MEMBER",
-            userId: defaultOpponent.id,
-            name: `${defaultOpponent.firstName} ${defaultOpponent.lastName}`,
-            email: defaultOpponent.email,
-          },
-        ]
-      : []
-  );
+  const currentUser = members.find((m) => m.id === currentUserId) || {
+    id: currentUserId || "du",
+    firstName: "Roger",
+    lastName: "Federer",
+    email: "roger@example.com",
+    role: "MEMBER",
+  };
 
-  // Quick search & manual guest input state
+  const defaultOpponent = members.find((m) => m.id !== currentUserId);
+  const [participants, setParticipants] = useState<ParticipantSlot[]>([]);
+
   const [memberSearchQuery, setMemberSearchQuery] = useState("");
+  const [activeTab, setActiveTab] = useState<"ALLE" | "FAV" | "GAST">("ALLE");
+  
   const [newGuestName, setNewGuestName] = useState("");
   const [newGuestEmail, setNewGuestEmail] = useState("");
-  const [showAddGuest, setShowAddGuest] = useState(false);
 
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showAdjustControls, setShowAdjustControls] = useState(false);
 
-  // Ball Machine Exclusivity check
   const ballMachineConflict = useMemo(() => {
     if (!isOpen || !existingBookings || existingBookings.length === 0) return null;
     const startMs = new Date(`${selectedDateStr}T${time}:00`).getTime();
@@ -128,16 +117,13 @@ export function BookingModal({
 
   const currentCourt = courts.find((c) => c.id === courtId) || courts[0];
   const requiredPartnersCount = matchType === "SINGLE" ? 1 : 3;
-  const isSquadFull = participants.length >= requiredPartnersCount;
 
-  // Calculate end time string
   const [startHour, startMin] = time.split(":").map(Number);
   const endTotalMinutes = (startHour || 0) * 60 + (startMin || 0) + durationMinutes;
   const endHour = Math.floor(endTotalMinutes / 60) % 24;
   const endMinute = endTotalMinutes % 60;
   const endTime = `${String(endHour).padStart(2, "0")}:${String(endMinute).padStart(2, "0")}`;
 
-  // Price Calculation
   const durationHours = durationMinutes / 60;
   let courtRate = 0;
   if (currentCourt?.sportType === "PADEL") {
@@ -145,7 +131,6 @@ export function BookingModal({
   } else if (currentCourt?.isIndoor) {
     courtRate = (tenant.settingsJson?.defaultHourlyRateHalle ?? currentCourt.hourlyRate ?? 45) * durationHours;
   } else {
-    // Outdoor tennis: included for members, 30 CHF/h for guests
     courtRate = currentUserId ? 0 : (tenant.settingsJson?.defaultHourlyRateTennis ?? 30) * durationHours;
   }
 
@@ -156,7 +141,6 @@ export function BookingModal({
   const lightingCost = hasLighting ? (tenant.settingsJson?.floodlightFee ?? 5) : 0;
   const totalCost = courtRate + totalGuestFee + ballMachineCost + lightingCost;
 
-  // Top Up Action
   const handleQuickTopUp = async () => {
     setTopUpLoading(true);
     const res = await topUpWalletAction({ clubSlug: tenant.slug, amount: 50 });
@@ -167,35 +151,15 @@ export function BookingModal({
     }
   };
 
-  // Participant Management
-  const addMemberParticipant = (member: UserSummary) => {
-    if (participants.some((p) => p.userId === member.id)) return;
+  const addParticipant = (p: ParticipantSlot) => {
+    if (participants.some((existing) => existing.id === p.id)) return;
     if (participants.length >= requiredPartnersCount) {
       if (matchType === "SINGLE") {
-        // Replace current opponent
-        setParticipants([
-          {
-            id: `part-${member.id}`,
-            type: "MEMBER",
-            userId: member.id,
-            name: `${member.firstName} ${member.lastName}`,
-            email: member.email,
-          },
-        ]);
-        return;
+        setParticipants([p]);
       }
       return;
     }
-    setParticipants([
-      ...participants,
-      {
-        id: `part-${member.id}`,
-        type: "MEMBER",
-        userId: member.id,
-        name: `${member.firstName} ${member.lastName}`,
-        email: member.email,
-      },
-    ]);
+    setParticipants([...participants, p]);
   };
 
   const removeParticipant = (id: string) => {
@@ -205,32 +169,16 @@ export function BookingModal({
   const handleAddGuest = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newGuestName.trim()) return;
-    if (participants.length >= requiredPartnersCount && matchType === "SINGLE") {
-      setParticipants([
-        {
-          id: `guest-${Date.now()}`,
-          type: "GUEST",
-          name: newGuestName.trim(),
-          email: newGuestEmail.trim() || undefined,
-        },
-      ]);
-    } else if (participants.length < requiredPartnersCount) {
-      setParticipants([
-        ...participants,
-        {
-          id: `guest-${Date.now()}`,
-          type: "GUEST",
-          name: newGuestName.trim(),
-          email: newGuestEmail.trim() || undefined,
-        },
-      ]);
-    }
+    addParticipant({
+      id: `guest-${Date.now()}`,
+      type: "GUEST",
+      name: newGuestName.trim(),
+      email: newGuestEmail.trim() || undefined,
+    });
     setNewGuestName("");
     setNewGuestEmail("");
-    setShowAddGuest(false);
   };
 
-  // Switch Match Type handler
   const handleMatchTypeChange = (newType: "SINGLE" | "DOUBLE") => {
     setMatchType(newType);
     if (newType === "SINGLE") {
@@ -241,43 +189,37 @@ export function BookingModal({
     }
   };
 
-  // Frequently played partners (Buddy List)
-  const buddyMembers = members.filter((m) => m.id !== currentUserId).slice(0, 4);
-
-  // Filtered members for live search
+  const buddyMembers = members.filter((m) => m.id !== currentUserId).slice(0, 8);
   const filteredMembers = members.filter((m) => {
     if (m.id === currentUserId) return false;
-    if (participants.some((p) => p.userId === m.id)) return false;
     if (!memberSearchQuery) return true;
     const query = memberSearchQuery.toLowerCase();
+    const rank = getMockRanking(m.id).toLowerCase();
     return (
       m.firstName.toLowerCase().includes(query) ||
       m.lastName.toLowerCase().includes(query) ||
-      m.email.toLowerCase().includes(query)
+      rank.includes(query)
     );
   });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
     setLoading(true);
     setError(null);
 
-    // Validate participants
     if (participants.length < requiredPartnersCount) {
       setLoading(false);
       setError(
         matchType === "SINGLE"
-          ? "Bitte wähle einen Spielpartner oder Gastspieler für das Einzel aus."
-          : `Für ein Doppel müssen mindestens 3 Mitspieler ausgewählt werden (aktuell: ${participants.length}).`
+          ? "Bitte wähle einen Spielpartner für das Einzel aus."
+          : `Für ein Doppel müssen 3 Mitspieler ausgewählt werden (aktuell: ${participants.length}).`
       );
       return;
     }
 
-    // Check credits
     if (totalCost > 0 && currentUserId && walletBalance < totalCost) {
       setLoading(false);
       setError(
-        `Nicht genügend Guthaben (${walletBalance.toFixed(2)} CHF vorhanden, ${totalCost.toFixed(2)} CHF benötigt). Bitte lade kurz Test-Credits auf.`
+        `Nicht genügend Guthaben (${walletBalance.toFixed(2)} CHF vorhanden, ${totalCost.toFixed(2)} CHF benötigt).`
       );
       return;
     }
@@ -311,617 +253,414 @@ export function BookingModal({
     }
   };
 
-  const getSurfaceLabel = (surface?: string) => {
-    switch (surface) {
-      case "CLAY":
-        return "Sand (Clay)";
-      case "HARD":
-        return "Hartplatz";
-      case "ARTIFICIAL_GRASS":
-        return "Kunstrasen";
-      case "CARPET":
-        return "Teppich";
-      default:
-        return surface || "Standard";
+  const renderPlayerSlot = (index: number) => {
+    const p = participants[index];
+    if (!p) {
+      return (
+        <div className="flex items-center gap-3 p-3 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30 text-slate-400">
+          <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center">
+            <UserPlus className="w-4 h-4" />
+          </div>
+          <span className="text-sm font-medium">Spieler {index + 2} auswählen...</span>
+        </div>
+      );
     }
+    return (
+      <div className="flex items-center justify-between p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 flex items-center justify-center font-bold text-sm">
+            {p.name.substring(0, 2).toUpperCase()}
+          </div>
+          <div>
+            <div className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              {p.name}
+              {p.type === "GUEST" && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-800">Gast</span>
+              )}
+            </div>
+            {p.type === "MEMBER" && p.userId && (
+              <span className="text-xs text-slate-500 font-medium">{getMockRanking(p.userId)}</span>
+            )}
+          </div>
+        </div>
+        <button
+          onClick={() => removeParticipant(p.id)}
+          className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-rose-50 text-slate-400 hover:text-rose-500 transition-colors"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+    );
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in overflow-y-auto">
-      <div className="relative w-full max-w-xl max-h-[92vh] overflow-y-auto rounded-3xl bg-white dark:bg-[#141A26] p-5 sm:p-6 shadow-2xl border border-slate-200 dark:border-white/[0.08] space-y-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in overflow-y-auto">
+      <div className="relative w-full max-w-4xl max-h-[95vh] overflow-hidden rounded-3xl bg-slate-50 dark:bg-[#0B1120] shadow-2xl border border-slate-200 dark:border-white/[0.08] flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-white/[0.06]">
+        <div className="flex items-center justify-between p-5 sm:p-6 bg-white dark:bg-[#141A26] border-b border-slate-100 dark:border-white/[0.05] shrink-0">
           <div>
-            <h2 className="text-xl font-black text-slate-900 dark:text-slate-100 flex items-center gap-2">
-              🎾 Platz reservieren
+            <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-slate-100 flex items-center gap-2">
+              🎾 Spacious Reservation Studio
             </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Mandantenfähiges Buchungssystem mit dynamischer Dauer & Fairplay-Regeln
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+              Platzreservierung für {currentCourt?.name} am {selectedDateStr}
             </p>
           </div>
           <button
             onClick={onClose}
-            className="rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-white/[0.06] transition-colors cursor-pointer"
+            className="rounded-full p-2.5 bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-900 dark:bg-white/[0.05] dark:hover:bg-white/[0.1] transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {error && (
-          <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-start gap-2.5 dark:bg-rose-950/60 dark:border-rose-900 dark:text-rose-200 animate-in fade-in">
-            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <span>{error}</span>
-              {totalCost > walletBalance && (
-                <div className="mt-2">
-                  <Button
-                    type="button"
-                    size="sm"
-                    onClick={handleQuickTopUp}
-                    disabled={topUpLoading}
-                    className="bg-[#E25B36] hover:bg-[#C84B2B] text-white text-xs h-7 px-3 rounded-xl gap-1.5"
-                  >
-                    {topUpLoading ? (
-                      <Loader2 className="w-3 h-3 animate-spin" />
-                    ) : (
-                      <Coins className="w-3 h-3" />
+        {/* Content: Two Columns */}
+        <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
+          
+          {/* Left Column: Match Setup & Billing */}
+          <div className="w-full md:w-[45%] flex flex-col border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-[#141A26] overflow-y-auto">
+            <div className="p-6 flex-1 space-y-6">
+              
+              {error && (
+                <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-sm flex items-start gap-3 dark:bg-rose-950/40 dark:border-rose-900/50 dark:text-rose-200 animate-in fade-in">
+                  <AlertCircle className="w-5 h-5 shrink-0" />
+                  <div className="flex-1">
+                    <span className="font-semibold">{error}</span>
+                    {totalCost > walletBalance && (
+                      <Button
+                        type="button"
+                        onClick={handleQuickTopUp}
+                        disabled={topUpLoading}
+                        className="mt-3 bg-rose-600 hover:bg-rose-700 text-white text-xs h-8 px-4 rounded-xl w-full"
+                      >
+                        {topUpLoading ? <Loader2 className="w-3 h-3 animate-spin mr-2" /> : <Coins className="w-3 h-3 mr-2" />}
+                        Jetzt +50 CHF aufladen
+                      </Button>
                     )}
-                    Jetzt +50 CHF Test-Credits aufladen
-                  </Button>
+                  </div>
                 </div>
               )}
-            </div>
-          </div>
-        )}
 
-        {/* Selected Slot Highlight Card */}
-        <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-br from-[#E25B36]/10 to-amber-500/5 dark:from-[#E25B36]/15 dark:to-[#1A2232] border border-[#E25B36]/25 flex items-center justify-between gap-4">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-extrabold text-sm text-slate-900 dark:text-slate-100">
-                {currentCourt?.name}
-              </span>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#E25B36]/15 text-[#E25B36] dark:bg-[#E25B36]/25 dark:text-[#F37957]">
-                {getSurfaceLabel(currentCourt?.surface)}
-              </span>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 dark:bg-white/[0.06] dark:text-slate-300">
-                {currentCourt?.sportType === "PADEL" ? "Padel" : "Tennis"}
-              </span>
-              {currentCourt?.isIndoor ? (
-                <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-semibold">
-                  Halle (Indoor)
-                </span>
-              ) : (
-                <span className="text-[10px] text-slate-500 dark:text-slate-400">Outdoor</span>
-              )}
-            </div>
-
-            <div className="flex flex-wrap items-center gap-3 text-xs text-slate-600 dark:text-slate-300 font-medium">
-              <span className="flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5 text-[#E25B36]" />
-                {selectedDateStr}
-              </span>
-              <span className="flex items-center gap-1.5 font-mono font-bold text-slate-900 dark:text-slate-100">
-                <Clock className="w-3.5 h-3.5 text-[#E25B36]" />
-                {time} – {endTime} Uhr ({durationMinutes} Min)
-              </span>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => setShowAdjustControls(!showAdjustControls)}
-            className="shrink-0 p-2 rounded-xl bg-white/80 hover:bg-white text-slate-600 dark:bg-slate-800 dark:text-slate-300 hover:text-emerald-600 text-xs font-semibold flex items-center gap-1.5 border border-slate-200 dark:border-slate-700 shadow-xs cursor-pointer transition-all"
-            title="Platz oder Startzeit anpassen"
-          >
-            <SlidersHorizontal className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Anpassen</span>
-          </button>
-        </div>
-
-        {/* Optional Collapsible Adjust Controls */}
-        {showAdjustControls && (
-          <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 grid grid-cols-1 sm:grid-cols-2 gap-3 animate-in fade-in">
-            <div>
-              <Label htmlFor="court" className="text-xs">Tennisplatz / Court</Label>
-              <select
-                id="court"
-                value={courtId}
-                onChange={(e) => setCourtId(e.target.value)}
-                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs shadow-xs focus:ring-2 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-              >
-                {courts.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name} ({c.sportType === "PADEL" ? "Padel" : getSurfaceLabel(c.surface)})
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <Label htmlFor="time" className="text-xs">Startzeit</Label>
-              <Input
-                id="time"
-                type="time"
-                step="1800"
-                value={time}
-                onChange={(e) => setTime(e.target.value)}
-                className="mt-1 text-xs h-8"
-                required
-              />
-            </div>
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Match Type */}
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                Spielart & Teilnehmer-Modus
-              </Label>
-              <span className="text-[11px] text-slate-500">
-                {matchType === "SINGLE" ? "2 Spieler benötigt (1 Partner)" : "4 Spieler benötigt (3 Partner)"}
-              </span>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => handleMatchTypeChange("SINGLE")}
-                className={`py-2 px-3 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
-                  matchType === "SINGLE"
-                    ? "border-emerald-600 bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 shadow-xs"
-                    : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
-                }`}
-              >
-                Einzel Match (1 vs 1)
-              </button>
-              <button
-                type="button"
-                onClick={() => handleMatchTypeChange("DOUBLE")}
-                className={`py-2 px-3 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
-                  matchType === "DOUBLE"
-                    ? "border-emerald-600 bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 shadow-xs"
-                    : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
-                }`}
-              >
-                Doppel Match (2 vs 2)
-              </button>
-            </div>
-          </div>
-
-          {/* E.3 Duration Selector: 60, 90, or 120 (Consecutive 2h for Doubles) */}
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                Spieldauer
-              </Label>
-              {matchType === "DOUBLE" && (
-                <span className="text-[10px] text-amber-600 dark:text-amber-400 font-bold flex items-center gap-1">
-                  <Sparkles className="w-3 h-3" />
-                  Doppel: 2h am Stück freigeschaltet!
-                </span>
-              )}
-            </div>
-            <div className="grid grid-cols-3 gap-2">
-              <button
-                type="button"
-                onClick={() => setDurationMinutes(60)}
-                className={`py-2 px-2 rounded-xl border text-xs font-semibold transition-all cursor-pointer text-center ${
-                  durationMinutes === 60
-                    ? "border-emerald-600 bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 shadow-xs"
-                    : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
-                }`}
-              >
-                60 Min (1h)
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setDurationMinutes(90)}
-                className={`py-2 px-2 rounded-xl border text-xs font-semibold transition-all cursor-pointer text-center ${
-                  durationMinutes === 90
-                    ? "border-emerald-600 bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 shadow-xs"
-                    : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
-                }`}
-              >
-                90 Min (1.5h)
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  if (matchType === "DOUBLE") {
-                    setDurationMinutes(120);
-                  }
-                }}
-                disabled={matchType !== "DOUBLE"}
-                className={`py-2 px-2 rounded-xl border text-xs font-semibold transition-all text-center ${
-                  matchType !== "DOUBLE"
-                    ? "opacity-40 border-dashed border-slate-300 bg-slate-100 text-slate-400 cursor-not-allowed dark:border-slate-800 dark:bg-slate-800/40"
-                    : durationMinutes === 120
-                    ? "border-amber-600 bg-amber-50 text-amber-900 dark:bg-amber-950/60 dark:text-amber-200 shadow-xs font-bold ring-1 ring-amber-500/30"
-                    : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 cursor-pointer"
-                }`}
-                title={matchType !== "DOUBLE" ? "2 Stunden am Stück sind nur im 4er-Doppel erlaubt" : ""}
-              >
-                120 Min (2h) 🎾
-              </button>
-            </div>
-            {matchType !== "DOUBLE" && (
-              <p className="text-[10px] text-slate-400 mt-1">
-                * Anti-Blockier-Regel: 2 aufeinanderfolgende Stunden sind nur im 4er-Doppel gestattet.
-              </p>
-            )}
-          </div>
-
-          {/* E.2 Deluxe Mitspieler- & Favoriten-Auswahl */}
-          <div className="space-y-2.5 p-3.5 rounded-2xl bg-slate-50/80 dark:bg-[#101522] border border-slate-200/80 dark:border-white/[0.06]">
-            <div className="flex items-center justify-between">
-              <Label className="text-xs font-bold text-slate-800 dark:text-white flex items-center gap-1.5">
-                <Users className="w-3.5 h-3.5 text-[#E25B36]" />
-                Mitspieler & Spielpartner ({participants.length}/{requiredPartnersCount})
-              </Label>
-              <Badge
-                variant={isSquadFull ? "default" : "secondary"}
-                className={isSquadFull ? "bg-[#E25B36] text-white text-[10px]" : "text-[10px]"}
-              >
-                {isSquadFull ? "Team vollständig" : `Noch ${requiredPartnersCount - participants.length} nötig`}
-              </Badge>
-            </div>
-
-            {/* Selected Partners Pills */}
-            <div className="flex flex-wrap gap-1.5 min-h-[32px] items-center">
-              {participants.length === 0 ? (
-                <span className="text-xs text-slate-400 italic">Noch keine Partner ausgewählt</span>
-              ) : (
-                participants.map((p) => (
-                  <div
-                    key={p.id}
-                    className="inline-flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 rounded-full text-xs font-medium bg-white dark:bg-[#18202F] border border-slate-200 dark:border-white/[0.08] shadow-2xs"
+              {/* Match Type */}
+              <div className="space-y-3">
+                <Label className="text-sm font-bold text-slate-800 dark:text-slate-200">Spielmodus</Label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={() => handleMatchTypeChange("SINGLE")}
+                    className={`py-3 px-4 rounded-xl border-2 text-sm font-bold transition-all ${
+                      matchType === "SINGLE"
+                        ? "border-indigo-600 bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 dark:border-indigo-500"
+                        : "border-slate-100 bg-slate-50 text-slate-500 hover:border-slate-300 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400"
+                    }`}
                   >
-                    <span className="font-semibold text-slate-800 dark:text-slate-200">
-                      {p.name}
-                    </span>
-                    {p.type === "GUEST" && (
-                      <span className="text-[9px] px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 font-bold">
-                        Gast (+{guestFeePerPerson} CHF)
-                      </span>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => removeParticipant(p.id)}
-                      className="p-0.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400 hover:text-rose-500 cursor-pointer"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </div>
-                ))
-              )}
-            </div>
+                    🎾 Einzel (2)
+                  </button>
+                  <button
+                    onClick={() => handleMatchTypeChange("DOUBLE")}
+                    className={`py-3 px-4 rounded-xl border-2 text-sm font-bold transition-all ${
+                      matchType === "DOUBLE"
+                        ? "border-indigo-600 bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 dark:border-indigo-500"
+                        : "border-slate-100 bg-slate-50 text-slate-500 hover:border-slate-300 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400"
+                    }`}
+                  >
+                    👥 Doppel (4)
+                  </button>
+                </div>
+              </div>
 
-            {/* Buddy Favorites Bar */}
-            <div className="pt-2 border-t border-slate-200/60 dark:border-white/[0.06]">
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">
-                Häufige Spielpartner (Buddies):
-              </span>
-              <div className="flex flex-wrap gap-1.5">
-                {buddyMembers.map((buddy) => {
-                  const isSelected = participants.some((p) => p.userId === buddy.id);
-                  return (
-                    <button
-                      key={buddy.id}
-                      type="button"
-                      onClick={() => {
-                        if (isSelected) {
-                          setParticipants(participants.filter((p) => p.userId !== buddy.id));
-                        } else {
-                          addMemberParticipant(buddy);
-                        }
-                      }}
-                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                        isSelected
-                          ? "bg-[#E25B36] text-white shadow-xs"
-                          : "bg-white dark:bg-[#18202F] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/[0.06] hover:border-[#E25B36]"
-                      }`}
-                    >
-                      <span className="w-5 h-5 rounded-full bg-slate-200 dark:bg-slate-700 text-[10px] font-bold flex items-center justify-center text-slate-700 dark:text-slate-300">
-                        {buddy.firstName[0]}
-                        {buddy.lastName[0]}
-                      </span>
-                      <span>{buddy.firstName}</span>
-                    </button>
-                  );
-                })}
+              {/* Time & Duration */}
+              <div className="space-y-3">
+                <Label className="text-sm font-bold text-slate-800 dark:text-slate-200">Startzeit & Dauer</Label>
+                <div className="flex gap-3">
+                  <Input
+                    type="time"
+                    step="1800"
+                    value={time}
+                    onChange={(e) => setTime(e.target.value)}
+                    className="w-32 h-11 text-lg font-bold bg-slate-50 dark:bg-slate-800"
+                  />
+                  <div className="flex flex-1 items-center justify-center bg-slate-100 dark:bg-slate-800 rounded-xl px-4 text-slate-500 font-mono text-sm">
+                    bis {endTime} Uhr
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-2 pt-2">
+                  {[60, 90, 120].map((mins) => {
+                    const isDisabled = mins === 120 && matchType !== "DOUBLE";
+                    const isSelected = durationMinutes === mins;
+                    return (
+                      <button
+                        key={mins}
+                        onClick={() => !isDisabled && setDurationMinutes(mins)}
+                        disabled={isDisabled}
+                        className={`py-2 rounded-lg text-sm font-bold transition-all ${
+                          isDisabled
+                            ? "opacity-40 bg-slate-100 text-slate-400 cursor-not-allowed dark:bg-slate-800"
+                            : isSelected
+                            ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-md"
+                            : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300"
+                        }`}
+                      >
+                        {mins} Min
+                      </button>
+                    )
+                  })}
+                </div>
+                {matchType !== "DOUBLE" && (
+                  <p className="text-xs text-slate-500 mt-1">120 Min. nur bei 4er-Doppel aktivierbar.</p>
+                )}
+              </div>
+
+              {/* Extras */}
+              <div className="space-y-3">
+                <Label className="text-sm font-bold text-slate-800 dark:text-slate-200">Zusatzoptionen</Label>
+                <div className="space-y-2">
+                  <label className={`flex items-center justify-between p-3 rounded-xl border-2 transition-all cursor-pointer ${
+                    hasBallMachine && !ballMachineConflict ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20" : "border-slate-100 bg-slate-50 dark:border-slate-700 dark:bg-slate-800"
+                  }`}>
+                    <div className="flex items-center gap-3">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${hasBallMachine ? "bg-emerald-200 text-emerald-700" : "bg-slate-200 text-slate-500"}`}>
+                        🎾
+                      </div>
+                      <div>
+                        <div className="font-bold text-sm text-slate-900 dark:text-white">Ballmaschine</div>
+                        <div className="text-xs text-slate-500">
+                          {ballMachineConflict ? `Belegt auf ${ballMachineConflict}` : "+10.- CHF"}
+                        </div>
+                      </div>
+                    </div>
+                    <input type="checkbox" disabled={Boolean(ballMachineConflict)} checked={hasBallMachine && !ballMachineConflict} onChange={(e) => setHasBallMachine(e.target.checked)} className="w-5 h-5 rounded text-emerald-600" />
+                  </label>
+
+                  <label className={`flex items-center justify-between p-3 rounded-xl border-2 transition-all cursor-pointer ${
+                    hasLighting ? "border-amber-500 bg-amber-50 dark:bg-amber-900/20" : "border-slate-100 bg-slate-50 dark:border-slate-700 dark:bg-slate-800"
+                  }`}>
+                    <div className="flex items-center gap-3">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${hasLighting ? "bg-amber-200 text-amber-700" : "bg-slate-200 text-slate-500"}`}>
+                        💡
+                      </div>
+                      <div>
+                        <div className="font-bold text-sm text-slate-900 dark:text-white">Flutlicht</div>
+                        <div className="text-xs text-slate-500">+5.- CHF</div>
+                      </div>
+                    </div>
+                    <input type="checkbox" checked={hasLighting} onChange={(e) => setHasLighting(e.target.checked)} className="w-5 h-5 rounded text-amber-600" />
+                  </label>
+                </div>
+              </div>
+
+              {/* Notes */}
+              <div className="space-y-3">
+                <Label className="text-sm font-bold text-slate-800 dark:text-slate-200">Notizen</Label>
+                <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Spielankündigung..." className="bg-slate-50 dark:bg-slate-800" />
               </div>
             </div>
 
-            {/* Live Search & Guest Adding Controls */}
-            {!isSquadFull && (
-              <div className="pt-2 space-y-2">
-                <div className="relative">
-                  <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
-                  <Input
-                    type="text"
-                    placeholder="Clubmitglied suchen..."
-                    value={memberSearchQuery}
-                    onChange={(e) => setMemberSearchQuery(e.target.value)}
-                    className="pl-8 text-xs h-8 rounded-xl bg-white dark:bg-[#141A26] border-slate-200 dark:border-white/[0.08]"
-                  />
+            {/* Price Footer */}
+            <div className="p-6 bg-slate-50 dark:bg-[#0B1120] border-t border-slate-200 dark:border-slate-800 mt-auto">
+              <div className="space-y-2 mb-4">
+                <div className="flex justify-between text-sm text-slate-600 dark:text-slate-400">
+                  <span>Platzmiete (Mitglied)</span>
+                  <span>{courtRate.toFixed(2)} CHF</span>
                 </div>
-
-                {/* Filtered Member list (Quick click) */}
-                {memberSearchQuery && (
-                  <div className="max-h-28 overflow-y-auto divide-y divide-slate-100 dark:divide-white/[0.06] rounded-xl border border-slate-200 dark:border-white/[0.08] bg-white dark:bg-[#141A26] p-1">
-                    {filteredMembers.length === 0 ? (
-                      <p className="text-xs text-slate-400 p-2 text-center">Kein Mitglied gefunden</p>
-                    ) : (
-                      filteredMembers.map((m) => (
-                        <button
-                          key={m.id}
-                          type="button"
-                          onClick={() => {
-                            addMemberParticipant(m);
-                            setMemberSearchQuery("");
-                          }}
-                          className="w-full text-left p-1.5 text-xs hover:bg-[#E25B36]/10 dark:hover:bg-[#1C2536] rounded-lg flex items-center justify-between cursor-pointer"
-                        >
-                          <span className="font-semibold text-slate-800 dark:text-slate-200">
-                            {m.firstName} {m.lastName}
-                          </span>
-                          <span className="text-[10px] text-slate-400">{m.email}</span>
-                        </button>
-                      ))
-                    )}
+                {guestCount > 0 && (
+                  <div className="flex justify-between text-sm text-slate-600 dark:text-slate-400">
+                    <span>Gastspieler ({guestCount}x)</span>
+                    <span>{totalGuestFee.toFixed(2)} CHF</span>
                   </div>
                 )}
+                {hasBallMachine && (
+                  <div className="flex justify-between text-sm text-slate-600 dark:text-slate-400">
+                    <span>Ballmaschine</span>
+                    <span>{ballMachineCost.toFixed(2)} CHF</span>
+                  </div>
+                )}
+                {hasLighting && (
+                  <div className="flex justify-between text-sm text-slate-600 dark:text-slate-400">
+                    <span>Flutlicht</span>
+                    <span>{lightingCost.toFixed(2)} CHF</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-lg font-black text-slate-900 dark:text-white pt-2 border-t border-slate-200 dark:border-slate-700">
+                  <span>Total</span>
+                  <span>{totalCost.toFixed(2)} CHF</span>
+                </div>
+                <div className="flex justify-between text-xs text-slate-500">
+                  <span>Wallet Guthaben</span>
+                  <span className={walletBalance < totalCost ? "text-rose-500 font-bold" : ""}>{walletBalance.toFixed(2)} CHF</span>
+                </div>
+              </div>
 
-                {/* Add Guest Player Collapsible */}
-                {!showAddGuest ? (
-                  <button
-                    type="button"
-                    onClick={() => setShowAddGuest(true)}
-                    className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold hover:underline inline-flex items-center gap-1 cursor-pointer"
-                  >
-                    <UserPlus className="w-3.5 h-3.5" />
-                    Gastspieler erfassen (+{guestFeePerPerson} CHF)
-                  </button>
-                ) : (
-                  <div className="p-2.5 rounded-xl bg-amber-50/60 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-900/60 space-y-2 animate-in fade-in">
-                    <span className="text-[11px] font-bold text-amber-900 dark:text-amber-300 block">
-                      Gastspieler hinzufügen (+{guestFeePerPerson} CHF Gastgebühr)
-                    </span>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <Button
+                onClick={handleSubmit}
+                disabled={loading}
+                className="w-full h-12 text-base font-bold bg-[#E25B36] hover:bg-[#C84B2B] text-white shadow-lg rounded-xl"
+              >
+                {loading ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : null}
+                Platz jetzt verbindlich buchen
+              </Button>
+            </div>
+          </div>
+
+          {/* Right Column: Participants Directory */}
+          <div className="w-full md:w-[55%] flex flex-col p-6 overflow-y-auto">
+            {/* Player Slots */}
+            <div className="mb-6">
+              <h3 className="text-lg font-black text-slate-900 dark:text-white mb-4">Spieler Slots</h3>
+              <div className="space-y-3">
+                {/* Slot 1: Current User */}
+                <div className="flex items-center p-3 rounded-xl border-2 border-slate-800 dark:border-slate-600 bg-slate-900 dark:bg-slate-800 text-white shadow-md">
+                  <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center font-bold mr-3">
+                    {currentUser.firstName[0]}{currentUser.lastName[0]}
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-sm font-bold flex items-center gap-2">
+                      {currentUser.firstName} {currentUser.lastName} (Du)
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-emerald-500 text-white">Veranstalter</span>
+                    </div>
+                  </div>
+                  <Check className="w-5 h-5 text-emerald-400" />
+                </div>
+
+                {/* Slot 2, 3, 4 */}
+                {renderPlayerSlot(0)}
+                {matchType === "DOUBLE" && (
+                  <>
+                    {renderPlayerSlot(1)}
+                    {renderPlayerSlot(2)}
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Directory Section */}
+            <div className="flex-1 flex flex-col min-h-[400px]">
+              <h3 className="text-lg font-black text-slate-900 dark:text-white mb-4">Club-Verzeichnis</h3>
+              
+              {/* Search */}
+              <div className="relative mb-4">
+                <Search className="absolute left-3 top-3 w-5 h-5 text-slate-400" />
+                <Input
+                  placeholder="Suche Name oder Ranking (z.B. R2)..."
+                  value={memberSearchQuery}
+                  onChange={(e) => setMemberSearchQuery(e.target.value)}
+                  className="pl-10 h-11 text-base bg-white dark:bg-slate-800 rounded-xl"
+                />
+              </div>
+
+              {/* Tabs */}
+              <div className="flex gap-2 mb-4">
+                <button
+                  onClick={() => setActiveTab("ALLE")}
+                  className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === "ALLE" ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-md" : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300"}`}
+                >
+                  👥 Alle Mitglieder
+                </button>
+                <button
+                  onClick={() => setActiveTab("FAV")}
+                  className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === "FAV" ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-md" : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300"}`}
+                >
+                  ⭐ Favoriten
+                </button>
+                <button
+                  onClick={() => setActiveTab("GAST")}
+                  className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === "GAST" ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-md" : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300"}`}
+                >
+                  👤 + Gast
+                </button>
+              </div>
+
+              {/* Tab Content */}
+              <div className="flex-1 overflow-y-auto pr-2 pb-4 space-y-2">
+                {activeTab === "ALLE" && (
+                  filteredMembers.map((m) => {
+                    const rank = getMockRanking(m.id);
+                    const isSelected = participants.some((p) => p.userId === m.id);
+                    return (
+                      <div key={m.id} className="flex items-center justify-between p-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-sm hover:border-slate-300 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center font-bold text-sm">
+                            {m.firstName[0]}{m.lastName[0]}
+                          </div>
+                          <div>
+                            <div className="text-sm font-bold text-slate-900 dark:text-white">{m.firstName} {m.lastName}</div>
+                            <div className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 border border-emerald-200 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-900/30 px-1.5 rounded inline-block mt-0.5">
+                              {rank}
+                            </div>
+                          </div>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant={isSelected ? "outline" : "default"}
+                          disabled={isSelected}
+                          onClick={() => addParticipant({ id: `part-${m.id}`, type: "MEMBER", userId: m.id, name: `${m.firstName} ${m.lastName}`, email: m.email })}
+                          className={`rounded-lg text-xs font-bold ${!isSelected && "bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-700 dark:hover:bg-slate-600"}`}
+                        >
+                          {isSelected ? "Ausgewählt" : "+ Wählen"}
+                        </Button>
+                      </div>
+                    )
+                  })
+                )}
+
+                {activeTab === "FAV" && (
+                  buddyMembers.map((m) => {
+                    const rank = getMockRanking(m.id);
+                    const isSelected = participants.some((p) => p.userId === m.id);
+                    return (
+                      <div key={m.id} className="flex items-center justify-between p-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-sm hover:border-slate-300 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-400 flex items-center justify-center font-bold text-sm">
+                            ⭐
+                          </div>
+                          <div>
+                            <div className="text-sm font-bold text-slate-900 dark:text-white">{m.firstName} {m.lastName}</div>
+                            <div className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 border border-emerald-200 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-900/30 px-1.5 rounded inline-block mt-0.5">
+                              {rank}
+                            </div>
+                          </div>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant={isSelected ? "outline" : "default"}
+                          disabled={isSelected}
+                          onClick={() => addParticipant({ id: `part-${m.id}`, type: "MEMBER", userId: m.id, name: `${m.firstName} ${m.lastName}`, email: m.email })}
+                          className={`rounded-lg text-xs font-bold ${!isSelected && "bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-700 dark:hover:bg-slate-600"}`}
+                        >
+                          {isSelected ? "Ausgewählt" : "+ Wählen"}
+                        </Button>
+                      </div>
+                    )
+                  })
+                )}
+
+                {activeTab === "GAST" && (
+                  <div className="p-5 rounded-2xl bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/50">
+                    <h4 className="font-bold text-amber-900 dark:text-amber-400 mb-3 text-sm">Externen Gastspieler erfassen (+{guestFeePerPerson} CHF)</h4>
+                    <form onSubmit={handleAddGuest} className="space-y-3">
                       <Input
-                        type="text"
-                        placeholder="Name (z.B. Martina Hingis)"
+                        placeholder="Vor- und Nachname (z.B. Martina Hingis)"
                         value={newGuestName}
                         onChange={(e) => setNewGuestName(e.target.value)}
-                        className="text-xs h-8 bg-white dark:bg-slate-800"
+                        className="bg-white dark:bg-slate-800"
+                        required
                       />
                       <Input
                         type="email"
-                        placeholder="E-Mail (optional)"
+                        placeholder="E-Mail für Bestätigung (optional)"
                         value={newGuestEmail}
                         onChange={(e) => setNewGuestEmail(e.target.value)}
-                        className="text-xs h-8 bg-white dark:bg-slate-800"
+                        className="bg-white dark:bg-slate-800"
                       />
-                    </div>
-                    <div className="flex items-center justify-end gap-2">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setShowAddGuest(false)}
-                        className="text-xs h-7"
-                      >
-                        Abbrechen
+                      <Button type="submit" className="w-full font-bold bg-amber-600 hover:bg-amber-700 text-white">
+                        Gast hinzufügen
                       </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        onClick={handleAddGuest}
-                        className="bg-amber-600 hover:bg-amber-700 text-white text-xs h-7 rounded-lg"
-                      >
-                        Gast übernehmen
-                      </Button>
-                    </div>
+                    </form>
                   </div>
                 )}
               </div>
-            )}
-          </div>
-
-          {/* E.5 Zusatzleistungen (Equipment: Ballmaschine & Flutlicht) */}
-          <div className="p-3.5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 space-y-2">
-            <Label className="text-xs font-bold text-slate-800 dark:text-white flex items-center gap-1.5">
-              <Zap className="w-3.5 h-3.5 text-amber-500" />
-              Zusatzleistungen & Equipment
-            </Label>
-
-            <div className="space-y-2">
-              {/* Ballmaschine with Exclusivity Protection */}
-              <div
-                className={`p-2.5 rounded-xl border transition-all flex items-start justify-between gap-3 ${
-                  ballMachineConflict
-                    ? "bg-slate-100/60 dark:bg-slate-800/60 border-slate-200 opacity-60"
-                    : hasBallMachine
-                    ? "bg-emerald-50 dark:bg-emerald-950/60 border-emerald-300 dark:border-emerald-800"
-                    : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700"
-                }`}
-              >
-                <div className="space-y-0.5">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-slate-900 dark:text-white">
-                      🎾 Ballmaschine reservieren
-                    </span>
-                    <span className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-400">
-                      +{(tenant.settingsJson?.ballMachineFee ?? 10) * durationHours} CHF
-                    </span>
-                  </div>
-                  {ballMachineConflict ? (
-                    <p className="text-[10px] text-rose-600 dark:text-rose-400 font-medium">
-                      ⚠️ Zu dieser Zeit bereits auf {ballMachineConflict} reserviert (Exklusiv-Ressource).
-                    </p>
-                  ) : (
-                    <p className="text-[10px] text-slate-500">
-                      Automatische Ballausgabe für intensives Einzeltraining.
-                    </p>
-                  )}
-                </div>
-
-                <input
-                  type="checkbox"
-                  disabled={Boolean(ballMachineConflict)}
-                  checked={hasBallMachine && !ballMachineConflict}
-                  onChange={(e) => setHasBallMachine(e.target.checked)}
-                  className="mt-1 h-4 w-4 rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer disabled:cursor-not-allowed"
-                />
-              </div>
-
-              {/* Floodlight */}
-              <div
-                className={`p-2.5 rounded-xl border transition-all flex items-start justify-between gap-3 ${
-                  hasLighting
-                    ? "bg-amber-50 dark:bg-amber-950/60 border-amber-300 dark:border-amber-800"
-                    : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700"
-                }`}
-              >
-                <div className="space-y-0.5">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-slate-900 dark:text-white">
-                      💡 Flutlicht aktivieren
-                    </span>
-                    <span className="text-[10px] font-semibold text-amber-700 dark:text-amber-400">
-                      +{tenant.settingsJson?.floodlightFee ?? 5} CHF
-                    </span>
-                  </div>
-                  <p className="text-[10px] text-slate-500">
-                    Für Abendslots oder schlechte Lichtverhältnisse.
-                  </p>
-                </div>
-
-                <input
-                  type="checkbox"
-                  checked={hasLighting}
-                  onChange={(e) => setHasLighting(e.target.checked)}
-                  className="mt-1 h-4 w-4 rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
-                />
-              </div>
             </div>
           </div>
-
-          {/* Notes */}
-          <div>
-            <Label htmlFor="notes" className="text-xs font-bold text-slate-700 dark:text-slate-300">
-              Bemerkungen (optional)
-            </Label>
-            <Input
-              id="notes"
-              type="text"
-              placeholder="z.B. Ranglistenspiel, Matchpraxis"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              className="mt-1 text-xs rounded-xl"
-            />
-          </div>
-
-          {/* E.1 Transparent Price & Credits Wallet Summary Box */}
-          <div className="p-3.5 rounded-2xl bg-[#101522] border border-white/[0.08] text-white space-y-2.5 shadow-md">
-            <div className="flex items-center justify-between border-b border-white/[0.08] pb-2">
-              <span className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
-                <Coins className="w-3.5 h-3.5 text-amber-400" />
-                Kostenübersicht & Credit-Guthaben
-              </span>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-amber-400 font-mono">
-                  Guthaben: {walletBalance.toFixed(2)} CHF
-                </span>
-                <button
-                  type="button"
-                  onClick={handleQuickTopUp}
-                  disabled={topUpLoading}
-                  className="text-[10px] font-extrabold bg-[#E25B36] hover:bg-[#C84B2B] text-white px-2 py-0.5 rounded-md transition-all cursor-pointer flex items-center gap-1 disabled:opacity-50"
-                  title="1-Klick Dev/Test: +50 CHF aufladen"
-                >
-                  {topUpLoading ? <Loader2 className="w-2.5 h-2.5 animate-spin" /> : "+50 CHF"}
-                </button>
-              </div>
-            </div>
-
-            <div className="space-y-1 text-xs text-slate-300">
-              <div className="flex justify-between">
-                <span>Platzgebühr ({durationMinutes} Min):</span>
-                <span className="font-mono">{courtRate > 0 ? `${courtRate.toFixed(2)} CHF` : "0.00 CHF (Inklusive)"}</span>
-              </div>
-              {guestCount > 0 && (
-                <div className="flex justify-between text-amber-300">
-                  <span>Gastgebühr ({guestCount}x Gast):</span>
-                  <span className="font-mono">+{totalGuestFee.toFixed(2)} CHF</span>
-                </div>
-              )}
-              {hasBallMachine && (
-                <div className="flex justify-between text-[#F37957]">
-                  <span>Ballmaschine:</span>
-                  <span className="font-mono">+{ballMachineCost.toFixed(2)} CHF</span>
-                </div>
-              )}
-              {hasLighting && (
-                <div className="flex justify-between text-amber-300">
-                  <span>Flutlicht:</span>
-                  <span className="font-mono">+{lightingCost.toFixed(2)} CHF</span>
-                </div>
-              )}
-            </div>
-
-            <div className="pt-2 border-t border-white/[0.08] flex items-center justify-between">
-              <span className="text-xs font-bold text-white uppercase tracking-wider">Gesamtbetrag:</span>
-              <span className="text-base font-extrabold font-mono text-[#E25B36]">
-                {totalCost.toFixed(2)} CHF
-              </span>
-            </div>
-
-            {totalCost > 0 && (
-              <p className="text-[10px] text-slate-400">
-                {walletBalance >= totalCost
-                  ? `✓ Wird automatisch vom Guthaben abgebucht (Rest nach Buchung: ${(walletBalance - totalCost).toFixed(2)} CHF).`
-                  : `⚠️ Guthaben reicht nicht aus. Bitte klicke oben auf '+50 CHF', um dein Test-Guthaben aufzuladen.`}
-              </p>
-            )}
-          </div>
-
-          {/* Rules hint */}
-          <div className="rounded-2xl bg-amber-500/[0.06] p-3 text-xs text-amber-800 dark:text-amber-300 flex items-start gap-2.5 border border-amber-500/20">
-            <ShieldCheck className="w-4 h-4 shrink-0 text-amber-500 mt-0.5" />
-            <div>
-              <p className="font-bold">Club-Buchungsregeln (Fairplay & Marly-Modell):</p>
-              <p className="mt-0.5 opacity-90 text-[11px]">
-                Kostenlose Stornierung bis {tenant.settingsJson?.cancellationDeadlineHours ?? 24} Stunden vor Spielbeginn mit automatischer Credit-Rückerstattung. Max. {tenant.settingsJson?.maxActiveSlotsPerPlayer ?? 2} aktive Buchungen gleichzeitig (Rolling Release nach Slot-Ablauf).
-              </p>
-            </div>
-          </div>
-
-          {/* Actions */}
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100 dark:border-white/[0.06]">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onClose}
-              disabled={loading}
-              className="rounded-xl text-xs cursor-pointer dark:border-white/[0.08] dark:bg-[#141A26] dark:text-slate-300"
-            >
-              Abbrechen
-            </Button>
-            <Button
-              type="submit"
-              disabled={loading || Boolean(totalCost > 0 && currentUserId && walletBalance < totalCost)}
-              className="bg-[#E25B36] hover:bg-[#C84B2B] text-white rounded-xl text-xs font-bold gap-2 shadow-xs shadow-[#E25B36]/25 cursor-pointer disabled:opacity-50"
-            >
-              {loading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-              {totalCost > 0 ? `Verbindlich buchen (${totalCost.toFixed(2)} CHF)` : "Reservierung verbindlich buchen"}
-            </Button>
-          </div>
-        </form>
+        </div>
       </div>
     </div>
   );

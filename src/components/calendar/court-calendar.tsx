@@ -133,7 +133,7 @@ export function CourtCalendar({
   );
 
   return (
-    <div className="space-y-5">
+    <div className="flex-1 h-full min-h-0 flex flex-col space-y-4 p-4 md:p-6 lg:p-8">
       {/* Club Top Banner: Roland Garros Nocturne Night Stadium */}
       <div className="relative overflow-hidden rounded-3xl border border-slate-200/80 dark:border-white/[0.06] bg-white/90 dark:bg-[#141A26]/90 shadow-sm p-6 backdrop-blur-xl">
         <div className="absolute top-0 right-0 -mt-12 -mr-12 w-72 h-72 rounded-full bg-[#E25B36]/10 blur-3xl pointer-events-none" />
@@ -334,7 +334,7 @@ export function CourtCalendar({
       </div>
 
       {/* Main Grid Component */}
-      <div className={isPending ? "opacity-50 pointer-events-none transition-opacity duration-200" : "transition-opacity duration-200"}>
+      <div className={isPending ? "flex-1 min-h-0 opacity-50 pointer-events-none transition-opacity duration-200" : "flex-1 min-h-0 transition-opacity duration-200"}>
         <CourtGrid
           courts={filteredCourts}
           bookings={initialBookings}
@@ -343,6 +343,7 @@ export function CourtCalendar({
           openingHour={tenant.settingsJson?.openingHour || 7}
           closingHour={tenant.settingsJson?.closingHour || 22}
           currentUserId={currentUserId}
+          activeCategory="ALL"
           onSelectSlot={handleSelectSlot}
           onSelectBooking={handleSelectBooking}
         />

@@ -41,7 +41,7 @@ export function Navbar({ currentTenant, user, wallet }: NavbarProps) {
   const [optimisticBalance, setOptimisticBalance] = useState<number | null>(null);
 
   const currentBalance =
-    optimisticBalance !== null ? optimisticBalance : (wallet?.balance ?? 50);
+    optimisticBalance !== null ? optimisticBalance : (wallet?.balance ?? 0);
 
   const handleTopUp = async () => {
     if (!currentTenant) return;
@@ -188,18 +188,7 @@ export function Navbar({ currentTenant, user, wallet }: NavbarProps) {
               <span className="text-slate-800 dark:text-slate-200 font-mono font-bold">
                 {currentBalance.toFixed(0)} CHF
               </span>
-              <button
-                onClick={handleTopUp}
-                disabled={topUpLoading}
-                title="1-Klick Dev/Test: +50 CHF Guthaben aufladen"
-                className="ml-1 px-1.5 py-0.5 rounded bg-[#E25B36] hover:bg-[#C84B2B] text-white text-[10px] font-bold transition-all flex items-center gap-0.5 cursor-pointer disabled:opacity-50"
-              >
-                {topUpLoading ? (
-                  <Loader2 className="w-2.5 h-2.5 animate-spin" />
-                ) : (
-                  "+50"
-                )}
-              </button>
+
             </div>
           )}
 
