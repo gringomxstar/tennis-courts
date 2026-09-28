@@ -1321,6 +1321,27 @@ class MockDatabase {
     });
   }
 
+  getBookingsInRange(tenantId: string, fromIso: string, toIso: string): Booking[] {
+    const from = new Date(fromIso).getTime();
+    const to = new Date(toIso).getTime();
+    return this.bookings.filter((b) => {
+      if (b.tenantId !== tenantId || b.status === "CANCELLED") return false;
+      const start = new Date(b.startsAt).getTime();
+      return start >= from && start < to;
+    });
+  }
+
+  getBlocksInRange(tenantId: string, fromIso: string, toIso: string): CourtBlock[] {
+    const from = new Date(fromIso).getTime();
+    const to = new Date(toIso).getTime();
+    return this.courtBlocks.filter(
+      (cb) =>
+        cb.tenantId === tenantId &&
+        new Date(cb.startsAt).getTime() < to &&
+        new Date(cb.endsAt).getTime() > from
+    );
+  }
+
   getAllUserBookings(userId: string): Booking[] {
     return this.bookings.filter(
       (b) =>
@@ -1603,6 +1624,12 @@ class MockDatabase {
     if (!b) return false;
     b.status = "CANCELLED";
     return Boolean(_cancelledById || true);
+  }
+
+  deleteCourtBlock(id: string): boolean {
+    const before = this.courtBlocks.length;
+    this.courtBlocks = this.courtBlocks.filter((cb) => cb.id !== id);
+    return this.courtBlocks.length < before;
   }
 
   createCourtBlock(block: Omit<CourtBlock, "id">): CourtBlock {

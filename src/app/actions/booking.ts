@@ -6,6 +6,7 @@ import { getTenantBySlug, getCourtsByTenantId, getCourtBookings, getCourtBlocks 
 import { prisma } from "@/lib/prisma";
 import { getStripe } from "@/lib/stripe";
 import { revalidatePath } from "next/cache";
+import { computeBookingCost } from "@/lib/pricing";
 import { BookingType, BlockReason, BookingParticipant } from "@/types";
 
 export interface CreateBookingParticipantInput {
@@ -208,40 +209,16 @@ export async function createBookingAction(input: CreateBookingInput) {
     }
   }
 
-  // E.1 & E.6 Preiskalkulation & Credits Wallet
-  const durationHours = input.durationMinutes / 60;
-  let courtCost = 0;
-
-  // Differentiate pricing based on court type & membership
-  if (court.sportType === "PADEL") {
-    // Padel court rate
-    courtCost = (tenant.settingsJson?.defaultHourlyRatePadel ?? court.hourlyRate ?? 40) * durationHours;
-  } else if (court.isIndoor) {
-    // Indoor Halle
-    courtCost = (tenant.settingsJson?.defaultHourlyRateHalle ?? court.hourlyRate ?? 45) * durationHours;
-  } else {
-    // Outdoor tennis: free for club members, paid for guests
-    if (isGuest) {
-      courtCost = (tenant.settingsJson?.defaultHourlyRateTennis ?? court.hourlyRate ?? 30) * durationHours;
-    } else {
-      courtCost = 0; // included in membership
-    }
-  }
-
-  // Guest players surcharge
-  const guestCount = rawParticipants.filter((p) => p.type === "GUEST").length;
-  const guestFeePerGuest = tenant.settingsJson?.guestFee ?? 15;
-  const guestCost = guestCount * guestFeePerGuest;
-
-  // Ball machine cost
-  const ballMachineCost = input.hasBallMachine
-    ? (tenant.settingsJson?.ballMachineFee ?? 10) * durationHours
-    : 0;
-
-  // Lighting cost
-  const lightingCost = input.hasLighting ? (tenant.settingsJson?.floodlightFee ?? 5) : 0;
-
-  const totalCost = courtCost + guestCost + ballMachineCost + lightingCost;
+  // E.1 & E.6 Preiskalkulation (shared with the client preview)
+  const { total: totalCost } = computeBookingCost({
+    settings: tenant.settingsJson,
+    court,
+    isGuest,
+    durationMinutes: input.durationMinutes,
+    guestCount: rawParticipants.filter((p) => p.type === "GUEST").length,
+    hasBallMachine: Boolean(input.hasBallMachine),
+    hasLighting: Boolean(input.hasLighting),
+  });
 
   // Guests must pay via Stripe before the booking is confirmed. Postgres-only: a Stripe
   // webhook can never reach the in-memory mockDb, so that mode keeps the previous
@@ -359,7 +336,7 @@ export async function createBookingAction(input: CreateBookingInput) {
     });
   }
 
-  revalidatePath(`/c/${input.clubSlug}`);
+  revalidatePath(`/c/${input.clubSlug}`, "layout");
   revalidatePath(`/c/${input.clubSlug}/bookings`);
 
   if (needsPayment && prismaSuccess && createdBookingId) {
@@ -498,7 +475,7 @@ export async function cancelBookingAction(bookingId: string, clubSlug: string) {
   }
 
   mockDb.cancelBooking(bookingId, userId);
-  revalidatePath(`/c/${clubSlug}`);
+  revalidatePath(`/c/${clubSlug}`, "layout");
   revalidatePath(`/c/${clubSlug}/bookings`);
   return { success: true, refundAmount };
 }
@@ -524,7 +501,7 @@ export async function topUpWalletAction(input: {
     `1-Klick Dev/Test-Aufladung (+${input.amount} CHF)`
   );
 
-  revalidatePath(`/c/${input.clubSlug}`);
+  revalidatePath(`/c/${input.clubSlug}`, "layout");
   revalidatePath(`/c/${input.clubSlug}/bookings`);
   return { success: true, balance: wallet.balance };
 }
@@ -561,7 +538,7 @@ export async function grantAdminCreditsAction(input: {
     input.reason
   );
 
-  revalidatePath(`/c/${input.clubSlug}`);
+  revalidatePath(`/c/${input.clubSlug}`, "layout");
   revalidatePath(`/c/${input.clubSlug}/admin`);
   return { success: true, newBalance: wallet.balance };
 }
@@ -628,7 +605,41 @@ export async function createCourtBlockAction(input: {
     createdById: session.user.id,
   });
 
-  revalidatePath(`/c/${input.clubSlug}`);
+  revalidatePath(`/c/${input.clubSlug}`, "layout");
   revalidatePath(`/c/${input.clubSlug}/admin`);
+  return { success: true };
+}
+
+export async function deleteCourtBlockAction(input: { clubSlug: string; blockId: string }) {
+  const session = await auth();
+  if (!session?.user) {
+    return { success: false, error: "Nicht angemeldet." };
+  }
+
+  const isPlatformAdmin = Boolean(session.user.isPlatformAdmin || session.user.role === "PLATFORM_ADMIN");
+  const isClubAdmin =
+    isPlatformAdmin ||
+    session.user.tenants?.some((t) => t.slug === input.clubSlug && t.role === "CLUB_ADMIN");
+  if (!isClubAdmin) {
+    return { success: false, error: "Keine Berechtigung in diesem Club." };
+  }
+
+  const tenant = await getTenantBySlug(input.clubSlug);
+  if (!tenant) {
+    return { success: false, error: "Club nicht gefunden." };
+  }
+
+  if (process.env.DATABASE_URL) {
+    try {
+      // tenantId in the filter keeps an admin from deleting another club's block
+      await prisma.courtBlock.deleteMany({ where: { id: input.blockId, tenantId: tenant.id } });
+    } catch (e) {
+      console.warn("Prisma court block deletion failed:", e);
+    }
+  }
+  const mockBlock = mockDb.courtBlocks.find((b) => b.id === input.blockId);
+  if (mockBlock?.tenantId === tenant.id) mockDb.deleteCourtBlock(input.blockId);
+
+  revalidatePath(`/c/${input.clubSlug}`, "layout");
   return { success: true };
 }

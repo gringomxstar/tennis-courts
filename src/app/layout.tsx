@@ -1,14 +1,23 @@
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { Toaster } from "@/components/ui/sonner";
 
 export const metadata: Metadata = {
-  title: "Tennis Reservation App",
-  description: "Moderne, mandantenfähige Tennisplatz-Reservierung und Clubverwaltung",
+  title: "TC Marly",
+  description: "Tennisplätze des Tennis Club Marly reservieren, als Mitglied oder Gast.",
+  appleWebApp: { capable: true, title: "TC Marly", statusBarStyle: "black-translucent" },
+};
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#fbfbfd" },
+    { media: "(prefers-color-scheme: dark)", color: "#0b0f17" },
+  ],
+  viewportFit: "cover",
 };
 
 export default function RootLayout({

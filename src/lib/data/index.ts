@@ -106,87 +106,159 @@ export async function getCourtsByTenantId(tenantId: string): Promise<Court[]> {
   return mockDb.getCourtsByTenantId(tenantId);
 }
 
+type PrismaBookingWithRelations = Awaited<
+  ReturnType<typeof prisma.booking.findMany<{
+    include: { organizer: true; participants: { include: { user: true } } };
+  }>>
+>[number];
+
+function mapPrismaBooking(b: PrismaBookingWithRelations): Booking {
+  return {
+    id: b.id,
+    tenantId: b.tenantId,
+    courtId: b.courtId,
+    organizerId: b.organizerId,
+    startsAt: b.startsAt.toISOString(),
+    endsAt: b.endsAt.toISOString(),
+    status: b.status as BookingStatus,
+    bookingType: b.bookingType as BookingType,
+    notes: b.notes || null,
+    hasBallMachine: Boolean((b as { hasBallMachine?: boolean }).hasBallMachine),
+    hasLighting: Boolean((b as { hasLighting?: boolean }).hasLighting),
+    totalCost: Number((b as { totalCost?: unknown }).totalCost || 0),
+    organizer: {
+      id: b.organizer.id,
+      firstName: b.organizer.firstName,
+      lastName: b.organizer.lastName,
+      email: b.organizer.email,
+    },
+    participants: b.participants.map((p) => ({
+      id: p.id,
+      bookingId: p.bookingId,
+      userId: p.userId,
+      guestName: p.guestName,
+      guestEmail: p.guestEmail,
+      role: p.role as ParticipantRole,
+      invitationStatus: p.invitationStatus as InvitationStatus,
+      user: p.user
+        ? {
+            id: p.user.id,
+            firstName: p.user.firstName,
+            lastName: p.user.lastName,
+            email: p.user.email,
+          }
+        : null,
+    })),
+  };
+}
+
+const bookingInclude = {
+  organizer: true,
+  participants: { include: { user: true } },
+} as const;
+
+function mergeById<T extends { id: string }>(primary: T[], extra: T[]): T[] {
+  const merged = [...primary];
+  for (const item of extra) {
+    if (!merged.some((m) => m.id === item.id)) merged.push(item);
+  }
+  return merged;
+}
+
+/** Non-cancelled bookings starting in [fromIso, toIso). */
+export async function getBookingsInRange(
+  tenantId: string,
+  fromIso: string,
+  toIso: string
+): Promise<Booking[]> {
+  const mock = mockDb.getBookingsInRange(tenantId, fromIso, toIso);
+  if (hasDbConfigured) {
+    try {
+      const dbBookings = await prisma.booking.findMany({
+        where: {
+          tenantId,
+          startsAt: { gte: new Date(fromIso), lt: new Date(toIso) },
+          status: { not: "CANCELLED" },
+        },
+        include: bookingInclude,
+      });
+      return mergeById(dbBookings.map(mapPrismaBooking), mock);
+    } catch (e) {
+      console.warn("Prisma query failed, falling back to mockDb:", e);
+    }
+  }
+  return mock;
+}
+
 export async function getCourtBookings(
   tenantId: string,
   dateStr: string // YYYY-MM-DD
 ): Promise<Booking[]> {
   if (hasDbConfigured) {
     try {
-      const startOfDay = new Date(`${dateStr}T00:00:00.000Z`);
-      const endOfDay = new Date(`${dateStr}T23:59:59.999Z`);
-
       const dbBookings = await prisma.booking.findMany({
         where: {
           tenantId,
           startsAt: {
-            gte: startOfDay,
-            lte: endOfDay,
+            gte: new Date(`${dateStr}T00:00:00.000Z`),
+            lte: new Date(`${dateStr}T23:59:59.999Z`),
           },
-          status: {
-            not: "CANCELLED",
-          },
+          status: { not: "CANCELLED" },
         },
-        include: {
-          organizer: true,
-          participants: {
-            include: {
-              user: true,
-            },
-          },
-        },
+        include: bookingInclude,
       });
-
-      const prismaMapped: Booking[] = dbBookings.map((b) => ({
-        id: b.id,
-        tenantId: b.tenantId,
-        courtId: b.courtId,
-        organizerId: b.organizerId,
-        startsAt: b.startsAt.toISOString(),
-        endsAt: b.endsAt.toISOString(),
-        status: b.status as BookingStatus,
-        bookingType: b.bookingType as BookingType,
-        notes: b.notes || null,
-        hasBallMachine: Boolean((b as { hasBallMachine?: boolean }).hasBallMachine),
-        hasLighting: Boolean((b as { hasLighting?: boolean }).hasLighting),
-        totalCost: Number((b as { totalCost?: unknown }).totalCost || 0),
-        organizer: {
-          id: b.organizer.id,
-          firstName: b.organizer.firstName,
-          lastName: b.organizer.lastName,
-          email: b.organizer.email,
-        },
-        participants: b.participants.map((p) => ({
-          id: p.id,
-          bookingId: p.bookingId,
-          userId: p.userId,
-          guestName: p.guestName,
-          guestEmail: p.guestEmail,
-          role: p.role as ParticipantRole,
-          invitationStatus: p.invitationStatus as InvitationStatus,
-          user: p.user
-            ? {
-                id: p.user.id,
-                firstName: p.user.firstName,
-                lastName: p.user.lastName,
-                email: p.user.email,
-              }
-            : null,
-        })),
-      }));
-      
-      const mockBookings = mockDb.getBookings(tenantId, dateStr);
-      const merged = [...prismaMapped];
-      for (const mb of mockBookings) {
-        if (!merged.some(pb => pb.id === mb.id)) {
-          merged.push(mb);
-        }
-      }
-      return merged;
+      return mergeById(dbBookings.map(mapPrismaBooking), mockDb.getBookings(tenantId, dateStr));
     } catch (e) {
       console.warn("Prisma query failed, falling back to mockDb:", e);
     }
   }
   return mockDb.getBookings(tenantId, dateStr);
+}
+
+function mapPrismaBlock(b: {
+  id: string;
+  tenantId: string;
+  courtId: string;
+  startsAt: Date;
+  endsAt: Date;
+  reason: string;
+  description: string | null;
+  createdById: string;
+}): CourtBlock {
+  return {
+    id: b.id,
+    tenantId: b.tenantId,
+    courtId: b.courtId,
+    startsAt: b.startsAt.toISOString(),
+    endsAt: b.endsAt.toISOString(),
+    reason: b.reason as BlockReason,
+    description: b.description || null,
+    createdById: b.createdById,
+  };
+}
+
+/** Blocks overlapping [fromIso, toIso). */
+export async function getBlocksInRange(
+  tenantId: string,
+  fromIso: string,
+  toIso: string
+): Promise<CourtBlock[]> {
+  const mock = mockDb.getBlocksInRange(tenantId, fromIso, toIso);
+  if (hasDbConfigured) {
+    try {
+      const blocks = await prisma.courtBlock.findMany({
+        where: {
+          tenantId,
+          startsAt: { lt: new Date(toIso) },
+          endsAt: { gt: new Date(fromIso) },
+        },
+      });
+      return mergeById(blocks.map(mapPrismaBlock), mock);
+    } catch (e) {
+      console.warn("Prisma query failed, falling back to mockDb:", e);
+    }
+  }
+  return mock;
 }
 
 export async function getCourtBlocks(
@@ -195,40 +267,16 @@ export async function getCourtBlocks(
 ): Promise<CourtBlock[]> {
   if (hasDbConfigured) {
     try {
-      const startOfDay = new Date(`${dateStr}T00:00:00.000Z`);
-      const endOfDay = new Date(`${dateStr}T23:59:59.999Z`);
-
       const blocks = await prisma.courtBlock.findMany({
         where: {
           tenantId,
           startsAt: {
-            gte: startOfDay,
-            lte: endOfDay,
+            gte: new Date(`${dateStr}T00:00:00.000Z`),
+            lte: new Date(`${dateStr}T23:59:59.999Z`),
           },
         },
       });
-
-      if (blocks.length > 0) {
-        const prismaMapped: CourtBlock[] = blocks.map((b) => ({
-          id: b.id,
-          tenantId: b.tenantId,
-          courtId: b.courtId,
-          startsAt: b.startsAt.toISOString(),
-          endsAt: b.endsAt.toISOString(),
-          reason: b.reason as BlockReason,
-          description: b.description || null,
-          createdById: b.createdById,
-        }));
-        
-        const mockBlocks = mockDb.getCourtBlocks(tenantId, dateStr);
-        const merged = [...prismaMapped];
-        for (const mb of mockBlocks) {
-          if (!merged.some(pb => pb.id === mb.id)) {
-            merged.push(mb);
-          }
-        }
-        return merged;
-      }
+      return mergeById(blocks.map(mapPrismaBlock), mockDb.getCourtBlocks(tenantId, dateStr));
     } catch (e) {
       console.warn("Prisma query failed, falling back to mockDb:", e);
     }
@@ -260,8 +308,26 @@ export async function getTenantMembers(tenantId: string): Promise<UserSummary[]>
   return mockDb.getUsersByTenantId(tenantId);
 }
 
-export async function getUserBookings(userId: string): Promise<Booking[]> {
-  return mockDb.getAllUserBookings(userId);
+/** Non-cancelled bookings in this club the user organizes or plays in. */
+export async function getUserBookings(userId: string, tenantId: string): Promise<Booking[]> {
+  const mock = mockDb.getAllUserBookings(userId).filter((b) => b.tenantId === tenantId);
+  if (hasDbConfigured) {
+    try {
+      const dbBookings = await prisma.booking.findMany({
+        where: {
+          tenantId,
+          status: { not: "CANCELLED" },
+          OR: [{ organizerId: userId }, { participants: { some: { userId } } }],
+        },
+        include: bookingInclude,
+        orderBy: { startsAt: "asc" },
+      });
+      return mergeById(dbBookings.map(mapPrismaBooking), mock);
+    } catch (e) {
+      console.warn("Prisma query failed, falling back to mockDb:", e);
+    }
+  }
+  return mock;
 }
 
 export async function getMembershipPlansByTenantId(tenantId: string): Promise<MembershipPlan[]> {

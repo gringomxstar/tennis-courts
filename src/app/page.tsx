@@ -1,116 +1,171 @@
 import Link from "next/link";
-import { auth } from "@/auth";
-import { ArrowRight, Calendar, CheckCircle2, MapPin, Sparkles, Trophy } from "lucide-react";
-import { prisma } from "@/lib/prisma";
+import { FreeSlots } from "@/components/app/free-slots";
+import { Chevron, Dot } from "@/components/app/avatar";
+import {
+  getBlocksInRange,
+  getBookingsInRange,
+  getCourtsByTenantId,
+  getMembershipPlansByTenantId,
+  getTenantBySlug,
+} from "@/lib/data";
+import { courtColor, courtLabel, SURFACE_LABEL, surfaceKind } from "@/lib/courts";
+
+export const dynamic = "force-dynamic";
+
+const SLUG = "tc-marly";
+const base = `/c/${SLUG}`;
+const label = "text-[13px] font-bold uppercase tracking-[.06em] text-muted-foreground";
+const fmt = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(2));
+
+/** Next three days plus one day of slack either side, which covers any client timezone offset. */
+function window3Days() {
+  const from = new Date(Date.now() - 86_400_000);
+  from.setUTCHours(0, 0, 0, 0);
+  return { from, to: new Date(from.getTime() + 5 * 86_400_000) };
+}
 
 export default async function Home() {
-  const session = await auth();
-  
-  // Für die TC Marly Demo holen wir direkt die Daten
-  const tcMarly = await prisma.tenant.findUnique({
-    where: { id: "tc-marly" }
-  });
+  const tenant = await getTenantBySlug(SLUG);
+
+  if (!tenant) {
+    return (
+      <main className="mx-auto flex w-full max-w-[440px] flex-1 flex-col justify-center px-5 py-16">
+        <h1 className="text-[42px] font-bold leading-[1.02] tracking-[-.035em]">Gerade nicht erreichbar.</h1>
+        <p className="mt-3 text-[16px] text-muted-foreground">Die Clubdaten konnten nicht geladen werden. Bitte versuche es später noch einmal.</p>
+      </main>
+    );
+  }
+
+  const { from, to } = window3Days();
+  const [allCourts, plans, bookings, blocks] = await Promise.all([
+    getCourtsByTenantId(tenant.id),
+    getMembershipPlansByTenantId(tenant.id),
+    getBookingsInRange(tenant.id, from.toISOString(), to.toISOString()),
+    getBlocksInRange(tenant.id, from.toISOString(), to.toISOString()),
+  ]);
+  const courts = allCourts.filter((c) => c.status === "ACTIVE").sort((a, b) => a.sortOrder - b.sortOrder);
+
+  const settings = tenant.settingsJson;
+  const open = settings?.openingHour ?? 7;
+  const close = settings?.closingHour ?? 22;
+  const club = tenant.name.replace(/^Tennis Club /, "TC ");
+  const counts = courts.reduce<Record<string, number>>((acc, c) => ({ ...acc, [surfaceKind(c)]: (acc[surfaceKind(c)] ?? 0) + 1 }), {});
+  const surfaces = (["clay", "hard", "padel"] as const)
+    .filter((k) => counts[k])
+    .map((k) => `${counts[k]} ${SURFACE_LABEL[k]}`)
+    .join(" · ");
 
   return (
-    <div className="min-h-screen bg-background text-foreground selection:bg-clay/30">
-      {/* Navigation - Minimalist */}
-      <nav className="absolute top-0 w-full z-50 px-6 py-6 flex justify-between items-center max-w-7xl mx-auto left-0 right-0">
-        <div className="flex items-center gap-2 font-black text-xl tracking-tighter">
-          <div className="w-8 h-8 rounded-xl bg-clay flex items-center justify-center text-white">
-            <Trophy className="w-5 h-5" />
-          </div>
-          TC MARLY
-        </div>
-        <div className="flex items-center gap-4">
-          <Link href="/c/tc-marly" className="text-sm font-semibold hover:text-clay transition-colors">
-            Kalender
-          </Link>
-          <Link href="/membership" className="text-sm font-semibold hover:text-clay transition-colors">
-            Abos & Preise
-          </Link>
-          {session ? (
-             <Link href="/dashboard" className="text-sm font-bold bg-slate-900 dark:bg-white text-white dark:text-black px-5 py-2 rounded-full hover:scale-105 transition-transform">
-               Mein Profil
-             </Link>
-          ) : (
-             <Link href="/login" className="text-sm font-bold bg-clay text-white px-5 py-2 rounded-full shadow-[0_0_15px_var(--tennis-clay-glow)] hover:shadow-[0_0_25px_var(--tennis-clay-glow)] hover:scale-105 transition-all">
-               Login / Registrieren
-             </Link>
-          )}
-        </div>
-      </nav>
+    <div className="mx-auto w-full max-w-[1200px] pb-[max(32px,env(safe-area-inset-bottom))]">
+      <header className="flex items-center gap-4 px-5 pb-2 pt-[max(16px,env(safe-area-inset-top))] lg:px-10 lg:pt-7">
+        <Link href="/" className="mr-auto text-[20px] font-bold tracking-[-.03em]">
+          {club}
+        </Link>
+        <Link href={`${base}/profile`} className="text-[15px] font-semibold text-clay-text">
+          Anmelden
+        </Link>
+        <Link
+          href={`${base}/calendar`}
+          className="flex h-[42px] items-center rounded-[14px] bg-clay px-4 text-[15px] font-bold text-white"
+        >
+          Platz buchen
+        </Link>
+      </header>
 
-      {/* Hero Section (2026 Glassmorphism / Spatial UI Style) */}
-      <main className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden flex flex-col items-center justify-center min-h-[90vh] tennis-grid-bg">
-
-        {/* Background Glows */}
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-clay/20 dark:bg-clay/10 blur-[120px] rounded-full pointer-events-none" />
-        <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-floodlight/10 blur-[100px] rounded-full pointer-events-none" />
-
-        <div className="relative z-10 max-w-5xl mx-auto px-6 text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-clay/10 text-clay font-semibold text-sm mb-8 ring-1 ring-clay/20 backdrop-blur-md">
-            <Sparkles className="w-4 h-4" />
-            <span>Offizielle Buchungsplattform Saison 2026</span>
+      <main>
+        <section className="pt-10 lg:grid lg:grid-cols-[1fr_minmax(0,560px)] lg:items-end lg:gap-14 lg:px-10 lg:pt-24">
+          <div className="px-5 lg:px-0">
+            <h1 className="text-[56px] font-bold leading-[.98] tracking-[-.05em] lg:text-[80px] lg:tracking-[-.055em]">
+              Platz frei?
+              <br />
+              <span className="text-muted-foreground">Schau selbst.</span>
+            </h1>
+            <p className="mt-4 text-[17px] leading-[1.4] text-muted-foreground">
+              {courts.length} Plätze · {surfaces}
+              <br />
+              Geöffnet {open}–{close} Uhr
+            </p>
           </div>
 
-          <h1 className="text-6xl md:text-8xl font-black tracking-tighter mb-8 leading-[1.05]">
-            Dein Court.<br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-clay to-floodlight">
-              In Sekunden gebucht.
-            </span>
-          </h1>
-
-          <p className="text-lg md:text-xl text-slate-600 dark:text-slate-400 mb-12 max-w-2xl mx-auto leading-relaxed">
-            Willkommen beim {tcMarly?.name || "TC Marly"}. Egal ob spontanes Match am Abend oder festes Sommer-Abo – unsere neue Plattform bringt dich schneller auf den Platz als je zuvor.
-          </p>
-
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link
-              href="/c/tc-marly"
-              className="flex items-center gap-2 w-full sm:w-auto px-8 py-4 bg-clay hover:bg-clay-hover text-white font-bold rounded-2xl transition-all shadow-xl hover:scale-105"
-            >
-              <Calendar className="w-5 h-5" />
-              Platz reservieren
-            </Link>
-
-            <Link
-              href="/membership"
-              className="flex items-center justify-center gap-2 w-full sm:w-auto px-8 py-4 bg-card border border-border hover:border-clay/50 font-bold rounded-2xl transition-all shadow-sm hover:shadow-clay/10 group"
-            >
-              Abo kaufen (Twint/Rechnung)
-              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-            </Link>
-          </div>
-        </div>
-
-        {/* Feature Teaser */}
-        <div className="relative z-10 mt-32 grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto px-6 w-full">
-          <div className="p-6 rounded-3xl glass-panel backdrop-blur-xl">
-            <div className="w-12 h-12 bg-clay/10 text-clay rounded-2xl flex items-center justify-center mb-4">
-              <Calendar className="w-6 h-6" />
+          <div className="pt-9 lg:pt-0">
+            <div className="flex items-baseline justify-between px-5 pb-3 lg:px-0">
+              <h2 className="text-[22px] font-bold tracking-[-.02em]">Jetzt frei</h2>
+              <Link href={`${base}/calendar`} className="text-[15px] font-semibold text-clay-text">
+                Alle Zeiten
+              </Link>
             </div>
-            <h3 className="text-lg font-bold mb-2">Live-Kalender</h3>
-            <p className="text-sm text-slate-500">Sehe in Echtzeit, welche Plätze frei sind und buche mit zwei Klicks.</p>
+            <FreeSlots href={`${base}/calendar`} courts={courts} bookings={bookings} blocks={blocks} open={open} close={close} />
           </div>
+        </section>
 
-          <div className="p-6 rounded-3xl glass-panel backdrop-blur-xl">
-            <div className="w-12 h-12 bg-floodlight/10 text-floodlight rounded-2xl flex items-center justify-center mb-4">
-              <CheckCircle2 className="w-6 h-6" />
+        <section className="px-5 pt-14 lg:px-10 lg:pt-28">
+          <h2 className="text-[34px] font-bold tracking-[-.035em]">Plätze</h2>
+          <ul className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-3">
+            {courts.map((c) => {
+              const l = courtLabel(c);
+              return (
+                <li key={c.id} className="flex items-center gap-2.5 rounded-[20px] border border-border bg-card px-3.5 py-3 lg:gap-3 lg:rounded-[22px] lg:px-[18px] lg:py-4">
+                  <Dot color={courtColor(c)} size={10} />
+                  <div className="min-w-0 flex-1">
+                    <div className="text-[16px] font-bold tracking-[-.01em]">{l.name}</div>
+                    <div className="truncate text-[14px] text-muted-foreground">{l.sub}</div>
+                  </div>
+                  {c.hasLighting && (
+                    <svg role="img" aria-label="Flutlicht" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z" />
+                    </svg>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+
+        {(plans.length > 0 || settings?.allowGuestBookings) && (
+          <section className="px-5 pt-14 lg:px-10 lg:pt-24">
+            <h2 className="text-[34px] font-bold tracking-[-.035em]">Abos</h2>
+            <div className="mt-4 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+              {plans.map((p) => (
+                <Link
+                  key={p.id}
+                  href={`${base}/profile?abo=1`}
+                  className="flex flex-col rounded-[26px] border border-border bg-card p-5"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="flex-1 text-[20px] font-bold tracking-[-.02em]">{p.name}</div>
+                    <Chevron className="mt-1" />
+                  </div>
+                  {p.description && <p className="mt-1 text-[15px] leading-[1.4] text-muted-foreground">{p.description}</p>}
+                  <div className="mt-auto pt-5 text-[28px] font-bold tracking-[-.03em]">
+                    <span className="text-[15px] font-semibold text-muted-foreground">CHF </span>
+                    {fmt(p.price)}
+                  </div>
+                </Link>
+              ))}
             </div>
-            <h3 className="text-lg font-bold mb-2">Auto-Unlock</h3>
-            <p className="text-sm text-slate-500">Zahle dein Abo per Twint und das System schaltet dich in der gleichen Sekunde für Buchungen frei.</p>
-          </div>
-
-          <div className="p-6 rounded-3xl glass-panel backdrop-blur-xl">
-            <div className="w-12 h-12 bg-clay/10 text-clay rounded-2xl flex items-center justify-center mb-4">
-              <MapPin className="w-6 h-6" />
-            </div>
-            <h3 className="text-lg font-bold mb-2">Location</h3>
-            <p className="text-sm text-slate-500">Route de la Gérine 1, 1723 Marly. 6 Sandplätze, 2 Hallenplätze.</p>
-          </div>
-        </div>
-
+            {settings?.allowGuestBookings && (
+              <div className="mt-3 rounded-[22px] bg-inset px-[18px] py-4 text-[15px] leading-[1.45] text-muted-foreground">
+                Ohne Abo? Als Gast buchst du einzelne Stunden und zahlst mit Twint.
+              </div>
+            )}
+          </section>
+        )}
       </main>
+
+      <footer className="mx-5 mt-16 border-t border-border pt-6 text-[14px] leading-[1.6] text-muted-foreground lg:mx-10">
+        <div className={label}>{tenant.name}</div>
+        {tenant.address && <div className="mt-2">{tenant.address}</div>}
+        {tenant.email && (
+          <a href={`mailto:${tenant.email}`} className="block text-clay-text">
+            {tenant.email}
+          </a>
+        )}
+        {tenant.phone && (
+          <a href={`tel:${tenant.phone.replace(/\s+/g, "")}`} className="block text-clay-text">
+            {tenant.phone}
+          </a>
+        )}
+      </footer>
     </div>
   );
 }

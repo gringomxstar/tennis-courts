@@ -6,28 +6,13 @@ import {
   createMembershipPlanAction,
   deleteMembershipPlanAction,
 } from "@/app/actions/club-settings";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-} from "@/components/ui/card";
-import {
-  CreditCard,
-  Plus,
-  Trash2,
-  Calendar,
-  Layers,
-  Clock,
-  CheckCircle2,
-  AlertCircle,
-  Loader2,
-} from "lucide-react";
+import { SwitchKnob } from "@/components/app/switch";
+import { Spinner } from "@/components/app/avatar";
+
+const label = "block truncate text-[13px] font-bold uppercase tracking-[.06em] text-muted-foreground";
+const input =
+  "mt-1.5 h-[50px] w-full min-w-0 rounded-[15px] border border-border bg-card px-4 text-[16px] text-foreground outline-none placeholder:text-muted-foreground focus-visible:border-clay";
+const secondary = "shrink-0 rounded-[12px] bg-inset px-3.5 py-2 text-[14px] font-bold text-clay-text disabled:opacity-60";
 
 interface MembershipPlansManagerProps {
   clubSlug: string;
@@ -42,6 +27,7 @@ export function MembershipPlansManager({
   const [showAddForm, setShowAddForm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [armedId, setArmedId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<{
     type: "success" | "error";
     message: string;
@@ -108,10 +94,14 @@ export function MembershipPlansManager({
     }
   };
 
+  // Two-tap confirm (same pattern as "Stornieren"): first tap arms, second deletes.
   const handleDeletePlan = async (planId: string, planName: string) => {
-    if (!confirm(`Möchtest du den Tarif "${planName}" wirklich entfernen?`)) {
+    if (armedId !== planId) {
+      setArmedId(planId);
+      setTimeout(() => setArmedId((id) => (id === planId ? null : id)), 3000);
       return;
     }
+    setArmedId(null);
 
     setDeletingId(planId);
     setFeedback(null);
@@ -141,76 +131,51 @@ export function MembershipPlansManager({
   };
 
   return (
-    <Card className="border-slate-200 dark:border-slate-800 shadow-xs">
-      <CardHeader className="flex flex-row items-center justify-between pb-3">
+    <section className="rounded-[26px] border border-border bg-card p-5">
+      <div className="flex items-start justify-between gap-3">
         <div>
-          <CardTitle className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <CreditCard className="w-4 h-4 text-emerald-600" />
-            Mitgliedschaftstarife & Quoten ({plans.length})
-          </CardTitle>
-          <CardDescription className="text-xs">
-            Konfiguration von Saisongebühren, Buchungsfenstern und Quoten.
-          </CardDescription>
+          <h2 className="text-[22px] font-bold tracking-[-.02em]">Tarife ({plans.length})</h2>
+          <p className="mt-1 text-[15px] leading-[1.4] text-muted-foreground">
+            Saisongebühren, Buchungsfenster und Quoten.
+          </p>
         </div>
-        <Button
-          size="sm"
-          variant={showAddForm ? "secondary" : "outline"}
-          onClick={() => setShowAddForm(!showAddForm)}
-          className="text-xs gap-1.5 h-8"
-        >
-          <Plus className="w-3.5 h-3.5" />
+        <button type="button" aria-expanded={showAddForm} onClick={() => setShowAddForm(!showAddForm)} className={secondary}>
           {showAddForm ? "Abbrechen" : "Neuer Tarif"}
-        </Button>
-      </CardHeader>
-      <CardContent className="space-y-4">
+        </button>
+      </div>
+
+      <div className="mt-5 flex flex-col gap-3">
         {feedback && (
           <div
-            className={`p-3 rounded-lg text-xs flex items-center gap-2 ${
-              feedback.type === "success"
-                ? "bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800"
-                : "bg-rose-50 text-rose-800 border border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800"
+            role="status"
+            className={`rounded-[18px] px-4 py-3 text-[15px] font-semibold ${
+              feedback.type === "success" ? "bg-paid-bg text-paid-fg" : "bg-clay text-white"
             }`}
           >
-            {feedback.type === "success" ? (
-              <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
-            ) : (
-              <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
-            )}
-            <span>{feedback.message}</span>
+            {feedback.message}
           </div>
         )}
 
-        {/* Create Plan Form */}
         {showAddForm && (
-          <form
-            onSubmit={handleCreatePlan}
-            className="p-4 rounded-xl border border-emerald-200 bg-emerald-50/50 dark:bg-emerald-950/20 dark:border-emerald-900/60 space-y-3 mb-4"
-          >
-            <h4 className="font-semibold text-xs text-slate-900 dark:text-white">
-              Neuen Mitgliedschaftstarif erstellen
-            </h4>
+          <form onSubmit={handleCreatePlan} className="flex flex-col gap-4 rounded-[20px] bg-inset p-4">
+            <h3 className="text-[17px] font-bold tracking-[-.01em]">Neuer Tarif</h3>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label htmlFor="planName" className="text-xs">
-                  Tarifname *
-                </Label>
-                <Input
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_auto]">
+              <label className="block">
+                <span className={label}>Tarifname *</span>
+                <input
                   id="planName"
                   placeholder="z. B. Student / Senioren"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   required
-                  className="text-xs bg-white dark:bg-slate-900"
+                  className={input}
                 />
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1">
-                  <Label htmlFor="price" className="text-xs">
-                    Preis *
-                  </Label>
-                  <Input
+              </label>
+              <div className="grid grid-cols-2 gap-3 sm:w-[240px]">
+                <label className="block">
+                  <span className={label}>Preis *</span>
+                  <input
                     id="price"
                     type="number"
                     min={0}
@@ -218,199 +183,137 @@ export function MembershipPlansManager({
                     value={price}
                     onChange={(e) => setPrice(Number(e.target.value))}
                     required
-                    className="text-xs bg-white dark:bg-slate-900"
+                    className={input}
                   />
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="currency" className="text-xs">
-                    Währung
-                  </Label>
-                  <select
-                    id="currency"
-                    value={currency}
-                    onChange={(e) => setCurrency(e.target.value)}
-                    className="w-full h-9 rounded-md border border-slate-200 bg-white px-2 py-1 text-xs dark:border-slate-800 dark:bg-slate-900"
-                  >
+                </label>
+                <label className="block">
+                  <span className={label}>Währung</span>
+                  <select id="currency" value={currency} onChange={(e) => setCurrency(e.target.value)} className={input}>
                     <option value="CHF">CHF</option>
                     <option value="EUR">EUR</option>
                   </select>
-                </div>
+                </label>
               </div>
             </div>
 
-            <div className="space-y-1">
-              <Label htmlFor="planDesc" className="text-xs">
-                Beschreibung
-              </Label>
-              <Input
+            <label className="block">
+              <span className={label}>Beschreibung</span>
+              <input
                 id="planDesc"
                 placeholder="z. B. Ermässigter Spielbeitrag für Studenten mit Ausweis"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="text-xs bg-white dark:bg-slate-900"
+                className={input}
               />
-            </div>
+            </label>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="space-y-1">
-                <Label htmlFor="bookingWindowDays" className="text-xs">
-                  Buchungsvorlauf (Tage)
-                </Label>
-                <Input
+            <div className="grid grid-cols-3 gap-3">
+              <label className="block">
+                <span className={label}>Vorlauf</span>
+                <input
                   id="bookingWindowDays"
                   type="number"
                   min={1}
                   max={30}
                   value={bookingWindowDays}
                   onChange={(e) => setBookingWindowDays(Number(e.target.value))}
-                  className="text-xs bg-white dark:bg-slate-900"
+                  className={input}
                 />
-              </div>
-
-              <div className="space-y-1">
-                <Label htmlFor="simultaneousBookingLimit" className="text-xs">
-                  Max. aktive Buchungen
-                </Label>
-                <Input
+              </label>
+              <label className="block">
+                <span className={label}>Max. aktiv</span>
+                <input
                   id="simultaneousBookingLimit"
                   type="number"
                   min={1}
                   max={10}
                   value={simultaneousBookingLimit}
-                  onChange={(e) =>
-                    setSimultaneousBookingLimit(Number(e.target.value))
-                  }
-                  className="text-xs bg-white dark:bg-slate-900"
+                  onChange={(e) => setSimultaneousBookingLimit(Number(e.target.value))}
+                  className={input}
                 />
-              </div>
-
-              <div className="space-y-1">
-                <Label htmlFor="dailyBookingLimit" className="text-xs">
-                  Max. Buchungen / Tag
-                </Label>
-                <Input
+              </label>
+              <label className="block">
+                <span className={label}>Pro Tag</span>
+                <input
                   id="dailyBookingLimit"
                   type="number"
                   min={1}
                   max={5}
                   value={dailyBookingLimit}
                   onChange={(e) => setDailyBookingLimit(Number(e.target.value))}
-                  className="text-xs bg-white dark:bg-slate-900"
+                  className={input}
                 />
+              </label>
+            </div>
+
+            <div>
+              <div className={label}>Erlaubte Spieldauern</div>
+              <div className="mt-1.5 grid grid-cols-2 gap-2">
+                {(
+                  [
+                    ["60 Min.", allow60, setAllow60],
+                    ["90 Min.", allow90, setAllow90],
+                  ] as const
+                ).map(([text, on, set]) => (
+                  <button
+                    key={text}
+                    type="button"
+                    aria-pressed={on}
+                    onClick={() => set(!on)}
+                    className="flex items-center gap-3 rounded-[18px] border border-border bg-card px-4 py-3 text-left"
+                  >
+                    <span className="flex-1 text-[16px] font-semibold">{text}</span>
+                    <SwitchKnob on={on} />
+                  </button>
+                ))}
               </div>
             </div>
 
-            <div className="pt-2">
-              <Label className="text-xs block mb-1.5 font-medium">
-                Erlaubte Spieldauern
-              </Label>
-              <div className="flex items-center gap-4">
-                <label className="flex items-center gap-1.5 text-xs text-slate-700 dark:text-slate-300 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={allow60}
-                    onChange={(e) => setAllow60(e.target.checked)}
-                    className="rounded border-slate-300 text-emerald-600 w-3.5 h-3.5"
-                  />
-                  60 Minuten
-                </label>
-                <label className="flex items-center gap-1.5 text-xs text-slate-700 dark:text-slate-300 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={allow90}
-                    onChange={(e) => setAllow90(e.target.checked)}
-                    className="rounded border-slate-300 text-emerald-600 w-3.5 h-3.5"
-                  />
-                  90 Minuten
-                </label>
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-2 pt-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setShowAddForm(false)}
-                className="text-xs h-8"
-              >
-                Abbrechen
-              </Button>
-              <Button
-                type="submit"
-                size="sm"
-                disabled={loading}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs h-8 gap-1.5"
-              >
-                {loading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                Tarif speichern
-              </Button>
-            </div>
+            <button
+              type="submit"
+              disabled={loading}
+              className="flex h-[54px] w-full items-center justify-center gap-2.5 rounded-[17px] bg-clay text-[17px] font-bold text-white active:scale-[.97] disabled:opacity-70"
+            >
+              {loading && <Spinner />}
+              Tarif speichern
+            </button>
           </form>
         )}
 
-        {/* Existing Plans List */}
-        <div className="space-y-3">
-          {plans.length === 0 ? (
-            <p className="text-xs text-slate-500 py-4 text-center">
-              Keine Tarife angelegt. Klicke auf &quot;Neuer Tarif&quot;, um einen Tarif zu definieren.
-            </p>
-          ) : (
-            plans.map((plan) => (
-              <div
-                key={plan.id}
-                className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-              >
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-sm text-slate-900 dark:text-white">
-                      {plan.name}
-                    </span>
-                    <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border-none font-bold text-xs">
+        {plans.length === 0 ? (
+          <p className="rounded-[20px] bg-inset px-4 py-5 text-center text-[15px] text-muted-foreground">
+            Keine Tarife angelegt. Tippe auf &quot;Neuer Tarif&quot;, um einen Tarif zu definieren.
+          </p>
+        ) : (
+          <div className="overflow-hidden rounded-[22px] border border-border">
+            {plans.map((plan) => (
+              <div key={plan.id} className="flex items-center gap-3 border-t border-border px-4 py-3.5 first:border-t-0">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-[16px] font-bold">{plan.name}</span>
+                    <span className="rounded-full bg-paid-bg px-3 py-1 text-[13px] font-bold text-paid-fg">
                       {plan.price} {plan.currency}
-                    </Badge>
-                  </div>
-                  {plan.description && (
-                    <p className="text-xs text-slate-500">{plan.description}</p>
-                  )}
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-600 dark:text-slate-400 pt-1">
-                    <span className="flex items-center gap-1">
-                      <Calendar className="w-3 h-3 text-slate-400" />
-                      Vorlauf: {plan.bookingWindowDays} Tage
-                    </span>
-                    <span>•</span>
-                    <span className="flex items-center gap-1">
-                      <Layers className="w-3 h-3 text-slate-400" />
-                      Max. aktiv: {plan.simultaneousBookingLimit}
-                    </span>
-                    <span>•</span>
-                    <span className="flex items-center gap-1">
-                      <Clock className="w-3 h-3 text-slate-400" />
-                      Dauern: {plan.allowedDurations.join(", ")} Min.
                     </span>
                   </div>
+                  {plan.description && <p className="mt-0.5 text-[14px] text-muted-foreground">{plan.description}</p>}
+                  <p className="mt-1 text-[13px] text-muted-foreground">
+                    Vorlauf {plan.bookingWindowDays} Tage · Max. aktiv {plan.simultaneousBookingLimit} · {plan.allowedDurations.join("/")} Min.
+                  </p>
                 </div>
-
-                <div className="flex items-center gap-2 self-end sm:self-center">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={deletingId === plan.id}
-                    onClick={() => handleDeletePlan(plan.id, plan.name)}
-                    className="text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 border-rose-200 dark:border-rose-900/50 text-xs h-8 px-2.5"
-                  >
-                    {deletingId === plan.id ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    ) : (
-                      <Trash2 className="w-3.5 h-3.5" />
-                    )}
-                  </Button>
-                </div>
+                <button
+                  type="button"
+                  disabled={deletingId === plan.id}
+                  onClick={() => handleDeletePlan(plan.id, plan.name)}
+                  aria-label={`Tarif ${plan.name} entfernen`}
+                  className={secondary}
+                >
+                  {deletingId === plan.id ? "…" : armedId === plan.id ? "Wirklich entfernen?" : "Entfernen"}
+                </button>
               </div>
-            ))
-          )}
-        </div>
-      </CardContent>
-    </Card>
+            ))}
+          </div>
+        )}
+      </div>
+    </section>
   );
 }
