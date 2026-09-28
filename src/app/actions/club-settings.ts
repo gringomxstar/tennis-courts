@@ -8,6 +8,7 @@ import {
   createMembershipPlan,
   updateMembershipPlan,
   deleteMembershipPlan,
+  getMembershipPlansByTenantId,
 } from "@/lib/data";
 import { TenantSettings } from "@/types";
 
@@ -20,9 +21,11 @@ async function verifyClubAdmin(clubSlug: string) {
   const isPlatformAdmin = Boolean(
     session.user.isPlatformAdmin || session.user.role === "PLATFORM_ADMIN"
   );
+  // session.user.role is only ever the role from the user's FIRST tenant membership
+  // (see auth.ts primaryRole) — never trust it as a global "is admin somewhere" flag.
+  // Only a per-tenant match against this exact clubSlug proves authorization here.
   const isClubAdmin =
     isPlatformAdmin ||
-    session.user.role === "CLUB_ADMIN" ||
     session.user.tenants?.some(
       (t) => t.slug === clubSlug && t.role === "CLUB_ADMIN"
     );
@@ -179,6 +182,12 @@ export async function updateMembershipPlanAction(
     return { success: false, error: authCheck.error };
   }
 
+  // A club admin must never be able to modify another tenant's plan by id alone.
+  const tenantPlans = await getMembershipPlansByTenantId(authCheck.tenant.id);
+  if (!tenantPlans.some((p) => p.id === planId)) {
+    return { success: false, error: "Tarif gehört nicht zu diesem Club." };
+  }
+
   const updated = await updateMembershipPlan(planId, input);
   if (!updated) {
     return { success: false, error: "Tarif konnte nicht aktualisiert werden." };
@@ -195,6 +204,12 @@ export async function deleteMembershipPlanAction(
   const authCheck = await verifyClubAdmin(clubSlug);
   if (!authCheck.authorized || !authCheck.tenant) {
     return { success: false, error: authCheck.error };
+  }
+
+  // A club admin must never be able to delete another tenant's plan by id alone.
+  const tenantPlans = await getMembershipPlansByTenantId(authCheck.tenant.id);
+  if (!tenantPlans.some((p) => p.id === planId)) {
+    return { success: false, error: "Tarif gehört nicht zu diesem Club." };
   }
 
   const deleted = await deleteMembershipPlan(planId);
