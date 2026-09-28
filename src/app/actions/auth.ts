@@ -44,10 +44,9 @@ export async function loginWithCredentials(
 }
 
 export async function quickDemoLogin(email: string, targetSlug: string = "tc-marly") {
-  const password = email.includes("admin@tennisapp.ch") ? "admin12345" : "tennis12345";
-  const callbackUrl = email.includes("admin@tennisapp.ch")
-    ? "/admin"
-    : `/c/${targetSlug}`;
+  const isAdminAccount = email === "admin@tennisapp.ch" || email === "clubadmin@marly.ch";
+  const password = isAdminAccount ? "admin12345" : "tennis12345";
+  const callbackUrl = email === "admin@tennisapp.ch" ? "/admin" : `/c/${targetSlug}`;
 
   await signIn("credentials", {
     email,

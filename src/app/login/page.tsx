@@ -55,7 +55,7 @@ export default function LoginPage() {
               variant="outline"
               size="sm"
               className="w-full justify-between bg-white text-xs hover:bg-clay/10 dark:bg-slate-900"
-              onClick={() => handleQuickDemo("roger@tc-rotweiss.ch")}
+              onClick={() => handleQuickDemo("member@marly.ch")}
               disabled={Boolean(demoLoading)}
             >
               <span className="flex items-center gap-2">
@@ -69,7 +69,7 @@ export default function LoginPage() {
               variant="outline"
               size="sm"
               className="w-full justify-between bg-white text-xs hover:bg-amber-100 dark:bg-slate-900"
-              onClick={() => handleQuickDemo("clubadmin@tc-rotweiss.ch")}
+              onClick={() => handleQuickDemo("clubadmin@marly.ch")}
               disabled={Boolean(demoLoading)}
             >
               <span className="flex items-center gap-2">
@@ -113,7 +113,7 @@ export default function LoginPage() {
                   name="email"
                   type="email"
                   autoComplete="email"
-                  placeholder="roger@tc-rotweiss.ch"
+                  placeholder="member@marly.ch"
                   required
                   className="mt-1.5"
                 />

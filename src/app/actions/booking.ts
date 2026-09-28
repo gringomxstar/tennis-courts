@@ -2,7 +2,7 @@
 
 import { auth } from "@/auth";
 import { mockDb } from "@/lib/data/mock-db";
-import { getCourtBookings, getCourtBlocks } from "@/lib/data";
+import { getTenantBySlug, getCourtsByTenantId, getCourtBookings, getCourtBlocks } from "@/lib/data";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { BookingType, BlockReason, BookingParticipant } from "@/types";
@@ -31,12 +31,12 @@ export interface CreateBookingInput {
 
 export async function createBookingAction(input: CreateBookingInput) {
   const session = await auth();
-  const tenant = mockDb.getTenantBySlug(input.clubSlug);
+  const tenant = await getTenantBySlug(input.clubSlug);
   if (!tenant) {
     return { success: false, error: "Club nicht gefunden." };
   }
 
-  const courts = mockDb.getCourtsByTenantId(tenant.id);
+  const courts = await getCourtsByTenantId(tenant.id);
   const court = courts.find((c) => c.id === input.courtId);
   if (!court) {
     return { success: false, error: "Tennisplatz nicht gefunden." };
@@ -328,7 +328,19 @@ export async function cancelBookingAction(bookingId: string, clubSlug: string) {
     isPlatformAdmin ||
     session.user.tenants?.some((t) => t.slug === clubSlug && t.role === "CLUB_ADMIN");
 
-  const booking = mockDb.bookings.find((b) => b.id === bookingId);
+  const dbBooking = process.env.DATABASE_URL
+    ? await prisma.booking.findUnique({ where: { id: bookingId } }).catch(() => null)
+    : null;
+  const booking = dbBooking
+    ? {
+        id: dbBooking.id,
+        tenantId: dbBooking.tenantId,
+        organizerId: dbBooking.organizerId,
+        startsAt: dbBooking.startsAt.toISOString(),
+        totalCost: Number(dbBooking.totalCost),
+        price: Number(dbBooking.price),
+      }
+    : mockDb.bookings.find((b) => b.id === bookingId);
   if (!booking) {
     return { success: false, error: "Buchung nicht gefunden." };
   }
@@ -350,7 +362,8 @@ export async function cancelBookingAction(bookingId: string, clubSlug: string) {
   // Check cancellation deadline for non-admins
   if (!isClubAdmin) {
     const hoursRemaining = (bookingTime - now) / (1000 * 60 * 60);
-    const deadline = mockDb.getTenantBySlug(clubSlug)?.settingsJson?.cancellationDeadlineHours ?? 24;
+    const cancelTenant = await getTenantBySlug(clubSlug);
+    const deadline = cancelTenant?.settingsJson?.cancellationDeadlineHours ?? 24;
     if (hoursRemaining < deadline) {
       return {
         success: false,
@@ -478,12 +491,12 @@ export async function createCourtBlockAction(input: {
     return { success: false, error: "Keine Berechtigung zur Platzsperrung in diesem Club." };
   }
 
-  const tenant = mockDb.getTenantBySlug(input.clubSlug);
+  const tenant = await getTenantBySlug(input.clubSlug);
   if (!tenant) {
     return { success: false, error: "Club nicht gefunden." };
   }
 
-  const courts = mockDb.getCourtsByTenantId(tenant.id);
+  const courts = await getCourtsByTenantId(tenant.id);
   const courtExists = courts.some((c) => c.id === input.courtId);
   if (!courtExists) {
     return { success: false, error: "Der ausgewählte Platz gehört nicht zu diesem Club." };

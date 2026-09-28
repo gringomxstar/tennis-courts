@@ -26,9 +26,10 @@ const COURTS: { id: string; name: string; sportType: SportType; surface: CourtSu
   { id: "court-marly-9", name: "Padel 1 (Panoramaplatz)", sportType: "PADEL", surface: "ARTIFICIAL_GRASS", hasLighting: true, sortOrder: 9 },
 ]
 
-const DEMO_GUESTS = [
-  { email: "gast@marly.ch", name: "Test Gast" },
-  { email: "future.member@marly.ch", name: "Future Member" },
+const DEMO_GUESTS: { email: string; name: string; role: "MEMBER" | "GUEST" }[] = [
+  { email: "member@marly.ch", name: "Roger Federer", role: "MEMBER" },
+  { email: "gast@marly.ch", name: "Test Gast", role: "GUEST" },
+  { email: "future.member@marly.ch", name: "Future Member", role: "GUEST" },
 ]
 
 async function main() {
@@ -152,8 +153,8 @@ async function main() {
     })
     await prisma.tenantUser.upsert({
       where: { tenantId_userId: { tenantId: TENANT_ID, userId: user.id } },
-      update: {},
-      create: { tenantId: TENANT_ID, userId: user.id, role: "GUEST" },
+      update: { role: g.role },
+      create: { tenantId: TENANT_ID, userId: user.id, role: g.role },
     })
   }
 
