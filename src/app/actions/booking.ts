@@ -328,6 +328,11 @@ export async function cancelBookingAction(bookingId: string, clubSlug: string) {
     isPlatformAdmin ||
     session.user.tenants?.some((t) => t.slug === clubSlug && t.role === "CLUB_ADMIN");
 
+  const cancelTenant = await getTenantBySlug(clubSlug);
+  if (!cancelTenant) {
+    return { success: false, error: "Club nicht gefunden." };
+  }
+
   const dbBooking = process.env.DATABASE_URL
     ? await prisma.booking.findUnique({ where: { id: bookingId } }).catch(() => null)
     : null;
@@ -341,7 +346,9 @@ export async function cancelBookingAction(bookingId: string, clubSlug: string) {
         price: Number(dbBooking.price),
       }
     : mockDb.bookings.find((b) => b.id === bookingId);
-  if (!booking) {
+  // Scope strictly to the club the caller is acting in — a booking id from another
+  // tenant must never be actionable just because the caller is an admin somewhere.
+  if (!booking || booking.tenantId !== cancelTenant.id) {
     return { success: false, error: "Buchung nicht gefunden." };
   }
 
@@ -362,8 +369,7 @@ export async function cancelBookingAction(bookingId: string, clubSlug: string) {
   // Check cancellation deadline for non-admins
   if (!isClubAdmin) {
     const hoursRemaining = (bookingTime - now) / (1000 * 60 * 60);
-    const cancelTenant = await getTenantBySlug(clubSlug);
-    const deadline = cancelTenant?.settingsJson?.cancellationDeadlineHours ?? 24;
+    const deadline = cancelTenant.settingsJson?.cancellationDeadlineHours ?? 24;
     if (hoursRemaining < deadline) {
       return {
         success: false,
