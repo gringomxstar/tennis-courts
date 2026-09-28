@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { Button, type buttonVariants } from "@/components/ui/button";
 import type { VariantProps } from "class-variance-authority";
 
@@ -39,10 +40,10 @@ export function CheckoutButton({ planId, paymentMethod, isLoggedIn, label, varia
         // Redirect zu Stripe Checkout ODER zu unserer Offline-Rechnungs-Ansicht
         window.location.href = data.url;
       } else {
-        alert(data.error || "Ein Fehler ist aufgetreten.");
+        toast.error(data.error || "Ein Fehler ist aufgetreten.");
       }
-    } catch (error) {
-      alert("Netzwerkfehler. Bitte versuche es erneut.");
+    } catch {
+      toast.error("Netzwerkfehler. Bitte versuche es erneut.");
     } finally {
       setIsLoading(false);
     }

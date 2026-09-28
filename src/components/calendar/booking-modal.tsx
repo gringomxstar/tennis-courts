@@ -6,6 +6,7 @@ import { createBookingAction, topUpWalletAction } from "@/app/actions/booking";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Dialog, DialogClose, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import {
   X,
   AlertCircle,
@@ -13,7 +14,13 @@ import {
   Coins,
   Search,
   UserPlus,
-  Check
+  Check,
+  Trophy,
+  User,
+  Users,
+  Star,
+  Lightbulb,
+  CircleDot
 } from "lucide-react";
 
 interface BookingModalProps {
@@ -73,13 +80,11 @@ export function BookingModal({
   const [hasBallMachine, setHasBallMachine] = useState(false);
   const [hasLighting, setHasLighting] = useState(false);
 
-  const currentUser = members.find((m) => m.id === currentUserId) || {
-    id: currentUserId || "du",
-    firstName: "Roger",
-    lastName: "Federer",
-    email: "roger@example.com",
-    role: "MEMBER",
-  };
+  const currentUser = currentUserId ? members.find((m) => m.id === currentUserId) : undefined;
+
+  const [guestFirstName, setGuestFirstName] = useState("");
+  const [guestLastName, setGuestLastName] = useState("");
+  const [guestEmail, setGuestEmail] = useState("");
 
   const defaultOpponent = members.find((m) => m.id !== currentUserId);
   const [participants, setParticipants] = useState<ParticipantSlot[]>([]);
@@ -206,13 +211,9 @@ export function BookingModal({
     setLoading(true);
     setError(null);
 
-    if (participants.length < requiredPartnersCount) {
+    if (!currentUserId && (!guestFirstName.trim() || !guestLastName.trim() || !guestEmail.trim())) {
       setLoading(false);
-      setError(
-        matchType === "SINGLE"
-          ? "Bitte wähle einen Spielpartner für das Einzel aus."
-          : `Für ein Doppel müssen 3 Mitspieler ausgewählt werden (aktuell: ${participants.length}).`
-      );
+      setError("Bitte gib deinen Namen und deine E-Mail-Adresse an.");
       return;
     }
 
@@ -242,11 +243,22 @@ export function BookingModal({
         guestName: p.type === "GUEST" ? p.name : undefined,
         guestEmail: p.email,
       })),
+      ...(!currentUserId
+        ? {
+            guestFirstName: guestFirstName.trim(),
+            guestLastName: guestLastName.trim(),
+            guestEmail: guestEmail.trim(),
+          }
+        : {}),
     });
 
     setLoading(false);
 
     if (res.success) {
+      if (res.checkoutUrl) {
+        window.location.href = res.checkoutUrl;
+        return;
+      }
       onClose();
     } else {
       setError(res.error || "Fehler beim Erstellen der Reservierung.");
@@ -261,7 +273,7 @@ export function BookingModal({
           <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center">
             <UserPlus className="w-4 h-4" />
           </div>
-          <span className="text-sm font-medium">Spieler {index + 2} auswählen...</span>
+          <span className="text-sm font-medium">Mitspieler {index + 2} optional hinzufügen</span>
         </div>
       );
     }
@@ -294,31 +306,33 @@ export function BookingModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in overflow-y-auto">
-      <div className="relative w-full max-w-4xl max-h-[95vh] overflow-hidden rounded-3xl bg-slate-50 dark:bg-[#0B1120] shadow-2xl border border-slate-200 dark:border-white/[0.08] flex flex-col">
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent
+        showCloseButton={false}
+        className="max-w-4xl sm:max-w-4xl max-h-[95vh] w-full rounded-3xl bg-card border-border p-0 gap-0 flex flex-col overflow-hidden"
+      >
         {/* Header */}
-        <div className="flex items-center justify-between p-5 sm:p-6 bg-white dark:bg-[#141A26] border-b border-slate-100 dark:border-white/[0.05] shrink-0">
+        <div className="flex items-center justify-between p-5 sm:p-6 bg-card border-b border-border shrink-0">
           <div>
-            <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-slate-100 flex items-center gap-2">
-              🎾 Spacious Reservation Studio
-            </h2>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+            <DialogTitle className="text-xl sm:text-2xl font-black text-foreground flex items-center gap-2">
+              <Trophy className="w-5 h-5 text-clay" /> Platz reservieren
+            </DialogTitle>
+            <p className="text-sm text-muted-foreground mt-1">
               Platzreservierung für {currentCourt?.name} am {selectedDateStr}
             </p>
           </div>
-          <button
-            onClick={onClose}
-            className="rounded-full p-2.5 bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-900 dark:bg-white/[0.05] dark:hover:bg-white/[0.1] transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <DialogClose asChild>
+            <button className="rounded-full p-2.5 bg-secondary text-muted-foreground hover:bg-accent hover:text-foreground transition-colors">
+              <X className="w-5 h-5" />
+            </button>
+          </DialogClose>
         </div>
 
         {/* Content: Two Columns */}
         <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
           
           {/* Left Column: Match Setup & Billing */}
-          <div className="w-full md:w-[45%] flex flex-col border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-[#141A26] overflow-y-auto">
+          <div className="w-full md:w-[45%] flex flex-col border-r border-border bg-card overflow-y-auto">
             <div className="p-6 flex-1 space-y-6">
               
               {error && (
@@ -353,7 +367,7 @@ export function BookingModal({
                         : "border-slate-100 bg-slate-50 text-slate-500 hover:border-slate-300 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400"
                     }`}
                   >
-                    🎾 Einzel (2)
+                    <span className="inline-flex items-center gap-1.5"><User className="w-4 h-4" /> Einzel (2)</span>
                   </button>
                   <button
                     onClick={() => handleMatchTypeChange("DOUBLE")}
@@ -363,7 +377,7 @@ export function BookingModal({
                         : "border-slate-100 bg-slate-50 text-slate-500 hover:border-slate-300 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400"
                     }`}
                   >
-                    👥 Doppel (4)
+                    <span className="inline-flex items-center gap-1.5"><Users className="w-4 h-4" /> Doppel (4)</span>
                   </button>
                 </div>
               </div>
@@ -419,7 +433,7 @@ export function BookingModal({
                   }`}>
                     <div className="flex items-center gap-3">
                       <div className={`w-10 h-10 rounded-full flex items-center justify-center ${hasBallMachine ? "bg-emerald-200 text-emerald-700" : "bg-slate-200 text-slate-500"}`}>
-                        🎾
+                        <CircleDot className="w-5 h-5" />
                       </div>
                       <div>
                         <div className="font-bold text-sm text-slate-900 dark:text-white">Ballmaschine</div>
@@ -436,7 +450,7 @@ export function BookingModal({
                   }`}>
                     <div className="flex items-center gap-3">
                       <div className={`w-10 h-10 rounded-full flex items-center justify-center ${hasLighting ? "bg-amber-200 text-amber-700" : "bg-slate-200 text-slate-500"}`}>
-                        💡
+                        <Lightbulb className="w-5 h-5" />
                       </div>
                       <div>
                         <div className="font-bold text-sm text-slate-900 dark:text-white">Flutlicht</div>
@@ -456,7 +470,7 @@ export function BookingModal({
             </div>
 
             {/* Price Footer */}
-            <div className="p-6 bg-slate-50 dark:bg-[#0B1120] border-t border-slate-200 dark:border-slate-800 mt-auto">
+            <div className="p-6 bg-background border-t border-border mt-auto">
               <div className="space-y-2 mb-4">
                 <div className="flex justify-between text-sm text-slate-600 dark:text-slate-400">
                   <span>Platzmiete (Mitglied)</span>
@@ -493,7 +507,7 @@ export function BookingModal({
               <Button
                 onClick={handleSubmit}
                 disabled={loading}
-                className="w-full h-12 text-base font-bold bg-[#E25B36] hover:bg-[#C84B2B] text-white shadow-lg rounded-xl"
+                className="w-full h-12 text-base font-bold bg-clay hover:bg-clay-hover text-white shadow-lg rounded-xl"
               >
                 {loading ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : null}
                 Platz jetzt verbindlich buchen
@@ -508,18 +522,51 @@ export function BookingModal({
               <h3 className="text-lg font-black text-slate-900 dark:text-white mb-4">Spieler Slots</h3>
               <div className="space-y-3">
                 {/* Slot 1: Current User */}
-                <div className="flex items-center p-3 rounded-xl border-2 border-slate-800 dark:border-slate-600 bg-slate-900 dark:bg-slate-800 text-white shadow-md">
-                  <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center font-bold mr-3">
-                    {currentUser.firstName[0]}{currentUser.lastName[0]}
+                {currentUser ? (
+                  <div className="flex items-center p-3 rounded-xl border-2 border-slate-800 dark:border-slate-600 bg-slate-900 dark:bg-slate-800 text-white shadow-md">
+                    <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center font-bold mr-3">
+                      {currentUser.firstName[0]}{currentUser.lastName[0]}
+                    </div>
+                    <div className="flex-1">
+                      <div className="text-sm font-bold flex items-center gap-2">
+                        {currentUser.firstName} {currentUser.lastName} (Du)
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-emerald-500 text-white">Veranstalter</span>
+                      </div>
+                    </div>
+                    <Check className="w-5 h-5 text-emerald-400" />
                   </div>
-                  <div className="flex-1">
+                ) : (
+                  <div className="p-3 rounded-xl border-2 border-slate-800 dark:border-slate-600 bg-slate-900 dark:bg-slate-800 text-white shadow-md space-y-2">
                     <div className="text-sm font-bold flex items-center gap-2">
-                      {currentUser.firstName} {currentUser.lastName} (Du)
+                      Deine Kontaktdaten (Du)
                       <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-emerald-500 text-white">Veranstalter</span>
                     </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Input
+                        placeholder="Vorname"
+                        value={guestFirstName}
+                        onChange={(e) => setGuestFirstName(e.target.value)}
+                        className="bg-white/10 border-white/20 text-white placeholder:text-white/50 h-10"
+                        required
+                      />
+                      <Input
+                        placeholder="Nachname"
+                        value={guestLastName}
+                        onChange={(e) => setGuestLastName(e.target.value)}
+                        className="bg-white/10 border-white/20 text-white placeholder:text-white/50 h-10"
+                        required
+                      />
+                    </div>
+                    <Input
+                      type="email"
+                      placeholder="E-Mail (für Zahlungsbestätigung & Quittung)"
+                      value={guestEmail}
+                      onChange={(e) => setGuestEmail(e.target.value)}
+                      className="bg-white/10 border-white/20 text-white placeholder:text-white/50 h-10"
+                      required
+                    />
                   </div>
-                  <Check className="w-5 h-5 text-emerald-400" />
-                </div>
+                )}
 
                 {/* Slot 2, 3, 4 */}
                 {renderPlayerSlot(0)}
@@ -553,19 +600,19 @@ export function BookingModal({
                   onClick={() => setActiveTab("ALLE")}
                   className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === "ALLE" ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-md" : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300"}`}
                 >
-                  👥 Alle Mitglieder
+                  <span className="inline-flex items-center gap-1.5"><Users className="w-3.5 h-3.5" /> Alle Mitglieder</span>
                 </button>
                 <button
                   onClick={() => setActiveTab("FAV")}
                   className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === "FAV" ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-md" : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300"}`}
                 >
-                  ⭐ Favoriten
+                  <span className="inline-flex items-center gap-1.5"><Star className="w-3.5 h-3.5" /> Favoriten</span>
                 </button>
                 <button
                   onClick={() => setActiveTab("GAST")}
                   className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === "GAST" ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-md" : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300"}`}
                 >
-                  👤 + Gast
+                  <span className="inline-flex items-center gap-1.5"><UserPlus className="w-3.5 h-3.5" /> Gast</span>
                 </button>
               </div>
 
@@ -610,7 +657,7 @@ export function BookingModal({
                       <div key={m.id} className="flex items-center justify-between p-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-sm hover:border-slate-300 transition-colors">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-400 flex items-center justify-center font-bold text-sm">
-                            ⭐
+                            <Star className="w-5 h-5" />
                           </div>
                           <div>
                             <div className="text-sm font-bold text-slate-900 dark:text-white">{m.firstName} {m.lastName}</div>
@@ -661,7 +708,7 @@ export function BookingModal({
             </div>
           </div>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
