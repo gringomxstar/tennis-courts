@@ -20,7 +20,9 @@ import { CreateCourtBlockForm } from "@/components/admin/create-court-block-form
 import { ClubSettingsForm } from "@/components/admin/club-settings-form";
 import { MembershipPlansManager } from "@/components/admin/membership-plans-manager";
 import { AdminGrantCreditsButton } from "@/components/admin/admin-grant-credits-button";
+import { MarkInvoicePaidButton } from "@/components/admin/mark-invoice-paid-button";
 import { Shield, Calendar, Users, Wrench, ChevronLeft } from "lucide-react";
+import { prisma } from "@/lib/prisma";
 
 interface ClubAdminPageProps {
   params: Promise<{
@@ -39,6 +41,22 @@ export default async function ClubAdminPage({ params }: ClubAdminPageProps) {
     getMembershipPlansByTenantId(tenant.id),
     context.user?.id ? getUserWallet(tenant.id, context.user.id) : null,
   ]);
+
+  // Offline-invoice memberships awaiting manual payment confirmation. Membership purchase
+  // is Postgres/Stripe-only (see api/checkout/route.ts) — no mockDb equivalent exists, so
+  // this queries Prisma directly rather than going through the dual-backend data layer.
+  const pendingByUserId = new Map<string, { stripeCustomerId: string; planName: string }>();
+  if (process.env.DATABASE_URL) {
+    const pending = await prisma.membership.findMany({
+      where: { tenantId: tenant.id, status: "PENDING" },
+      include: { user: true, plan: true },
+    });
+    for (const m of pending) {
+      if (m.user.stripeCustomerId) {
+        pendingByUserId.set(m.userId, { stripeCustomerId: m.user.stripeCustomerId, planName: m.plan.name });
+      }
+    }
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -233,6 +251,16 @@ export default async function ClubAdminPage({ params }: ClubAdminPageProps) {
                   </div>
 
                   <div className="flex items-center gap-2">
+                    {pendingByUserId.has(member.id) && (
+                      <MarkInvoicePaidButton
+                        tenantId={tenant.id}
+                        userId={member.id}
+                        userName={`${member.firstName} ${member.lastName}`}
+                        stripeCustomerId={pendingByUserId.get(member.id)!.stripeCustomerId}
+                        planName={pendingByUserId.get(member.id)!.planName}
+                      />
+                    )}
+
                     <AdminGrantCreditsButton
                       clubSlug={tenant.slug}
                       userId={member.id}
