@@ -4,7 +4,6 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { authConfig } from "./auth.config";
 import { prisma } from "@/lib/prisma";
-import { mockDb } from "@/lib/data/mock-db";
 import { TenantRole } from "@/types";
 
 const loginSchema = z.object({
@@ -19,86 +18,54 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       async authorize(credentials) {
         const parsedCredentials = loginSchema.safeParse(credentials);
         if (!parsedCredentials.success) {
-          return null;
+          throw new Error("Ungültige Eingabe");
         }
 
         const { email, password } = parsedCredentials.data;
         const normalizedEmail = email.toLowerCase().trim();
 
-        // 1. Try Live Database if configured
-        if (process.env.DATABASE_URL) {
-          try {
-            const dbUser = await prisma.user.findUnique({
-              where: { email: normalizedEmail },
-              include: {
-                tenantUsers: {
-                  include: {
-                    tenant: true,
-                  },
-                },
-              },
-            });
-
-            if (dbUser && dbUser.passwordHash) {
-              const passwordsMatch = await bcrypt.compare(password, dbUser.passwordHash);
-              if (passwordsMatch) {
-                // Determine primary role & tenants
-                const isPlatformAdmin = dbUser.tenantUsers.some(
-                  (tu) => tu.role === "PLATFORM_ADMIN"
-                );
-                const primaryRole: TenantRole = isPlatformAdmin
-                  ? "PLATFORM_ADMIN"
-                  : (dbUser.tenantUsers[0]?.role as TenantRole) || "MEMBER";
-
-                return {
-                  id: dbUser.id,
-                  email: dbUser.email,
-                  name: `${dbUser.firstName} ${dbUser.lastName}`,
-                  role: primaryRole,
-                  isPlatformAdmin,
-                  tenants: dbUser.tenantUsers.map((tu) => ({
-                    tenantId: tu.tenantId,
-                    slug: tu.tenant.slug,
-                    role: tu.role as TenantRole,
-                  })),
-                };
-              }
-            }
-          } catch (e) {
-            console.warn("Database lookup failed, falling back to mock:", e);
-          }
+        if (!process.env.DATABASE_URL) {
+          throw new Error("Datenbank nicht verbunden");
         }
 
-        // 2. Mock Store Fallback
-        const mockUser = mockDb.getUserByEmail(normalizedEmail);
-        if (mockUser) {
-          // Allow demo passwords: 'tennis12345' or 'admin12345' or any password for demo ease
-          const isValidDemoPassword =
-            password === "tennis12345" ||
-            password === "admin12345" ||
-            password === "password" ||
-            password.length >= 6;
+        const dbUser = await prisma.user.findUnique({
+          where: { email: normalizedEmail },
+          include: {
+            tenantUsers: {
+              include: { tenant: true },
+            },
+          },
+        });
 
-          if (isValidDemoPassword) {
-            const isPlatformAdmin = mockUser.role === "PLATFORM_ADMIN" || Boolean(mockUser.isPlatformAdmin);
-            return {
-              id: mockUser.id,
-              email: mockUser.email,
-              name: `${mockUser.firstName} ${mockUser.lastName}`,
-              role: mockUser.role,
-              isPlatformAdmin,
-              tenants: [
-                {
-                  tenantId: mockUser.tenantId || "tenant-rot-weiss",
-                  slug: "tc-rot-weiss",
-                  role: mockUser.role,
-                },
-              ],
-            };
-          }
+        if (!dbUser || !dbUser.passwordHash) {
+          throw new Error("Benutzer nicht gefunden");
         }
 
-        return null;
+        const passwordsMatch = await bcrypt.compare(password, dbUser.passwordHash);
+        if (!passwordsMatch) {
+          throw new Error("Falsches Passwort");
+        }
+
+        // Bestimme primäre Rolle & Tenants
+        const isPlatformAdmin = dbUser.tenantUsers.some(
+          (tu) => tu.role === "PLATFORM_ADMIN"
+        );
+        const primaryRole: TenantRole = isPlatformAdmin
+          ? "PLATFORM_ADMIN"
+          : (dbUser.tenantUsers[0]?.role as TenantRole) || "GUEST";
+
+        return {
+          id: dbUser.id,
+          email: dbUser.email,
+          name: `${dbUser.firstName} ${dbUser.lastName}`,
+          role: primaryRole,
+          isPlatformAdmin,
+          tenants: dbUser.tenantUsers.map((tu) => ({
+            tenantId: tu.tenantId,
+            slug: tu.tenant.slug,
+            role: tu.role as TenantRole,
+          })),
+        };
       },
     }),
   ],
