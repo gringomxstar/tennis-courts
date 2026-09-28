@@ -47,19 +47,15 @@ export async function getTenantContext(slug: string): Promise<TenantContext> {
 
   const isPlatformAdmin = Boolean(rawUser.isPlatformAdmin || rawUser.role === "PLATFORM_ADMIN");
   
-  // Find role in this specific tenant
+  // Find role strictly in this specific tenant (no cross-tenant leakage!)
   let tenantRole: TenantRole = "GUEST";
   if (isPlatformAdmin) {
     tenantRole = "PLATFORM_ADMIN";
-  } else if (rawUser.tenants) {
+  } else if (rawUser.tenants && Array.isArray(rawUser.tenants)) {
     const matchingTenant = rawUser.tenants.find((t) => t.slug === slug);
     if (matchingTenant) {
       tenantRole = matchingTenant.role;
-    } else if (rawUser.role) {
-      tenantRole = rawUser.role;
     }
-  } else if (rawUser.role) {
-    tenantRole = rawUser.role;
   }
 
   const isTenantAdmin =

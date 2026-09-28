@@ -13,17 +13,17 @@ export default function RegisterPage() {
   const [state, formAction, isPending] = useActionState(registerUserAction, undefined);
 
   return (
-    <div className="min-h-screen flex flex-col justify-center py-12 sm:px-6 lg:px-8 bg-slate-50 dark:bg-slate-950">
+    <div className="min-h-screen flex flex-col justify-center py-12 sm:px-6 lg:px-8 bg-background">
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
         <Link href="/" className="inline-flex items-center gap-2 group mb-4">
-          <div className="h-10 w-10 rounded-xl bg-emerald-600 flex items-center justify-center text-white font-bold text-xl shadow-md group-hover:scale-105 transition-transform">
+          <div className="h-10 w-10 rounded-xl bg-clay flex items-center justify-center text-white font-bold text-xl shadow-md group-hover:scale-105 transition-transform">
             🎾
           </div>
-          <span className="font-bold text-2xl tracking-tight text-slate-900 dark:text-white">
+          <span className="font-bold text-2xl tracking-tight text-foreground">
             TennisCourts
           </span>
         </Link>
-        <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+        <h2 className="text-2xl font-bold tracking-tight text-foreground">
           Neues Mitgliedskonto erstellen
         </h2>
         <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
@@ -49,7 +49,7 @@ export default function RegisterPage() {
                   id="tenantSlug"
                   name="tenantSlug"
                   defaultValue="tc-rot-weiss"
-                  className="mt-1.5 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-xs focus:ring-2 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                  className="mt-1.5 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-xs focus:ring-2 focus:ring-clay dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                 >
                   <option value="tc-rot-weiss">TC Rot-Weiss Zürich</option>
                   <option value="tc-obersee">Tennis Club Obersee</option>
@@ -132,7 +132,7 @@ export default function RegisterPage() {
               Bereits registriert?{" "}
               <Link
                 href="/login"
-                className="font-semibold text-emerald-600 hover:text-emerald-700 underline-offset-2 hover:underline"
+                className="font-semibold text-clay hover:text-clay-hover underline-offset-2 hover:underline"
               >
                 Hier anmelden
               </Link>

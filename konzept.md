@@ -438,17 +438,62 @@ Ein Mitgliedschaftsplan enthält:
 - Prioritätsstufe.
 - Aktivierungsstatus.
 
-### Beispiel
+### Saisonale Abos (Sommer- vs. Winterbetrieb)
 
-Mitgliedschaft `Aktiv`:
+Clubs unterscheiden häufig zwischen Saisons:
 
-- Buchung maximal 7 Tage im Voraus.
-- Maximal 4 zukünftige Buchungen.
-- Maximal 2 Abendbuchungen pro Woche.
-- Buchungsdauer 60 oder 90 Minuten.
-- Kostenlose Stornierung bis 24 Stunden vorher.
-- Gäste erlaubt.
-- Keine Buchung zwischen 23:00 und 06:00.
+- **Sommerabo (z. B. 01. Mai – 30. September):**
+  - Beinhaltet uneingeschränkte Nutzung aller Freiplätze (Sand, Hartplatz) gemäss Quoten.
+  - Hallennutzung ist ausgeschlossen oder nur gegen reduzierten Aufpreis/Credits buchbar.
+- **Winterabo (z. B. 01. Oktober – 30. April):**
+  - Feste wöchentliche Hallen-Fixplätze (Fix-Abo) oder Buchungskontingente für die Tennishalle.
+- **Ganzjahres- & Kombi-Abos:**
+  - Uneingeschränkte Freiplatz- und Hallenberechtigung oder Tennis + Padel Kombi.
+
+### Dynamische Buchungsdauer & Spieleranzahl (Einzel vs. Doppel)
+
+Die erlaubte Spieldauer und Anzahl buchbarer Slots hängt von der Spieleranzahl ab:
+
+- **Einzel (2 Spieler):**
+  - Max. 1 Stunde (1 Slot, z. B. 14:00 – 15:00 Uhr).
+  - Ein Spieler kann im Einzel keine 2 aufeinanderfolgenden Stunden blockieren.
+- **Doppel (4 Spieler):**
+  - Möglichkeit, **2 aufeinanderfolgende Stunden (2x 1h, z. B. 14:00 – 16:00 Uhr)** direkt am Stück zu reservieren.
+  - Voraussetzung: Mindestens 3 zusätzliche Spieler (Mitglieder oder Gäste) müssen als Teilnehmer hinterlegt sein.
+- **Clubspezifisch konfigurierbar:**
+  - Jeder Club kann einstellen: `allowConsecutiveSlotsForDoubles` (true/false) und Mindestanzahl Spieler.
+
+### Clubspezifische Buchungsregeln & Sperrfristen (z. B. TC Marly-Modell)
+
+Verschiedene Clubs verfolgen unterschiedliche Fairplay- und Auslastungsmodelle:
+
+- **Standard-Modell:**
+  - Bis zu $N$ gleichzeitige Buchungen im Voraus (z. B. max. 2 offene Buchungen).
+  - Kostenlose Stornierung bis 24 Stunden vor Spielbeginn.
+- **Marly-Modell (Cooldown & Rolling Slot Release):**
+  - Ein Mitglied hat z. B. 2 Slots Guthaben/Kontingent.
+  - **Keine direkt aufeinanderfolgenden Buchungen:** Wer um 14:00 Uhr spielt, kann nicht zeitgleich 15:00 Uhr buchen (ausser bei 4 Spielern im Doppel).
+  - **Rolling Release:** Der nächste Slot wird erst freigeschaltet, nachdem die Spielzeit des ersten Slots **abgelaufen** ist (oder frühestens mit Mindestabstand, z. B. 1 Stunde Pause).
+  - Verhindert das "Hamstern" beliebter Abendstunden an aufeinanderfolgenden Tagen.
+
+### Multi-Sportarten & differenzierte Platzpreise
+
+Das System unterstützt mehrere Sportarten und Platzarten mit eigenen Tarifprofilen:
+
+- **Tennis Freiplatz (Sand / Hartplatz):** Typischerweise im Club-Abo inklusive; für Gäste z. B. 30 CHF/h.
+- **Tennishalle (Indoor Teppich / Granulat):** Höherer Tarif, z. B. 45 CHF/h (auch für Mitglieder teils kostenpflichtig oder über Winterabo abgedeckt).
+- **Padel Courts:** Eigene Sportart mit 4 Spielern, separate Padel-Abos oder Buchungstarif (z. B. 40 CHF/h).
+- **Peak / Off-Peak Tarife:** Abende (ab 17:00 Uhr) und Wochenenden können mit höheren Stundensätzen belegt werden.
+
+### Zusatzleistungen & exklusive Ressourcen (Equipment Add-ons)
+
+Clubs bieten buchbare Zusatzressourcen an:
+
+- **Ballmaschine:**
+  - Aufpreis pro Stunde (z. B. +10 CHF / Stunde).
+  - **Exklusivitäts-Lock:** Da der Club meist nur 1 oder 2 Ballmaschinen besitzt, kann diese Ressource zeitgleich nur auf genau einem Platz gebucht werden. Das System verhindert Überbuchung der Ressource!
+- **Flutlicht:**
+  - Automatische Buchung bei Abenddämmerung oder als optionales Add-on (z. B. +5 CHF / Token).
 
 ### Regelprüfung
 
@@ -618,13 +663,21 @@ Mögliche Status:
 - Abgeschlossen.
 - Abgesagt.
 
-## 15. Zahlungen
+## 15. Zahlungen & Credits-System (Wallet)
 
-### MVP
+### Integriertes Credits-System (Club-Guthaben)
 
-Zahlungen können im ersten MVP optional deaktiviert sein.
+Um Spielern und Clubs maximale Flexibilität zu bieten und Entwicklungs-/Testing-Zyklen drastisch zu vereinfachen, verfügt das System über ein **integriertes Credits- & Wallet-System**:
 
-### Spätere Stripe-Integration
+- **Prepaid-Guthaben / Credit-Konto:**
+  - Jedes Mitglied bzw. jeder Gast kann ein Credit-Guthaben führen (z. B. 100 Credits = 100 CHF).
+  - Credits können für Platzbuchungen (Non-Members), Gastgebühren oder Zusatzleistungen (Ballmaschine, Flutlicht) eingelöst werden.
+- **Vorteile für Testing & Betrieb:**
+  - **1-Klick Dev-/Testing-Aufladung:** Für Vorführungen und automatisierte Tests muss kein echter Kreditkartendialog durchlaufen werden; Tester können ihr Konto per Klick aufladen.
+  - **Keine Transaktionsgebühren für jeden Einzelslot:** Clubs sparen Payment-Provider-Gebühren, wenn Mitglieder z.B. 100 CHF auf einmal einzahlen und daraus abbuchen.
+  - **Admin-Gutschriften & Kulanz:** Admins können bei Spielausfällen (z. B. plötzlicher Regen) direkt Credits gutschreiben.
+
+### Spätere Stripe-Integration (Kreditkarte / Twint)
 
 Benötigt werden:
 

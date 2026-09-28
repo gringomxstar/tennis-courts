@@ -29,6 +29,7 @@ model User {
   timezone      String      @default("Europe/Zurich")
   status        UserStatus  @default(ACTIVE)
   image         String?
+  stripeCustomerId String?  @unique
   emailVerified DateTime?
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
@@ -45,6 +46,7 @@ model User {
   // NextAuth
   accounts      Account[]
   sessions      Session[]
+  wallets       UserWallet[]
 
   @@map("users")
 }
@@ -130,6 +132,7 @@ model Tenant {
   bookings        Booking[]
   courtBlocks     CourtBlock[]
   auditLogs       AuditLog[]
+  wallets         UserWallet[]
 
   @@map("tenants")
 }
@@ -172,6 +175,11 @@ model Location {
   @@map("locations")
 }
 
+enum SportType {
+  TENNIS
+  PADEL
+}
+
 enum CourtSurface {
   CLAY             // Sand
   HARD             // Hartplatz
@@ -190,7 +198,9 @@ model Court {
   tenantId    String
   locationId  String
   name        String
+  sportType   SportType    @default(TENNIS)
   surface     CourtSurface @default(CLAY)
+  hourlyRate  Decimal      @default(30.0) @db.Decimal(10, 2)
   isIndoor    Boolean      @default(false)
   hasLighting Boolean      @default(false)
   status      CourtStatus  @default(ACTIVE)
@@ -250,6 +260,7 @@ model Membership {
   startsAt         DateTime
   endsAt           DateTime?
   status           MembershipStatus @default(ACTIVE)
+  stripeSubscriptionId String?      @unique
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
 
@@ -294,7 +305,12 @@ model Booking {
   endsAt         DateTime
   status         BookingStatus @default(CONFIRMED)
   bookingType    BookingType   @default(MEMBER)
+  paymentStatus  PaymentStatus @default(UNPAID)
+  stripeSessionId String?      @unique
   price          Decimal       @default(0.0) @db.Decimal(10, 2)
+  totalCost      Decimal       @default(0.0) @db.Decimal(10, 2)
+  hasBallMachine Boolean       @default(false)
+  hasLighting    Boolean       @default(false)
   currency       String        @default("CHF")
   notes          String?
   idempotencyKey String?       @unique
@@ -408,3 +424,46 @@ model AuditLog {
   @@index([tenantId, createdAt])
   @@map("audit_logs")
 }
+
+// ==========================================
+// 8. Credits & Wallets
+// ==========================================
+
+model UserWallet {
+  id        String   @id @default(cuid())
+  tenantId  String
+  userId    String
+  balance   Decimal  @default(50.00) @db.Decimal(10, 2)
+  currency  String   @default("CHF")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant       Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions WalletTransaction[]
+
+  @@unique([tenantId, userId])
+  @@map("user_wallets")
+}
+
+enum WalletTransactionType {
+  TOP_UP
+  BOOKING_PAYMENT
+  REFUND
+  ADMIN_GRANT
+}
+
+model WalletTransaction {
+  id          String                @id @default(cuid())
+  walletId    String
+  amount      Decimal               @db.Decimal(10, 2)
+  type        WalletTransactionType
+  description String
+  bookingId   String?
+  createdAt   DateTime              @default(now())
+
+  wallet UserWallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
+  @@map("wallet_transactions")
+}
+

@@ -22,7 +22,7 @@ export async function loginWithCredentials(
 ) {
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
-  const callbackUrl = (formData.get("callbackUrl") as string) || "/c/tc-rot-weiss";
+  const callbackUrl = (formData.get("callbackUrl") as string) || "/c/tc-marly";
 
   try {
     await signIn("credentials", {
@@ -43,17 +43,33 @@ export async function loginWithCredentials(
   }
 }
 
-export async function quickDemoLogin(email: string, targetSlug: string = "tc-rot-weiss") {
-  const password = email.includes("admin@tennisapp.ch") ? "admin12345" : "tennis12345";
-  const callbackUrl = email.includes("admin@tennisapp.ch")
-    ? "/admin"
-    : `/c/${targetSlug}`;
+// Fixed allowlist of the exact demo personas the login page advertises. quickDemoLogin
+// must never accept an arbitrary client-supplied email — it authenticates via the same
+// real credential check as loginWithCredentials, but should only ever do so for these.
+const DEMO_ACCOUNTS: Record<string, { password: string; callbackUrl: (slug: string) => string }> = {
+  "member@marly.ch": { password: "tennis12345", callbackUrl: (slug) => `/c/${slug}` },
+  "clubadmin@marly.ch": { password: "admin12345", callbackUrl: (slug) => `/c/${slug}` },
+  "admin@tennisapp.ch": { password: "admin12345", callbackUrl: () => "/admin" },
+};
 
-  await signIn("credentials", {
-    email,
-    password,
-    redirectTo: callbackUrl,
-  });
+export async function quickDemoLogin(email: string, targetSlug: string = "tc-marly") {
+  const account = DEMO_ACCOUNTS[email];
+  if (!account) {
+    return { error: "Unbekannter Demo-Account." };
+  }
+
+  try {
+    await signIn("credentials", {
+      email,
+      password: account.password,
+      redirectTo: account.callbackUrl(targetSlug),
+    });
+  } catch (error) {
+    if (error instanceof AuthError) {
+      return { error: "Demo-Login fehlgeschlagen." };
+    }
+    throw error;
+  }
 }
 
 export async function registerUserAction(

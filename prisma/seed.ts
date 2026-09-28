@@ -1,312 +1,172 @@
-import { PrismaClient, TenantRole, UserStatus, CourtSurface, CourtStatus, BookingStatus, BookingType, ParticipantRole, InvitationStatus } from "@prisma/client";
-import bcrypt from "bcryptjs";
+import { PrismaClient, SportType, CourtSurface } from '@prisma/client'
+import { hash } from 'bcryptjs'
 
-const prisma = new PrismaClient();
+const prisma = new PrismaClient()
+
+const TENANT_ID = "tc-marly"
+const LOCATION_ID = "loc-marly"
+
+const MEMBERSHIP_PLANS = [
+  { id: "actif-2026", name: "Actif (Erwachsene)", price: 350, description: "Volle Spielberechtigung." },
+  { id: "etudiant-2026", name: "Etudiant (19-25 J.)", price: 250, description: "Gültiger Ausweis erforderlich." },
+  { id: "junior-2026", name: "Junior (bis 18 J.)", price: 150, description: "Für den Nachwuchs." },
+  { id: "famille-2026", name: "Famille (Paar + Kinder)", price: 750, description: "Das komplette Paket für Familien." },
+  { id: "guest-pass", name: "Gast (Pay & Play)", price: 0, description: "Ohne Grundgebühr, pro Platz zahlen." },
+]
+
+const COURTS: { id: string; name: string; sportType: SportType; surface: CourtSurface; hasLighting: boolean; sortOrder: number }[] = [
+  { id: "court-marly-1", name: "Platz 1 (Allwetter)", sportType: "TENNIS", surface: "HARD", hasLighting: true, sortOrder: 1 },
+  { id: "court-marly-2", name: "Platz 2 (Allwetter)", sportType: "TENNIS", surface: "HARD", hasLighting: true, sortOrder: 2 },
+  { id: "court-marly-3", name: "Platz 3 (Sand - Center)", sportType: "TENNIS", surface: "CLAY", hasLighting: true, sortOrder: 3 },
+  { id: "court-marly-4", name: "Platz 4 (Sand)", sportType: "TENNIS", surface: "CLAY", hasLighting: true, sortOrder: 4 },
+  { id: "court-marly-5", name: "Platz 5 (Sand)", sportType: "TENNIS", surface: "CLAY", hasLighting: false, sortOrder: 5 },
+  { id: "court-marly-6", name: "Platz 6 (Sand)", sportType: "TENNIS", surface: "CLAY", hasLighting: false, sortOrder: 6 },
+  { id: "court-marly-7", name: "Platz 7 (Sand)", sportType: "TENNIS", surface: "CLAY", hasLighting: true, sortOrder: 7 },
+  { id: "court-marly-8", name: "Platz 8 (Sand)", sportType: "TENNIS", surface: "CLAY", hasLighting: true, sortOrder: 8 },
+  { id: "court-marly-9", name: "Padel 1 (Panoramaplatz)", sportType: "PADEL", surface: "ARTIFICIAL_GRASS", hasLighting: true, sortOrder: 9 },
+]
+
+const DEMO_GUESTS: { email: string; name: string; role: "MEMBER" | "GUEST" }[] = [
+  { email: "member@marly.ch", name: "Roger Federer", role: "MEMBER" },
+  { email: "gast@marly.ch", name: "Test Gast", role: "GUEST" },
+  { email: "future.member@marly.ch", name: "Future Member", role: "GUEST" },
+]
 
 async function main() {
-  console.log("🌱 Starte Seeding...");
-
-  // 1. Passwörter hashen
-  const passwordHash = await bcrypt.hash("tennis12345", 10);
-  const adminPasswordHash = await bcrypt.hash("admin12345", 10);
-
-  // 2. Platform Admin anlegen
-  const platformAdmin = await prisma.user.upsert({
-    where: { email: "admin@tennisapp.ch" },
+  await prisma.tenant.upsert({
+    where: { id: TENANT_ID },
     update: {},
     create: {
-      email: "admin@tennisapp.ch",
-      passwordHash: adminPasswordHash,
-      firstName: "Plattform",
-      lastName: "Admin",
-      phone: "+41 79 100 00 00",
-      status: UserStatus.ACTIVE,
-      locale: "de",
+      id: TENANT_ID,
+      name: "Tennis Club Marly",
+      slug: TENANT_ID,
+      status: "ACTIVE",
       timezone: "Europe/Zurich",
     },
-  });
+  })
 
-  // 3. Demo Tenant anlegen
-  const tenant = await prisma.tenant.upsert({
-    where: { slug: "tc-rot-weiss" },
-    update: {},
-    create: {
-      name: "TC Rot-Weiss Zürich",
-      slug: "tc-rot-weiss",
-      timezone: "Europe/Zurich",
-      address: "Tennisweg 12, 8044 Zürich",
-      email: "info@tc-rotweiss.ch",
-      phone: "+41 44 251 00 00",
+  await prisma.tenant.update({
+    where: { id: TENANT_ID },
+    data: {
       settingsJson: {
         openingHour: 7,
         closingHour: 22,
         slotDurationMinutes: 60,
         cancellationDeadlineHours: 24,
+        allowGuestBookings: true,
+        allowConsecutiveSlotsForDoubles: true,
+        marlyRuleEnabled: true,
+        marlyCooldownMinutes: 60,
+        maxActiveSlotsPerPlayer: 2,
+        ballMachineAvailable: true,
+        ballMachineFee: 10,
+        floodlightFee: 5,
+        guestFee: 15,
+        defaultHourlyRateTennis: 30,
+        defaultHourlyRateHalle: 45,
+        defaultHourlyRatePadel: 40,
       },
     },
-  });
+  })
 
-  // 4. Club-Admin anlegen
-  const clubAdmin = await prisma.user.upsert({
-    where: { email: "clubadmin@tc-rotweiss.ch" },
-    update: {},
-    create: {
-      email: "clubadmin@tc-rotweiss.ch",
-      passwordHash,
-      firstName: "Marc",
-      lastName: "Rosset",
-      phone: "+41 79 200 00 00",
-      status: UserStatus.ACTIVE,
-    },
-  });
-
-  await prisma.tenantUser.upsert({
-    where: {
-      tenantId_userId: {
-        tenantId: tenant.id,
-        userId: clubAdmin.id,
-      },
-    },
-    update: {},
-    create: {
-      tenantId: tenant.id,
-      userId: clubAdmin.id,
-      role: TenantRole.CLUB_ADMIN,
-    },
-  });
-
-  // 5. Mitglieder anlegen
-  const roger = await prisma.user.upsert({
-    where: { email: "roger@tc-rotweiss.ch" },
-    update: {},
-    create: {
-      email: "roger@tc-rotweiss.ch",
-      passwordHash,
-      firstName: "Roger",
-      lastName: "Federer",
-      phone: "+41 79 300 00 01",
-      status: UserStatus.ACTIVE,
-    },
-  });
-
-  const stan = await prisma.user.upsert({
-    where: { email: "stan@tc-rotweiss.ch" },
-    update: {},
-    create: {
-      email: "stan@tc-rotweiss.ch",
-      passwordHash,
-      firstName: "Stan",
-      lastName: "Wawrinka",
-      phone: "+41 79 300 00 02",
-      status: UserStatus.ACTIVE,
-    },
-  });
-
-  const belinda = await prisma.user.upsert({
-    where: { email: "belinda@tc-rotweiss.ch" },
-    update: {},
-    create: {
-      email: "belinda@tc-rotweiss.ch",
-      passwordHash,
-      firstName: "Belinda",
-      lastName: "Bencic",
-      phone: "+41 79 300 00 03",
-      status: UserStatus.ACTIVE,
-    },
-  });
-
-  for (const user of [roger, stan, belinda]) {
-    await prisma.tenantUser.upsert({
-      where: {
-        tenantId_userId: {
-          tenantId: tenant.id,
-          userId: user.id,
-        },
-      },
-      update: {},
+  for (const plan of MEMBERSHIP_PLANS) {
+    await prisma.membershipPlan.upsert({
+      where: { id: plan.id },
+      update: { price: plan.price, name: plan.name, description: plan.description },
       create: {
-        tenantId: tenant.id,
-        userId: user.id,
-        role: TenantRole.MEMBER,
+        id: plan.id,
+        tenantId: TENANT_ID,
+        name: plan.name,
+        description: plan.description,
+        price: plan.price,
+        currency: "CHF",
+        status: "ACTIVE",
+        simultaneousBookingLimit: 4,
       },
-    });
+    })
   }
 
-  // 6. Standort anlegen
-  const location = await prisma.location.create({
-    data: {
-      tenantId: tenant.id,
-      name: "Hauptanlage Fluntern",
-      address: "Tennisweg 12, 8044 Zürich",
-      latitude: 47.3782,
-      longitude: 8.5638,
+  await prisma.location.upsert({
+    where: { id: LOCATION_ID },
+    update: {},
+    create: {
+      id: LOCATION_ID,
+      tenant: { connect: { id: TENANT_ID } },
+      name: "TC Marly Anlage",
+      address: "Route de la Gérine 1, 1723 Marly",
     },
-  });
+  })
 
-  // 7. Plätze anlegen
-  const court1 = await prisma.court.create({
-    data: {
-      tenantId: tenant.id,
-      locationId: location.id,
-      name: "Platz 1 (Center Court)",
-      surface: CourtSurface.CLAY,
-      isIndoor: false,
-      hasLighting: true,
-      status: CourtStatus.ACTIVE,
-      sortOrder: 1,
-    },
-  });
-
-  await prisma.court.create({
-    data: {
-      tenantId: tenant.id,
-      locationId: location.id,
-      name: "Platz 2",
-      surface: CourtSurface.CLAY,
-      isIndoor: false,
-      hasLighting: true,
-      status: CourtStatus.ACTIVE,
-      sortOrder: 2,
-    },
-  });
-
-  await prisma.court.create({
-    data: {
-      tenantId: tenant.id,
-      locationId: location.id,
-      name: "Platz 3",
-      surface: CourtSurface.CLAY,
-      isIndoor: false,
-      hasLighting: false,
-      status: CourtStatus.ACTIVE,
-      sortOrder: 3,
-    },
-  });
-
-  await prisma.court.create({
-    data: {
-      tenantId: tenant.id,
-      locationId: location.id,
-      name: "Platz 4 (Allwetter)",
-      surface: CourtSurface.HARD,
-      isIndoor: false,
-      hasLighting: true,
-      status: CourtStatus.ACTIVE,
-      sortOrder: 4,
-    },
-  });
-
-  // 8. Mitgliedschaftstarife anlegen
-  const planAktiv = await prisma.membershipPlan.create({
-    data: {
-      tenantId: tenant.id,
-      name: "Aktivmitglied",
-      description: "Unbeschränktes Spielrecht während der gesamten Saison",
-      price: 450.0,
-      currency: "CHF",
-      bookingWindowDays: 7,
-      simultaneousBookingLimit: 4,
-      dailyBookingLimit: 2,
-      weeklyBookingLimit: 6,
-      allowedDurations: [60, 90],
-    },
-  });
-
-  await prisma.membershipPlan.create({
-    data: {
-      tenantId: tenant.id,
-      name: "Junior",
-      description: "Für Jugendliche bis 18 Jahre (werktags bis 17:00 Uhr)",
-      price: 180.0,
-      currency: "CHF",
-      bookingWindowDays: 5,
-      simultaneousBookingLimit: 2,
-      dailyBookingLimit: 1,
-      weeklyBookingLimit: 4,
-      allowedDurations: [60],
-    },
-  });
-
-  // 9. Mitgliedschaften zuweisen
-  const oneYearFromNow = new Date();
-  oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
-
-  await prisma.membership.create({
-    data: {
-      tenantId: tenant.id,
-      userId: roger.id,
-      membershipPlanId: planAktiv.id,
-      startsAt: new Date(),
-      endsAt: oneYearFromNow,
-    },
-  });
-
-  await prisma.membership.create({
-    data: {
-      tenantId: tenant.id,
-      userId: stan.id,
-      membershipPlanId: planAktiv.id,
-      startsAt: new Date(),
-      endsAt: oneYearFromNow,
-    },
-  });
-
-  await prisma.membership.create({
-    data: {
-      tenantId: tenant.id,
-      userId: belinda.id,
-      membershipPlanId: planAktiv.id,
-      startsAt: new Date(),
-      endsAt: oneYearFromNow,
-    },
-  });
-
-  // 10. Beispiel-Buchungen anlegen (Heute 10:00 - 11:00 und 14:00 - 15:30)
-  const today10 = new Date();
-  today10.setHours(10, 0, 0, 0);
-  const today11 = new Date();
-  today11.setHours(11, 0, 0, 0);
-
-  await prisma.booking.create({
-    data: {
-      tenantId: tenant.id,
-      courtId: court1.id,
-      organizerId: roger.id,
-      startsAt: today10,
-      endsAt: today11,
-      status: BookingStatus.CONFIRMED,
-      bookingType: BookingType.MEMBER,
-      createdById: roger.id,
-      notes: "Einzel Match",
-      participants: {
-        create: [
-          {
-            userId: roger.id,
-            role: ParticipantRole.ORGANIZER,
-            invitationStatus: InvitationStatus.ACCEPTED,
-          },
-          {
-            userId: stan.id,
-            role: ParticipantRole.PLAYER,
-            invitationStatus: InvitationStatus.ACCEPTED,
-          },
-        ],
+  await prisma.court.deleteMany({ where: { tenantId: TENANT_ID } })
+  for (const c of COURTS) {
+    await prisma.court.create({
+      data: {
+        id: c.id,
+        tenantId: TENANT_ID,
+        locationId: LOCATION_ID,
+        name: c.name,
+        sportType: c.sportType,
+        surface: c.surface,
+        isIndoor: false,
+        hasLighting: c.hasLighting,
+        status: "ACTIVE",
+        sortOrder: c.sortOrder,
       },
-    },
-  });
+    })
+  }
 
-  console.log("✅ Seeding erfolgreich abgeschlossen!");
-  console.log(`- Platform Admin: ${platformAdmin.email} (PW: admin12345)`);
-  console.log(`- Club Admin:     ${clubAdmin.email} (PW: tennis12345)`);
-  console.log(`- Demo Club:      ${tenant.name} (/c/${tenant.slug})`);
-  console.log(`- 4 Plätze & 3 Mitglieder angelegt.`);
+  const adminPassHash = await hash("admin12345", 10)
+  await prisma.user.upsert({
+    where: { email: "admin@tennisapp.ch" },
+    update: { passwordHash: adminPassHash },
+    create: {
+      email: "admin@tennisapp.ch",
+      firstName: "Platform",
+      lastName: "Admin",
+      passwordHash: adminPassHash,
+      tenantUsers: { create: { tenantId: TENANT_ID, role: "PLATFORM_ADMIN" } },
+    },
+  })
+  await prisma.user.upsert({
+    where: { email: "clubadmin@marly.ch" },
+    update: { passwordHash: adminPassHash },
+    create: {
+      email: "clubadmin@marly.ch",
+      firstName: "Marly",
+      lastName: "Vorstand",
+      passwordHash: adminPassHash,
+      tenantUsers: { create: { tenantId: TENANT_ID, role: "CLUB_ADMIN" } },
+    },
+  })
+
+  const guestPassHash = await hash("tennis12345", 10)
+  for (const g of DEMO_GUESTS) {
+    const user = await prisma.user.upsert({
+      where: { email: g.email },
+      update: { passwordHash: guestPassHash },
+      create: {
+        email: g.email,
+        firstName: g.name.split(' ')[0],
+        lastName: g.name.split(' ')[1] || '',
+        passwordHash: guestPassHash,
+      },
+    })
+    await prisma.tenantUser.upsert({
+      where: { tenantId_userId: { tenantId: TENANT_ID, userId: user.id } },
+      update: { role: g.role },
+      create: { tenantId: TENANT_ID, userId: user.id, role: g.role },
+    })
+  }
+
+  console.log("Database seeded successfully!")
 }
 
 main()
-  .catch((e) => {
-    console.error(e);
-    process.exit(1);
+  .then(async () => {
+    await prisma.$disconnect()
   })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+  .catch(async (e) => {
+    console.error(e)
+    await prisma.$disconnect()
+    process.exit(1)
+  })

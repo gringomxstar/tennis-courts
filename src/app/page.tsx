@@ -1,180 +1,116 @@
 import Link from "next/link";
 import { auth } from "@/auth";
-import { Navbar } from "@/components/navbar";
-import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Calendar, ShieldCheck, Users, Trophy, ChevronRight, MapPin, Sparkles } from "lucide-react";
-import { getAllTenants } from "@/lib/data";
+import { ArrowRight, Calendar, CheckCircle2, MapPin, Sparkles, Trophy } from "lucide-react";
+import { prisma } from "@/lib/prisma";
 
 export default async function Home() {
   const session = await auth();
-  const tenants = await getAllTenants();
-
-  const navbarUser = session?.user
-    ? {
-        id: session.user.id,
-        email: session.user.email || "",
-        name: session.user.name,
-        role: session.user.role,
-        isPlatformAdmin: session.user.isPlatformAdmin,
-      }
-    : null;
+  
+  // Für die TC Marly Demo holen wir direkt die Daten
+  const tcMarly = await prisma.tenant.findUnique({
+    where: { id: "tc-marly" }
+  });
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950">
-      {/* Navigation Header */}
-      <Navbar user={navbarUser} />
+    <div className="min-h-screen bg-background text-foreground selection:bg-clay/30">
+      {/* Navigation - Minimalist */}
+      <nav className="absolute top-0 w-full z-50 px-6 py-6 flex justify-between items-center max-w-7xl mx-auto left-0 right-0">
+        <div className="flex items-center gap-2 font-black text-xl tracking-tighter">
+          <div className="w-8 h-8 rounded-xl bg-clay flex items-center justify-center text-white">
+            <Trophy className="w-5 h-5" />
+          </div>
+          TC MARLY
+        </div>
+        <div className="flex items-center gap-4">
+          <Link href="/c/tc-marly" className="text-sm font-semibold hover:text-clay transition-colors">
+            Kalender
+          </Link>
+          <Link href="/membership" className="text-sm font-semibold hover:text-clay transition-colors">
+            Abos & Preise
+          </Link>
+          {session ? (
+             <Link href="/dashboard" className="text-sm font-bold bg-slate-900 dark:bg-white text-white dark:text-black px-5 py-2 rounded-full hover:scale-105 transition-transform">
+               Mein Profil
+             </Link>
+          ) : (
+             <Link href="/login" className="text-sm font-bold bg-clay text-white px-5 py-2 rounded-full shadow-[0_0_15px_var(--tennis-clay-glow)] hover:shadow-[0_0_25px_var(--tennis-clay-glow)] hover:scale-105 transition-all">
+               Login / Registrieren
+             </Link>
+          )}
+        </div>
+      </nav>
 
-      {/* Hero Section */}
-      <section className="relative overflow-hidden pt-16 pb-20 lg:pt-24 lg:pb-28">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 text-xs font-medium mb-6">
-            <ShieldCheck className="w-3.5 h-3.5" />
-            Konfliktfreie Buchungen mit PostgreSQL Exclusion Constraints
+      {/* Hero Section (2026 Glassmorphism / Spatial UI Style) */}
+      <main className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden flex flex-col items-center justify-center min-h-[90vh] tennis-grid-bg">
+
+        {/* Background Glows */}
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-clay/20 dark:bg-clay/10 blur-[120px] rounded-full pointer-events-none" />
+        <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-floodlight/10 blur-[100px] rounded-full pointer-events-none" />
+
+        <div className="relative z-10 max-w-5xl mx-auto px-6 text-center">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-clay/10 text-clay font-semibold text-sm mb-8 ring-1 ring-clay/20 backdrop-blur-md">
+            <Sparkles className="w-4 h-4" />
+            <span>Offizielle Buchungsplattform Saison 2026</span>
           </div>
 
-          <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-slate-900 dark:text-white max-w-4xl mx-auto leading-tight sm:leading-none">
-            Tennisplätze einfach & <span className="text-emerald-600">zuverlässig</span> reservieren
+          <h1 className="text-6xl md:text-8xl font-black tracking-tighter mb-8 leading-[1.05]">
+            Dein Court.<br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-clay to-floodlight">
+              In Sekunden gebucht.
+            </span>
           </h1>
 
-          <p className="mt-6 text-lg sm:text-xl text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
-            Die moderne Plattform für Tennisclubs: flexible Buchungsregeln, Echtzeit-Platzbelegung,
-            Gastbuchungen und mandantenfähige Administration.
+          <p className="text-lg md:text-xl text-slate-600 dark:text-slate-400 mb-12 max-w-2xl mx-auto leading-relaxed">
+            Willkommen beim {tcMarly?.name || "TC Marly"}. Egal ob spontanes Match am Abend oder festes Sommer-Abo – unsere neue Plattform bringt dich schneller auf den Platz als je zuvor.
           </p>
 
-          <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/c/tc-rot-weiss">
-              <Button size="lg" className="w-full sm:w-auto gap-2">
-                <Calendar className="w-4 h-4" />
-                Demo Club Kalender öffnen
-              </Button>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <Link
+              href="/c/tc-marly"
+              className="flex items-center gap-2 w-full sm:w-auto px-8 py-4 bg-clay hover:bg-clay-hover text-white font-bold rounded-2xl transition-all shadow-xl hover:scale-105"
+            >
+              <Calendar className="w-5 h-5" />
+              Platz reservieren
             </Link>
-            <Link href="/login">
-              <Button variant="outline" size="lg" className="w-full sm:w-auto gap-2">
-                <Sparkles className="w-4 h-4 text-emerald-600" />
-                1-Klick Demo Login
-              </Button>
+
+            <Link
+              href="/membership"
+              className="flex items-center justify-center gap-2 w-full sm:w-auto px-8 py-4 bg-card border border-border hover:border-clay/50 font-bold rounded-2xl transition-all shadow-sm hover:shadow-clay/10 group"
+            >
+              Abo kaufen (Twint/Rechnung)
+              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </Link>
           </div>
         </div>
-      </section>
 
-      {/* Demo Clubs Section */}
-      <section id="clubs" className="py-16 bg-white dark:bg-slate-900 border-y border-slate-200 dark:border-slate-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">
-              Verfügbare Clubs
-            </h2>
-            <p className="mt-2 text-slate-600 dark:text-slate-400 text-sm">
-              Wähle deinen Tennisclub, um verfügbare Plätze einzusehen und Buchungen vorzunehmen.
-            </p>
+        {/* Feature Teaser */}
+        <div className="relative z-10 mt-32 grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto px-6 w-full">
+          <div className="p-6 rounded-3xl glass-panel backdrop-blur-xl">
+            <div className="w-12 h-12 bg-clay/10 text-clay rounded-2xl flex items-center justify-center mb-4">
+              <Calendar className="w-6 h-6" />
+            </div>
+            <h3 className="text-lg font-bold mb-2">Live-Kalender</h3>
+            <p className="text-sm text-slate-500">Sehe in Echtzeit, welche Plätze frei sind und buche mit zwei Klicks.</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
-            {tenants.map((club) => (
-              <Card key={club.slug} className="hover:shadow-md transition-shadow border-slate-200 dark:border-slate-800">
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <CardTitle className="text-lg">{club.name}</CardTitle>
-                      <CardDescription className="flex items-center gap-1 mt-1">
-                        <MapPin className="w-3.5 h-3.5 text-emerald-600" />
-                        {club.address || "Standort Schweiz"}
-                      </CardDescription>
-                    </div>
-                    <Badge variant="outline" className="text-xs">
-                      Aktiv
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-xs text-slate-500 dark:text-slate-400 mb-4">
-                    Zeitzone: <span className="font-medium text-slate-700 dark:text-slate-300">{club.timezone}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Link href={`/c/${club.slug}`} className="flex-1">
-                      <Button className="w-full justify-between" size="sm">
-                        <span>Zum Buchungskalender</span>
-                        <ChevronRight className="w-4 h-4" />
-                      </Button>
-                    </Link>
-                    <Link href={`/c/${club.slug}/admin`}>
-                      <Button variant="outline" size="sm">
-                        Admin
-                      </Button>
-                    </Link>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+          <div className="p-6 rounded-3xl glass-panel backdrop-blur-xl">
+            <div className="w-12 h-12 bg-floodlight/10 text-floodlight rounded-2xl flex items-center justify-center mb-4">
+              <CheckCircle2 className="w-6 h-6" />
+            </div>
+            <h3 className="text-lg font-bold mb-2">Auto-Unlock</h3>
+            <p className="text-sm text-slate-500">Zahle dein Abo per Twint und das System schaltet dich in der gleichen Sekunde für Buchungen frei.</p>
+          </div>
+
+          <div className="p-6 rounded-3xl glass-panel backdrop-blur-xl">
+            <div className="w-12 h-12 bg-clay/10 text-clay rounded-2xl flex items-center justify-center mb-4">
+              <MapPin className="w-6 h-6" />
+            </div>
+            <h3 className="text-lg font-bold mb-2">Location</h3>
+            <p className="text-sm text-slate-500">Route de la Gérine 1, 1723 Marly. 6 Sandplätze, 2 Hallenplätze.</p>
           </div>
         </div>
-      </section>
 
-      {/* Feature Highlights */}
-      <section id="features" className="py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-16">
-          <h2 className="text-3xl font-bold text-slate-900 dark:text-white">
-            Für Clubs, Mitglieder und Trainer gebaut
-          </h2>
-          <p className="mt-3 text-slate-600 dark:text-slate-400 max-w-xl mx-auto text-sm">
-            Entwickelt für maximale Auslastung, minimale Konflikte und reibungslose Abläufe.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <Card>
-            <CardHeader>
-              <div className="h-10 w-10 rounded-lg bg-emerald-100 dark:bg-emerald-950 flex items-center justify-center text-emerald-700 dark:text-emerald-400 mb-2">
-                <ShieldCheck className="w-5 h-5" />
-              </div>
-              <CardTitle>Keine Doppelbuchungen</CardTitle>
-              <CardDescription>
-                Dank PostgreSQL Exclusion Constraints und Transaktionen sind überlappende Reservierungen technisch ausgeschlossen.
-              </CardDescription>
-            </CardHeader>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <div className="h-10 w-10 rounded-lg bg-blue-100 dark:bg-blue-950 flex items-center justify-center text-blue-700 dark:text-blue-400 mb-2">
-                <Users className="w-5 h-5" />
-              </div>
-              <CardTitle>Multi-Tenant Club-Architektur</CardTitle>
-              <CardDescription>
-                Jeder Club hat sein eigenes path-basiertes Portal (/c/[clubSlug]) mit isolierten Mitgliedern, Tarifen und Berechtigungen.
-              </CardDescription>
-            </CardHeader>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <div className="h-10 w-10 rounded-lg bg-amber-100 dark:bg-amber-950 flex items-center justify-center text-amber-700 dark:text-amber-400 mb-2">
-                <Trophy className="w-5 h-5" />
-              </div>
-              <CardTitle>Mobile-First Kalender</CardTitle>
-              <CardDescription>
-                Schnelle, responsive Platzübersicht. Plätze als Spalten, Zeitslots als Zeilen – direkt vom Smartphone aus buchbar.
-              </CardDescription>
-            </CardHeader>
-          </Card>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="mt-auto border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 py-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
-          <div>© {new Date().getFullYear()} Tennis Reservation App. Alle Rechte vorbehalten.</div>
-          <div className="flex items-center gap-6">
-            <span>Next.js 16</span>
-            <span>Auth.js v5</span>
-            <span>Neon PostgreSQL</span>
-            <span>Vercel Ready</span>
-          </div>
-        </div>
-      </footer>
+      </main>
     </div>
   );
 }

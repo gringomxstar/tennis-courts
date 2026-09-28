@@ -75,8 +75,9 @@ flowchart TD
 ### Phase 2: Datenbankmodell, Neon Postgres & Prisma
 **Ziel:** Vollständig modelliertes Schema in Prisma mit Neon-Postgres-Verbindung, Seed-Skript und Schutz vor Doppelbuchungen.
 
-- [ ] **2.1 Neon PostgreSQL Provisionierung**:
-  - Neon-Projekt erstellen, Verbindungszeichenfolgen (`DATABASE_URL`, `DIRECT_URL`) in `.env.local` eintragen.
+- [x] **2.1 Neon PostgreSQL Provisionierung**:
+  - Automatisches Provisionierungsskript `scripts/provision-db.ts` (`npm run db:provision`) für Schema-Push, Extension-Aktivierung und Seeding bereitgestellt.
+  - Verbindungszeichenfolgen (`DATABASE_URL`, `DIRECT_URL`) in `.env.local` vorbereitet.
 - [x] **2.2 Prisma Schema Definition**:
   - Alle Tabellen aus dem Fachkonzept in `prisma/schema.prisma` definiert:
     - `User`, `Tenant`, `TenantUser` (6 Rollen)
@@ -85,10 +86,11 @@ flowchart TD
     - `Booking`, `BookingParticipant`, `CourtBlock`
     - `AuditLog` & NextAuth-Tabellen (`Account`, `Session`, `VerificationToken`)
   - Prisma Client erfolgreich generiert (`prisma/schema.prisma` -> `@prisma/client`).
-- [x] **2.3 Doppelbuchungsschutz (Exclusion Constraint)**:
-  - `prisma/exclusion_constraint.sql` für atomare Überlappungsverhinderung (`btree_gist` Extension) bereitgestellt.
+- [x] **2.3 Doppelbuchungsschutz (Exclusion Constraint & Live-Testing)**:
+  - `prisma/exclusion_constraint.sql` für atomare Überlappungsverhinderung (`btree_gist` Extension) idempotent implementiert.
+  - Automatisierter Live-Test `scripts/test-exclusion-constraint.ts` (`npm run db:test-constraints`) mit 5 Testfällen (Kollisionsabwehr mit Code `23P01`, parallele Plätze, Slot-Aneinanderreihung, Freigabe nach Storno).
 - [x] **2.4 Seeding-Skript**:
-  - `prisma/seed.ts` mit Demo-Club ("TC Rot-Weiss Zürich"), 4 Plätzen, 3 Mitgliedern, Tarifen und Beispiel-Buchungen erstellt.
+  - `prisma/seed.ts` mit Demo-Club ("TC Rot-Weiss Zürich"), 4 Plätzen, 3 Mitgliedern, Tarifen und Beispiel-Buchungen erstellt (`npm run db:seed`).
 
 ---
 
@@ -114,12 +116,13 @@ flowchart TD
 ---
 
 ### Phase 4: Club-, Platz- & Sperrzeiten-Verwaltung (Admin)
-**Ziel:** Administratoren können ihren Club, Standorte, Plätze und Sperren vollständig konfigurieren.
+**Ziel:** Administratoren können ihren Club, Standorte, Plätze, Tarife und Sperren vollständig konfigurieren.
 
-- [x] **4.1 Club-Einstellungen**: Club-Stammdaten, Öffnungszeiten, Zeitzone in `/c/[clubSlug]/admin`.
-- [x] **4.2 Standort- & Platzverwaltung**: Plätze einsehen, Sortierung, Plaztattribute (Indoor, Sand, Flutlicht).
+- [x] **4.1 Club-Einstellungen & Öffnungszeiten**: Dynamische Konfiguration von Öffnungszeiten, Schliesszeiten, Standard-Slot-Dauer, Stornofristen und Gastbuchungsrechten (`ClubSettingsForm` + Server Action `updateClubSettingsAction`).
+- [x] **4.2 Standort- & Platzverwaltung**: Plätze einsehen, Sortierung, Platzattribute (Indoor, Sand, Flutlicht).
 - [x] **4.3 Platzsperren (Court Blocks)**: Formular zum Sperren von Plätzen (`CreateCourtBlockForm`) mit Wartung, Turnier, Witterung.
 - [x] **4.4 Mitgliederverwaltung**: Mitgliederverzeichnis mit Rollen und Berechtigungen.
+- [x] **4.5 Dynamische Tarif- & Quotenverwaltung**: Verwaltung von Mitgliedschaftstarifen (`MembershipPlan`) mit Preisen, Buchungsfenstern (Tage), max. gleichzeitigen Buchungen und Spieldauern via `MembershipPlansManager` (`createMembershipPlanAction`, `deleteMembershipPlanAction`).
 
 ---
 
@@ -152,47 +155,107 @@ flowchart TD
 - [x] **6.3 Kalender-Navigation & Filter**:
   - Tagesnavigation (Vor/Zurück, "Heute"-Button, nativer Date Picker).
   - Filter nach Belag (Sand, Hartplatz), Hallen-/Freiplatz (Indoor/Outdoor) und Flutlicht.
+- [x] **6.4 Roland Garros Nocturne Dark Mode & De-Cluttering**:
+  - Warmes Grand-Slam-Design mit Terrakotta (`#E25B36`), Mitternachtsblau (`#0B0F17`) und Flutlicht-Amber (`#F59E0B`).
+  - Entfernung von visuellem Lärm (keine 150 repetitiven Labels auf leeren Slots; ruhige Flächen mit Hover-Aktion `+ Buchen`).
+  - Segmentierte Filter-Leiste und Multi-Sport Akzentfarben (Padel: Cyan, Halle: Lavender, Sand: Clay).
+  - Client-seitiger Theme-Toggle (`ThemeToggle`) mit `localStorage`-Persistenz und flackerfreiem SSR-Hydration-Handling.
 
 ---
 
 ### Phase 7: Spieler-Dashboard & Profil
 **Ziel:** Mitglieder können ihre Buchungen verwalten und Profile bearbeiten.
 
-- [ ] **7.1 Mein Bereich**:
-  - Übersicht der anstehenden und vergangenen Buchungen.
-  - Schnell-Storno-Funktion mit Bestätigungsdialog.
-- [ ] **7.2 Benutzerprofil**:
-  - Kontaktdaten, Telefonnummer, bevorzugte Spielzeiten, Passwort ändern.
+- [x] **7.1 Mein Bereich (`/c/[clubSlug]/bookings`)**:
+  - Übersicht der anstehenden und vergangenen Buchungen mit Status-Badges.
+  - Schnell-Storno-Funktion mit interaktivem Bestätigungsdialog und Stornofristen.
+  - Roland Garros Nocturne Dashboard mit Guthaben-Historie & Quittungs-Feed.
+- [ ] **7.2 Benutzerprofil & Spielereinstellungen (`/c/[clubSlug]/profile`)**:
+  - Kontaktdaten, Telefonnummer, Notfallkontakt.
+  - Spielstärke / Klassierung (z. B. Swiss Tennis R1–R9 oder ITN/LK).
+  - Bevorzugte Spielzeiten & Partner-Matching-Präferenzen.
+  - Passwort ändern & Benachrichtigungseinstellungen.
 
 ---
 
 ### Phase 8: Deployment, Vercel & GitHub Actions CI/CD
 **Ziel:** Produktionsreifes Deployment auf Vercel mit Preview-Deployments für Pull Requests.
 
-- [ ] **8.1 Vercel Projektverbindung**:
+- [ ] **8.1 Vercel Projektverbindung & Neon Postgres Sync**:
   - Verknüpfung mit GitHub-Repository.
   - Hinterlegung aller Environment-Variablen (`DATABASE_URL`, `AUTH_SECRET`, etc.).
+  - Umschaltung von lokalem Mock-Fallback auf echte Neon Postgres-Instanz in Production.
 - [ ] **8.2 Automatisierte Migrationen im Build-Prozess**:
   - `prisma migrate deploy` im Vercel Build Step oder per GitHub Action.
-- [ ] **8.3 Smoke- & E2E-Tests**:
-  - Grundlegende Tests für Buchungsworkflow und Tenant-Isolierung.
+- [ ] **8.3 E2E- & Integrationstests (Playwright)**:
+  - Automatisierte E2E-Tests für Buchungsablauf, Doppel-Slot-Regeln, Marly-Kollisionsprüfung und Stornierung.
 
 ---
 
-### Phase 9: Nach dem MVP (Erweiterungen)
-- Stripe Online-Zahlungen (Gastbuchungen & Platzgebühren).
-- E-Mail-Transaktionsmails via Resend oder Postmark.
-- Öffentliche Matches & Mitspielersuche.
-- Erweiterte Club-Statistiken & Auslastungsberichte.
+### Epic (Abgeschlossen auf Branch `feat/credits-player-rules-multisport`): Credits, Mitspieler-Deluxe, dynamische Buchungsregeln & Multi-Sport
+**Ziel:** Erstklassiges Reservierungserlebnis mit nahtlosem Credits-Guthaben, club-spezifischen Buchungsregeln (z.B. TC Marly), dynamischer Dauer nach Spieleranzahl, Ballmaschinen-Buchung und saisonalen Tarifen (Sommer-/Winterabo, Padel, Tennishalle).
+
+- [x] **E.1 Integriertes Credits- & Wallet-System (Club-Guthaben & Test-Engine)**:
+  - **Credit-Konto:** Jedes Mitglied/Gast besitzt ein clubweites Guthaben-Konto (z. B. 1 Credit = 1 CHF).
+  - **Test-Guthaben (1-Klick):** Direkte Dev-/Testing-Aufladung (z.B. "+50 CHF Test-Credits aufladen") im Modal/Header ohne Zwang zu echten Kreditkartentransaktionen.
+  - **Automatisches Einlösen:** Bezahlung von Gastgebühren, Platzmieten oder Zusatzleistungen (Ballmaschine) direkt aus dem Credit-Guthaben mit Quittungshistorie.
+  - **Admin-Gutschriften:** Admins können Mitgliedern bei Witterungsausfall direkt Credits gutschreiben.
+
+- [x] **E.2 Deluxe Mitspieler- & Favoriten-Auswahl (Buddies)**:
+  - **Favoriten-Leiste ("Häufige Partner"):** 1-Klick-Auswahl beliebter Spielpartner über prominente Avatar-Pills direkt oben im Sheet.
+  - **Interaktive Mitgliedersuche:** Schnellsuche mit Live-Filter, Club-Status, Profil-Initialen statt langweiligem Dropdown.
+  - **Gäste-Erfassung:** Einfaches Hinzufügen von externen Gastspielern (Name & E-Mail) mit automatischer Berechnung des Gastkostenanteils.
+
+- [x] **E.3 Dynamische Slot-Dauer & Verknüpfung mit Spieleranzahl**:
+  - **Einzel (2 Spieler):** Standardmässig maximal **1 Stunde** (1 Slot, z.B. 14:00 – 15:00 Uhr).
+  - **Doppel (4 Spieler):** Möglichkeit, direkt **2 aufeinanderfolgende Stunden (2x 1h, z.B. 14:00 – 16:00 Uhr)** am Stück zu buchen.
+  - **Club-Konfiguration:** Jeder Club kann `allowConsecutiveSlotsForDoubles` und die benötigte Spieleranzahl im Adminbereich selbst konfigurieren.
+
+- [x] **E.4 Clubspezifische Buchungsregeln & Cooldowns (z. B. TC Marly-Modell)**:
+  - **Rolling Release nach Slot-Ablauf:** Ein Mitglied hat z. B. ein Kontingent von 2 aktiven Slots. Ein weiterer Slot wird erst buchbar, nachdem die Zeit des ersten Slots **abgelaufen** ist.
+  - **Anti-Blockier-Regel (Kein Consecutive Booking im Einzel):** Ein Spieler kann nicht 14:00 Uhr und direkt 15:00 Uhr hintereinander reservieren (ausser im 4er-Doppel).
+  - **Mindestabstand (Cooldown):** Konfigurierbare Pause zwischen Buchungen desselben Spielers (z. B. mind. 1 Stunde Pause).
+  - **Stornierungsfristen:** 24h vor Spielbeginn kostenlos, danach Sperre oder Verfall von Credits.
+
+- [x] **E.5 Zusatzleistungen & exklusive Ressourcen (Equipment: Ballmaschine, Flutlicht)**:
+  - **Ballmaschine buchen:** Optionale Checkbox im Buchungsdialog (z. B. +10 CHF / Stunde).
+  - **Exklusivitäts-Schutz:** Da ein Club meist nur 1 Ballmaschine besitzt, kann diese zeitgleich nur auf genau einem Platz gebucht werden. Bei paralleler Buchung auf Platz 2 wird sie automatisch als belegt/ausgegraut angezeigt.
+  - **Flutlicht-Steuerung/Gebühr:** Buchbar als Zusatz-Option für Abendslots.
+
+- [x] **E.6 Multi-Sportarten & saisonale Abos (Padel, Tennis, Halle, Sommer-/Winterabo)**:
+  - **Sportarten-Differenzierung:** Tennis (Sand, Hartplatz), Padel Courts (4 Spieler, eigene Regeln) und Tennishalle (Teppich/Granulat).
+  - **Differenzierte Platzpreise:** Eigene Stundensätze für Halle (z. B. 45 CHF/h), Padel (z. B. 40 CHF/h) und Sandplatz (z. B. 30 CHF/h).
+  - **Saisonale Mitgliedschaften:**
+    - *Sommerabo (Mai – Sept):* Freiplätze inklusive (0 CHF), Hallenplätze nur mit Aufpreis/Credits buchbar.
+    - *Winterabo (Okt – April):* Berechtigung für Tennishalle mit Vorverkaufsfenster und Fixplatz-Option.
 
 ---
 
-## 3. Sofortige nächste Schritte zur Umsetzung
+### Phase 9: Nach dem MVP (Erweiterungen & Roadmap)
+- [ ] **9.1 Community Matchmaking & Offene Matches ("Match-Börse")**:
+  - Slot als "Partner gesucht" reservieren (z. B. für Einzel oder 4. Spieler beim Padel/Doppel).
+  - Club-Mitglieder können mit 1 Klick beitreten.
+- [ ] **9.2 Transaktions-E-Mails via Resend**:
+  - Automatische Buchungsbestätigung mit .ics / Apple / Google Kalender-Datei.
+  - Benachrichtigung aller Partner bei Storno oder Platzänderung.
+- [ ] **9.3 Stripe / Twint Online-Zahlung**:
+  - Echte Kreditkarten-/Twint-Zahlungen für Gastgebühren und Credit-Pakete.
+- [ ] **9.4 Club-Statistiken & Auslastungsberichte**:
+  - Grafische Auswertung für den Clubvorstand: Spitzenzeiten, Belag-Beliebtheit, Einnahmen durch Gäste und Zusatzleistungen.
+- [ ] **9.5 Zutrittskontrolle & Lichtsteuerung (IoT/Hardware)**:
+  - 4-stelliger PIN-Code für Clubhaus-/Platz-Torschloss, automatische Flutlicht-Freischaltung für gebuchte Slots.
 
-1. **Phase 1 starten:**
-   - Next.js Projekt im aktuellen Verzeichnis initialisieren.
-   - Git initialisieren, `.gitignore` aufsetzen, initialen Commit erstellen.
-   - Shadcn UI und Tailwind einrichten.
-2. **Neon-Datenbank anbinden:**
-   - Neon-Projekt erstellen und Verbindungsdaten hinterlegen.
-   - Prisma initialisieren und Schema aus [konzept.md](file:///Users/alain/TennisCourts/konzept.md) übertragen.
+---
+
+## 3. Sofortige nächste Schritte für die NEUE Session
+
+In der neuen Session können wir direkt aus folgenden Bausteinen wählen:
+
+1. **Option A: Spielerprofil & Einstellungen (`/c/[clubSlug]/profile`)** (Phase 7.2)
+   - Profilseite für Spieler mit Spielstärke (R-Klassierung/LK), Kontaktdaten, bevorzugter Hand, Passwort-Änderung und Notfallnummer.
+2. **Option B: Community Match-Börse ("Partner gesucht" / Offene Matches)** (Phase 9.1)
+   - Ermöglicht Mitgliedern, Spiele auszuschreiben, wenn ihnen ein Partner fehlt – ideal für Tennis und Padel.
+3. **Option C: E-Mail-Bestätigungen & Kalender-Export (.ics)** (Phase 9.2)
+   - Buchungsbestätigungen mit Kalender-Export für iOS & Android.
+4. **Option D: Vercel Live Deployment & Neon Postgres DB-Verbindung** (Phase 8)
+   - Echtes Hosting auf Vercel mit persistenter Neon PostgreSQL-Cloud-Datenbank.
