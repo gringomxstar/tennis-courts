@@ -1138,12 +1138,12 @@ class MockDatabase {
       ],
     });
 
-    // Today 11:00 - 13:00 on Platz 4: "Location Anybuddy (Eric Gräni)"
+    // Today 11:00 - 13:00 on Platz 4: Gastbuchung (Eric Gräni)
     this.bookings.push({
-      id: "booking-marly-anybuddy",
+      id: "booking-marly-guest",
       tenantId: "tenant-marly",
       courtId: "court-marly-4",
-      organizerId: "guest-anybuddy",
+      organizerId: "guest-eric",
       startsAt: makeDate(0, 11, 0),
       endsAt: makeDate(0, 13, 0),
       status: "CONFIRMED",
@@ -1151,18 +1151,18 @@ class MockDatabase {
       hasBallMachine: false,
       hasLighting: false,
       totalCost: 60,
-      notes: "Location Anybuddy",
+      notes: "Gastbuchung",
       organizer: {
-        id: "guest-anybuddy",
+        id: "guest-eric",
         firstName: "Eric",
         lastName: "Gräni",
         email: "eric.graeni@gmail.com",
       },
       participants: [
         {
-          id: "part-m-anybuddy",
-          bookingId: "booking-marly-anybuddy",
-          guestName: "Eric Gräni (Location Anybuddy)",
+          id: "part-m-guest",
+          bookingId: "booking-marly-guest",
+          guestName: "Eric Gräni (Gast)",
           role: "ORGANIZER",
           invitationStatus: "ACCEPTED",
         },

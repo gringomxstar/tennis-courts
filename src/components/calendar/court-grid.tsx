@@ -160,10 +160,8 @@ export function CourtGrid({
         booking.bookingType === "TOURNAMENT" ||
         booking.notes?.toLowerCase().includes("universitaire");
       
-      const isAnybuddy =
-        booking.bookingType === "GUEST" ||
-        booking.notes?.toLowerCase().includes("anybuddy") ||
-        booking.participants.some((p) => p.guestName?.includes("Anybuddy"));
+      const isGuest = booking.bookingType === "GUEST";
+      const isAwaitingPayment = booking.status === "PENDING";
 
       const opponent = booking.participants.find((p) => p.role !== "ORGANIZER");
       const opponentName = opponent?.user
@@ -192,10 +190,16 @@ export function CourtGrid({
         tagText = "🏆 Turnier";
         tagStyle = "bg-emerald-500/10 text-emerald-700 font-semibold dark:bg-emerald-500/20 dark:text-emerald-300";
         avatarBg = "bg-emerald-400 dark:bg-emerald-500";
-      } else if (isAnybuddy) {
+      } else if (isAwaitingPayment) {
+        cardContainerStyle =
+          "bg-amber-50/60 border border-dashed border-amber-300/80 text-amber-900 shadow-[0_1px_2px_rgba(0,0,0,0.02)] dark:bg-amber-500/5 dark:border-amber-500/30 dark:text-amber-200";
+        tagText = "Zahlung offen";
+        tagStyle = "bg-amber-500/10 text-amber-700 font-semibold dark:bg-amber-500/20 dark:text-amber-300";
+        avatarBg = "bg-amber-400 dark:bg-amber-500";
+      } else if (isGuest) {
         cardContainerStyle =
           "bg-purple-100/60 border border-purple-200/60 text-purple-900 shadow-[0_1px_2px_rgba(0,0,0,0.02)] dark:bg-purple-500/10 dark:border-purple-500/20 dark:text-purple-300";
-        tagText = "Anybuddy";
+        tagText = "Gast";
         tagStyle = "bg-purple-500/10 text-purple-700 font-semibold dark:bg-purple-500/20 dark:text-purple-300";
         avatarBg = "bg-purple-400 dark:bg-purple-500";
       } else if (isMyBooking) {

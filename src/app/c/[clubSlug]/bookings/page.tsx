@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getTenantContext } from "@/lib/tenant";
+import { syncPendingBookingPayments } from "@/lib/booking-payment";
 import { getUserBookings, getCourtsByTenantId, getUserWallet } from "@/lib/data";
 import { Navbar } from "@/components/navbar";
 import { Button } from "@/components/ui/button";
@@ -46,6 +47,8 @@ export default async function UserBookingsPage({ params }: BookingsPageProps) {
   if (!context.user) {
     redirect(`/login?callbackUrl=/c/${clubSlug}/bookings`);
   }
+
+  await syncPendingBookingPayments(tenant.id);
 
   const [bookings, courts, wallet] = await Promise.all([
     getUserBookings(context.user.id),

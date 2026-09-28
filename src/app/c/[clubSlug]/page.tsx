@@ -10,6 +10,7 @@ import {
   getTenantMembers,
   getUserWallet,
 } from "@/lib/data";
+import { syncPendingBookingPayments } from "@/lib/booking-payment";
 import { CourtCalendar } from "@/components/calendar/court-calendar";
 import {
   Calendar,
@@ -40,6 +41,8 @@ export default async function ClubPage({ params, searchParams }: ClubPageProps) 
   const todayStr = new Date().toISOString().split("T")[0];
   const selectedDateStr =
     rawDate && /^\d{4}-\d{2}-\d{2}$/.test(rawDate) ? rawDate : todayStr;
+
+  await syncPendingBookingPayments(tenant.id);
 
   // Fetch courts, bookings, court blocks, members, and user wallet
   const [courts, bookings, courtBlocks, members, wallet] = await Promise.all([
