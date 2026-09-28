@@ -308,6 +308,7 @@ export async function createBookingAction(input: CreateBookingInput) {
       prismaSuccess = true;
       createdBookingId = created.id;
     } catch (e) {
+      if (process.env.NODE_ENV === "production") throw e;
       console.warn("Prisma booking creation failed, falling back to mockDb:", e);
     }
   }

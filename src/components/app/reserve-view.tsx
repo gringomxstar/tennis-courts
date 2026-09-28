@@ -115,7 +115,7 @@ export function ReserveView({
       ),
       hasBallMachine: ball,
       hasLighting: light,
-    });
+    }).catch(() => ({ success: false as const, error: "Verbindung fehlgeschlagen. Bitte erneut versuchen." }));
     setPaying(false);
     if (!res.success) {
       toast(res.error ?? "Reservierung fehlgeschlagen");
