@@ -1,14 +1,11 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
-import Stripe from "stripe";
+import { getStripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "sk_test_...", {
-  apiVersion: "2026-08-26.dahlia",
-});
 
 export async function POST(req: Request) {
   try {
+    const stripe = getStripe();
     const session = await auth();
     if (!session?.user?.email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import { mockDb } from "@/lib/data/mock-db";
 import { getTenantBySlug, getCourtsByTenantId, getCourtBookings, getCourtBlocks } from "@/lib/data";
 import { prisma } from "@/lib/prisma";
+import { getStripe } from "@/lib/stripe";
 import { revalidatePath } from "next/cache";
 import { BookingType, BlockReason, BookingParticipant } from "@/types";
 
@@ -27,6 +28,11 @@ export interface CreateBookingInput {
   hasBallMachine?: boolean;
   hasLighting?: boolean;
   notes?: string;
+  // Identity of the person booking, required when there is no session (anonymous guest).
+  // Distinct from `guestName` above, which names an invited playing partner, not the organizer.
+  guestFirstName?: string;
+  guestLastName?: string;
+  guestEmail?: string;
 }
 
 export async function createBookingAction(input: CreateBookingInput) {
@@ -52,20 +58,57 @@ export async function createBookingAction(input: CreateBookingInput) {
   }
 
   // Determine user
-  let organizerId = session?.user?.id;
-  const organizerName = session?.user?.name || "Gast";
-  const organizerEmail = session?.user?.email || "gast@tennis.ch";
+  const isGuest = !session?.user?.id;
+  let organizerId: string = session?.user?.id ?? "";
+  let organizerName = session?.user?.name || "Gast";
+  let organizerEmail = session?.user?.email || "gast@tennis.ch";
   const isPlatformAdmin = Boolean(session?.user?.isPlatformAdmin || session?.user?.role === "PLATFORM_ADMIN");
   const isClubAdmin =
     isPlatformAdmin ||
     session?.user?.tenants?.some((t) => t.slug === input.clubSlug && t.role === "CLUB_ADMIN");
 
-  if (!organizerId) {
+  if (isGuest) {
     if (!tenant.settingsJson?.allowGuestBookings) {
       return { success: false, error: "Für Buchungen in diesem Club ist eine Anmeldung erforderlich." };
     }
-    // Guest booking
-    organizerId = `guest-${Date.now()}`;
+    const guestFirstName = input.guestFirstName?.trim();
+    const guestLastName = input.guestLastName?.trim();
+    const guestEmail = input.guestEmail?.trim().toLowerCase();
+    if (!guestFirstName || !guestLastName || !guestEmail) {
+      return { success: false, error: "Bitte gib deinen Namen und deine E-Mail-Adresse an." };
+    }
+    organizerName = `${guestFirstName} ${guestLastName}`;
+    organizerEmail = guestEmail;
+
+    if (process.env.DATABASE_URL) {
+      // Find-or-create a lightweight guest User (no password) so the booking's required
+      // organizer FK is always valid — mirrors the self-service pattern in api/checkout/route.ts.
+      // Submitting an email is not proof of ownership: never attach an anonymous booking to
+      // an existing real account (one with a passwordHash) — that would let anyone impersonate
+      // a known member by typing their email. Only reuse a previously-created guest identity.
+      const existingUser = await prisma.user.findUnique({ where: { email: guestEmail } });
+      if (existingUser && existingUser.passwordHash) {
+        return {
+          success: false,
+          error: "Diese E-Mail-Adresse gehört zu einem bestehenden Konto. Bitte melde dich an, um zu buchen.",
+        };
+      }
+      const guestUser =
+        existingUser ??
+        (await prisma.user.create({
+          data: { email: guestEmail, firstName: guestFirstName, lastName: guestLastName, passwordHash: null },
+        }));
+      await prisma.tenantUser.upsert({
+        where: { tenantId_userId: { tenantId: tenant.id, userId: guestUser.id } },
+        update: {},
+        create: { tenantId: tenant.id, userId: guestUser.id, role: "GUEST" },
+      });
+      organizerId = guestUser.id;
+    } else {
+      // mockDb-only mode has no real FK to satisfy and no webhook can reach it anyway —
+      // keep today's synthetic id, payment enforcement below stays a no-op in this mode.
+      organizerId = `guest-${Date.now()}`;
+    }
   }
 
   // Determine participants list
@@ -149,7 +192,7 @@ export async function createBookingAction(input: CreateBookingInput) {
   }
 
   // E.4 Clubspezifische Buchungsregeln & Cooldowns (z. B. TC Marly-Modell)
-  if (!isClubAdmin && !organizerId.startsWith("guest-")) {
+  if (!isClubAdmin && !isGuest) {
     const marlyCheck = mockDb.checkMarlyRule(
       tenant.id,
       organizerId,
@@ -178,7 +221,7 @@ export async function createBookingAction(input: CreateBookingInput) {
     courtCost = (tenant.settingsJson?.defaultHourlyRateHalle ?? court.hourlyRate ?? 45) * durationHours;
   } else {
     // Outdoor tennis: free for club members, paid for guests
-    if (organizerId.startsWith("guest-")) {
+    if (isGuest) {
       courtCost = (tenant.settingsJson?.defaultHourlyRateTennis ?? court.hourlyRate ?? 30) * durationHours;
     } else {
       courtCost = 0; // included in membership
@@ -200,8 +243,11 @@ export async function createBookingAction(input: CreateBookingInput) {
 
   const totalCost = courtCost + guestCost + ballMachineCost + lightingCost;
 
-  // Deduct from wallet if registered member
-  if (totalCost > 0) { /* MVP: Bookings go through automatically for testing */ }
+  // Guests must pay via Stripe before the booking is confirmed. Postgres-only: a Stripe
+  // webhook can never reach the in-memory mockDb, so that mode keeps the previous
+  // instant-confirm behavior (member wallet deduction is a separate, pre-existing gap,
+  // not touched here).
+  const needsPayment = isGuest && totalCost > 0 && Boolean(process.env.DATABASE_URL);
 
   // Prepare participants
   const participants: BookingParticipant[] = [
@@ -252,17 +298,18 @@ export async function createBookingAction(input: CreateBookingInput) {
 
   // Database mode if active
   let prismaSuccess = false;
+  let createdBookingId: string | null = null;
   if (process.env.DATABASE_URL) {
     try {
-      await prisma.booking.create({
+      const created = await prisma.booking.create({
         data: {
           tenantId: tenant.id,
           courtId: input.courtId,
           organizerId,
           startsAt: startDate,
           endsAt: endDate,
-          status: "CONFIRMED",
-          bookingType: input.bookingType || "MEMBER",
+          status: needsPayment ? "PENDING" : "CONFIRMED",
+          bookingType: isGuest ? "GUEST" : input.bookingType || "MEMBER",
           price: totalCost,
           totalCost: totalCost,
           hasBallMachine: Boolean(input.hasBallMachine),
@@ -271,7 +318,7 @@ export async function createBookingAction(input: CreateBookingInput) {
           createdById: organizerId,
           participants: {
             create: participants.map((p) => ({
-              userId: p.userId && !p.userId.startsWith("guest-") ? p.userId : null,
+              userId: p.userId || null,
               guestName: p.guestName,
               guestEmail: p.guestEmail,
               role: p.role,
@@ -281,6 +328,7 @@ export async function createBookingAction(input: CreateBookingInput) {
         },
       });
       prismaSuccess = true;
+      createdBookingId = created.id;
     } catch (e) {
       console.warn("Prisma booking creation failed, falling back to mockDb:", e);
     }
@@ -295,7 +343,7 @@ export async function createBookingAction(input: CreateBookingInput) {
       startsAt: startDate.toISOString(),
       endsAt: endDate.toISOString(),
       status: "CONFIRMED",
-      bookingType: input.bookingType || "MEMBER",
+      bookingType: isGuest ? "GUEST" : input.bookingType || "MEMBER",
       price: totalCost,
       totalCost: totalCost,
       hasBallMachine: Boolean(input.hasBallMachine),
@@ -313,6 +361,48 @@ export async function createBookingAction(input: CreateBookingInput) {
 
   revalidatePath(`/c/${input.clubSlug}`);
   revalidatePath(`/c/${input.clubSlug}/bookings`);
+
+  if (needsPayment && prismaSuccess && createdBookingId) {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    try {
+      const stripe = getStripe();
+      const checkoutSession = await stripe.checkout.sessions.create({
+        mode: "payment",
+        customer_email: organizerEmail,
+        line_items: [
+          {
+            price_data: {
+              currency: "chf",
+              product_data: {
+                name: `Platzbuchung: ${court.name}`,
+                description: `${tenant.name}, ${startDate.toLocaleString("de-CH")}`,
+              },
+              unit_amount: Math.round(totalCost * 100),
+            },
+            quantity: 1,
+          },
+        ],
+        metadata: { bookingId: createdBookingId, tenantId: tenant.id },
+        expires_at: Math.floor(Date.now() / 1000) + 30 * 60,
+        success_url: `${appUrl}/c/${input.clubSlug}?bookingConfirmed=1`,
+        cancel_url: `${appUrl}/c/${input.clubSlug}?bookingCancelled=1`,
+      });
+      await prisma.booking.update({
+        where: { id: createdBookingId },
+        data: { stripeSessionId: checkoutSession.id },
+      });
+      return { success: true, totalCost, checkoutUrl: checkoutSession.url };
+    } catch (e) {
+      console.error("Stripe checkout session creation failed:", e);
+      // The PENDING booking can't be paid for via this response — release the slot
+      // instead of leaving it blocked forever.
+      await prisma.booking
+        .update({ where: { id: createdBookingId }, data: { status: "CANCELLED", cancelledAt: new Date() } })
+        .catch(() => {});
+      return { success: false, error: "Zahlung konnte nicht gestartet werden. Bitte versuche es erneut." };
+    }
+  }
+
   return { success: true, totalCost };
 }
 
@@ -341,6 +431,7 @@ export async function cancelBookingAction(bookingId: string, clubSlug: string) {
         id: dbBooking.id,
         tenantId: dbBooking.tenantId,
         organizerId: dbBooking.organizerId,
+        bookingType: dbBooking.bookingType,
         startsAt: dbBooking.startsAt.toISOString(),
         totalCost: Number(dbBooking.totalCost),
         price: Number(dbBooking.price),
@@ -378,9 +469,10 @@ export async function cancelBookingAction(bookingId: string, clubSlug: string) {
     }
   }
 
-  // Refund credits if booking had costs
+  // Refund credits if booking had costs — guests paid via Stripe, not the app wallet,
+  // so they're excluded here (their money already went through checkout, not a wallet).
   const refundAmount = booking.totalCost || booking.price || 0;
-  if (refundAmount > 0 && booking.organizerId && !booking.organizerId.startsWith("guest-")) {
+  if (refundAmount > 0 && booking.organizerId && booking.bookingType !== "GUEST") {
     mockDb.refundWallet(
       booking.tenantId,
       booking.organizerId,

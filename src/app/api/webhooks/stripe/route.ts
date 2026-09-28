@@ -1,10 +1,7 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
+import { getStripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma"; // Assuming standard prisma export
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "sk_test_fallback_so_build_does_not_crash", {
-  apiVersion: "2026-08-26.dahlia",
-});
 
 // This secret is found in the Stripe Dashboard -> Developers -> Webhooks
 const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -21,7 +18,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing secret or signature" }, { status: 400 });
     }
     // Verify that this request actually came from Stripe
-    event = stripe.webhooks.constructEvent(payload, signature, endpointSecret);
+    event = getStripe().webhooks.constructEvent(payload, signature, endpointSecret);
   } catch (err: any) {
     console.error(`❌ Webhook Error: ${err.message}`);
     return NextResponse.json({ error: `Webhook Error: ${err.message}` }, { status: 400 });
@@ -30,22 +27,38 @@ export async function POST(req: Request) {
   try {
     switch (event.type) {
       // 1. Sofortzahlung (Twint, Kreditkarte, Apple Pay)
-      case "checkout.session.completed":
+      case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
-        await handlePaymentSuccess(session.customer as string, session.metadata as Record<string, string>);
+        if (session.metadata?.bookingId) {
+          await handleBookingPaymentSuccess(session.metadata.bookingId, session.id);
+        } else {
+          await handlePaymentSuccess(session.customer as string, session.metadata as Record<string, string>);
+        }
         break;
+      }
+
+      // 1b. Checkout-Session (Platzbuchung) ohne Zahlung abgelaufen — Slot wieder freigeben
+      case "checkout.session.expired": {
+        const expiredSession = event.data.object as Stripe.Checkout.Session;
+        if (expiredSession.metadata?.bookingId) {
+          await handleBookingCheckoutExpired(expiredSession.metadata.bookingId);
+        }
+        break;
+      }
 
       // 2. Kauf auf Rechnung bezahlt (Bank Transfer / E-Banking via QR-Code)
-      case "invoice.paid":
+      case "invoice.paid": {
         const invoice = event.data.object as Stripe.Invoice;
         await handlePaymentSuccess(invoice.customer as string, invoice.metadata as Record<string, string>);
         break;
+      }
 
       // 3. Rechnung abgelaufen / Nicht bezahlt
-      case "invoice.payment_failed":
+      case "invoice.payment_failed": {
         const failedInvoice = event.data.object as Stripe.Invoice;
         await handlePaymentFailed(failedInvoice.customer as string, (failedInvoice as any).subscription as string);
         break;
+      }
 
       default:
         console.log(`🤷‍♂️ Unhandled event type ${event.type}`);
@@ -59,7 +72,36 @@ export async function POST(req: Request) {
 }
 
 /**
- * Auto-Unlock Logic: Wird gefeuert, sobald Geld eingegangen ist 
+ * Gast-Platzbuchung bezahlt: Buchung von PENDING/UNPAID auf CONFIRMED/PAID heben.
+ * Atomarer, idempotenter Guard (WHERE paymentStatus != PAID) statt read-then-write,
+ * damit ein von Stripe erneut zugestelltes Event keinen doppelten Effekt hat.
+ */
+async function handleBookingPaymentSuccess(bookingId: string, stripeSessionId: string) {
+  const result = await prisma.booking.updateMany({
+    where: { id: bookingId, paymentStatus: { not: "PAID" } },
+    data: { status: "CONFIRMED", paymentStatus: "PAID", stripeSessionId },
+  });
+  if (result.count > 0) {
+    console.log(`✅ Buchung ${bookingId} bezahlt und bestätigt.`);
+  }
+}
+
+/**
+ * Checkout für eine Gast-Platzbuchung wurde nicht rechtzeitig bezahlt (Stripe-Ablauf nach
+ * 30 Min, siehe expires_at in booking.ts) — Slot wieder freigeben, sofern noch PENDING.
+ */
+async function handleBookingCheckoutExpired(bookingId: string) {
+  const result = await prisma.booking.updateMany({
+    where: { id: bookingId, status: "PENDING" },
+    data: { status: "CANCELLED", cancelledAt: new Date() },
+  });
+  if (result.count > 0) {
+    console.log(`⌛ Checkout für Buchung ${bookingId} abgelaufen, Slot freigegeben.`);
+  }
+}
+
+/**
+ * Auto-Unlock Logic: Wird gefeuert, sobald Geld eingegangen ist
  * (Egal ob Twint in 2 Sekunden, oder E-Banking nach 14 Tagen)
  */
 async function handlePaymentSuccess(stripeCustomerId: string, metadata?: Record<string, string>) {

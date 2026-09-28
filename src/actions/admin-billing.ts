@@ -2,15 +2,12 @@
 
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import Stripe from "stripe";
+import { getStripe } from "@/lib/stripe";
 import { revalidatePath } from "next/cache";
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "sk_test_fallback_so_build_does_not_crash", {
-  apiVersion: "2026-08-26.dahlia",
-});
 
 export async function markInvoiceAsPaidManually(tenantId: string, userId: string, stripeCustomerId: string) {
   try {
+    const stripe = getStripe();
     // 1. Admin-Check (Sicherheit) — muss PLATFORM_ADMIN sein, oder CLUB_ADMIN im selben Tenant
     const session = await auth();
     if (!session?.user?.email) {
