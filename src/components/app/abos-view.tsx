@@ -376,6 +376,12 @@ export function AbosView({
                         ))}
                       </ul>
                     </button>
+                    {on && loggedIn && (
+                      <div className="flex flex-col gap-3 lg:hidden">
+                        {personsOf(p) === 2 && partnerForm("bg-inset")}
+                        {renewBox}
+                      </div>
+                    )}
                     <div className="mt-auto hidden flex-col gap-4 lg:flex">
                       {loggedIn && on && personsOf(p) === 2 && partnerForm("bg-inset")}
                       {payButtons(p, hl)}
@@ -442,17 +448,51 @@ export function AbosView({
       )}
 
       {sp && sp.price > 0 && (
-        <div
-          className={`sticky bottom-[calc(max(10px,env(safe-area-inset-bottom))+76px)] z-20 mx-3 mt-6 flex flex-col gap-3 rounded-[26px] border border-border bg-glass p-3 shadow-elevation backdrop-blur-[24px] backdrop-saturate-[1.6] lg:bottom-6 lg:mx-0 ${footerOnDesktop ? "lg:flex-row lg:items-end" : "lg:hidden"}`}
-        >
-          {loggedIn && personsOf(sp) === 2 && <div className="px-1 pt-1 lg:flex-1">{partnerForm("bg-card")}</div>}
-          <div className="lg:w-[420px]">
-            <div className="px-1 pb-2 text-[13px] font-semibold text-muted-foreground">
-              {catOf(sp)} · CHF {fmt(sp.price)} / Saison
+        <>
+          <div className="sticky bottom-[calc(max(10px,env(safe-area-inset-bottom))+76px)] z-20 mx-3 mt-6 flex flex-col gap-1 rounded-[26px] border border-border bg-glass px-4 py-2.5 shadow-elevation backdrop-blur-[24px] backdrop-saturate-[1.6] lg:hidden">
+            {loggedIn && !mains.includes(sp) && (
+              <div className="flex flex-col gap-2 pb-1">
+                {personsOf(sp) === 2 && partnerForm("bg-card")}
+                {renewBox}
+              </div>
+            )}
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <div className="truncate text-[16px] font-extrabold leading-tight">{catOf(sp)}</div>
+                <div className="text-[13px] font-semibold text-muted-foreground">CHF {fmt(sp.price)} / Saison</div>
+              </div>
+              {loggedIn ? (
+                <button type="button" onClick={() => pay(sp, "STRIPE")} disabled={!!paying} className="flex h-[52px] shrink-0 items-center justify-center gap-2.5 rounded-[17px] bg-clay px-5 text-[16px] font-extrabold text-white shadow-[0_8px_24px_rgba(226,91,54,.28)] active:scale-[.97]">
+                  {paying?.id === sp.id && paying.m === "STRIPE" && <Spinner />}
+                  {paying?.id === sp.id && paying.m === "STRIPE" ? "Weiterleiten…" : autoRenew ? "Mit Karte" : "Mit Twint oder Karte"}
+                </button>
+              ) : (
+                <Link href={registerHref(sp.id)} className="flex h-[52px] shrink-0 items-center justify-center rounded-[17px] bg-clay px-5 text-[16px] font-extrabold text-white shadow-[0_8px_24px_rgba(226,91,54,.28)] active:scale-[.97]">
+                  {autoRenew ? "Mit Karte" : "Mit Twint oder Karte"}
+                </Link>
+              )}
             </div>
-            {payButtons(sp, true)}
+            {invoice && personsOf(sp) === 1 &&
+              (loggedIn ? (
+                <button type="button" onClick={() => pay(sp, "OFFLINE_INVOICE")} disabled={!!paying} className="mx-auto min-h-11 text-[13px] font-bold text-muted-foreground">
+                  Auf Rechnung zahlen
+                </button>
+              ) : (
+                <Link href={registerHref(sp.id)} className="mx-auto flex min-h-11 items-center text-[13px] font-bold text-muted-foreground">Auf Rechnung zahlen</Link>
+              ))}
           </div>
-        </div>
+          {footerOnDesktop && (
+            <div className="sticky bottom-6 z-20 mt-6 hidden flex-row items-end gap-3 rounded-[26px] border border-border bg-glass p-3 shadow-elevation backdrop-blur-[24px] backdrop-saturate-[1.6] lg:flex">
+              {loggedIn && personsOf(sp) === 2 && <div className="flex-1 px-1 pt-1">{partnerForm("bg-card")}</div>}
+              <div className="lg:w-[420px]">
+                <div className="px-1 pb-2 text-[13px] font-semibold text-muted-foreground">
+                  {catOf(sp)} · CHF {fmt(sp.price)} / Saison
+                </div>
+                {payButtons(sp, true)}
+              </div>
+            </div>
+          )}
+        </>
       )}
       <div className="h-8" />
     </div>

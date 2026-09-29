@@ -132,6 +132,16 @@ export function CalendarView({
           Deine
         </span>
       )}
+      {(
+        view === "grid"
+          ? [["Frei", "border border-free-border bg-free-tint", ""], ["Vorbei", "bg-inset opacity-35", ""], ["Gesperrt", "bg-acc", ""]]
+          : [["Frei", "border border-free-border bg-seg-on", ""], ["Vorbei", "bg-inset opacity-40", ""], ["Gesperrt", "bg-inset opacity-55", "×"]]
+      ).map(([t, cls, x]) => (
+        <span key={t} className="flex items-center gap-1.5">
+          <span aria-hidden className={cn("flex size-[14px] items-center justify-center rounded-[4px] text-[11px] leading-none", cls)}>{x}</span>
+          {t}
+        </span>
+      ))}
     </div>
   );
 
@@ -263,7 +273,7 @@ export function CalendarView({
                           className={cn(
                             "box-border flex h-full w-full items-center rounded-[12px] px-2.5 text-left text-[16px] font-bold leading-tight transition-transform duration-[250ms] ease-spring",
                             // desktop: empty cells stay calm, hover shows what a click books
-                            state === "free" && "group bg-free-tint text-clay-text active:scale-[.94] lg:bg-transparent lg:hover:bg-free-tint",
+                            state === "free" && "group border border-free-border bg-free-tint text-clay-text active:scale-[.94] lg:bg-transparent lg:hover:bg-free-tint",
                             state === "mine" && "bg-clay text-white active:scale-[.94]",
                             state === "blocked" && "cursor-default bg-acc text-muted-foreground",
                             state === "taken" && "cursor-default",

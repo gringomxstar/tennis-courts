@@ -116,7 +116,6 @@ export function BookingSheet({
     }
     setPhase("done");
     router.refresh();
-    setTimeout(onClose, 1500);
   }
 
   const reserveHref = s
@@ -143,7 +142,7 @@ export function BookingSheet({
 
           {isAnon ? (
             <>
-              <div className="mt-6 text-[13px] font-bold uppercase tracking-[.06em] text-muted-foreground">Deine Angaben</div>
+              <div className="mt-6 text-[14px] font-bold uppercase tracking-[.06em] text-muted-foreground">Deine Angaben</div>
               <div className="mt-2.5 flex flex-col gap-2.5">
                 <div className="flex gap-2.5">
                   <input aria-label="Vorname" placeholder="Vorname" autoComplete="given-name" className={inputCls} value={guest.first} onChange={(e) => setGuest({ ...guest, first: e.target.value })} />
@@ -154,7 +153,7 @@ export function BookingSheet({
             </>
           ) : (
             <>
-              <div className="mt-6 text-[13px] font-bold uppercase tracking-[.06em] text-muted-foreground">Mitspieler</div>
+              <div className="mt-6 text-[14px] font-bold uppercase tracking-[.06em] text-muted-foreground">Mitspieler</div>
               <div className="no-scrollbar -mx-1 mt-1.5 flex gap-3 overflow-x-auto px-1 py-1">
                 {pool.map((p) => {
                   const on = players.includes(p.id);
@@ -176,7 +175,7 @@ export function BookingSheet({
                       >
                         {initials(p.name)}
                       </span>
-                      <span className="text-[13px] font-semibold text-muted-foreground">{p.name.split(" ")[0]}</span>
+                      <span className="text-[14px] font-semibold text-muted-foreground">{p.name.split(" ")[0]}</span>
                     </button>
                   );
                 })}
@@ -195,7 +194,7 @@ export function BookingSheet({
                   >
                     +
                   </span>
-                  <span className="text-[13px] font-semibold text-muted-foreground">Gast</span>
+                  <span className="text-[14px] font-semibold text-muted-foreground">Gast</span>
                 </button>
               </div>
               {coGuest !== null && (
@@ -213,16 +212,13 @@ export function BookingSheet({
                   </span>
                 </div>
               )}
-              {missingPartner && (
-                <div className="mt-2 text-[13px] text-muted-foreground">Mit wem spielst du? Wähle einen Mitspieler oder einen Gast.</div>
-              )}
               <Link
                 href={reserveHref}
                 className="mt-4 flex h-[50px] w-full items-center justify-between rounded-[15px] border border-border px-4 transition-transform active:scale-[.98]"
               >
                 <span className="text-left">
                   <span className="block text-[16px] font-bold">Mehr Optionen</span>
-                  <span className="block text-[12px] text-muted-foreground">Doppel · Gäste · 2 Stunden · Ballmaschine</span>
+                  <span className="block text-[14px] text-muted-foreground">Doppel · Gäste · 2 Stunden · Ballmaschine</span>
                 </span>
                 <svg aria-hidden width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
               </Link>
@@ -242,12 +238,12 @@ export function BookingSheet({
             </div>
           </div>
           {!isAnon && !guestRate && planSports && isDinerSlot(settings, s?.start) && (
-            <Link href={reserveHref} className="mt-2 block text-center text-[13px] text-muted-foreground">
+            <Link href={reserveHref} className="mt-2 block text-center text-[14px] text-muted-foreground">
               Diner Tennis: Gast gratis mitnehmen – <span className="font-semibold text-clay-text">Gast hinzufügen</span>
             </Link>
           )}
           {isAnon && (
-            <Link href={`/c/${slug}/abos`} className="mt-2 block text-center text-[13px] text-muted-foreground">
+            <Link href={`/c/${slug}/abos`} className="mt-2 block text-center text-[14px] text-muted-foreground">
               Mit Abo: Sandplätze ohne Platzgebühr – <span className="font-semibold text-clay-text">Abos ansehen</span>
             </Link>
           )}
@@ -256,6 +252,9 @@ export function BookingSheet({
             <Segmented className="mt-3" label="Zahlungsart" value={pay} onChange={setMethod} options={opts} />
           )}
 
+          {missingPartner && (
+            <div className="mt-4 text-center text-[14px] text-muted-foreground">Mit wem spielst du? Wähle einen Mitspieler oder einen Gast.</div>
+          )}
           <button
             type="button"
             onClick={confirm}
@@ -277,6 +276,12 @@ export function BookingSheet({
           <div className="text-[16px] text-muted-foreground">
             {longDate(s.start)} · {hh(s.start.getHours())} · {label.name}
           </div>
+          <button type="button" onClick={onClose} className="mt-3 flex h-14 w-full items-center justify-center rounded-[20px] bg-clay text-[18px] font-bold text-white active:scale-[.97]">
+            Fertig
+          </button>
+          <Link href={`/c/${slug}/calendar`} className="flex min-h-11 items-center text-[14px] font-semibold text-clay-text">
+            Im Kalender ansehen
+          </Link>
         </div>
       )}
     </Sheet>
