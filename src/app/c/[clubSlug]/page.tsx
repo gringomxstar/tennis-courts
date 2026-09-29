@@ -7,7 +7,7 @@ const DAY = 86_400_000;
 
 export default async function ClubHomePage({ params }: { params: Promise<{ clubSlug: string }> }) {
   const { clubSlug } = await params;
-  const d = await loadClubData(clubSlug);
+  const d = await loadClubData(clubSlug, 8, { members: true });
   const now = new Date();
   const admin = d.user?.role === "CLUB_ADMIN" || d.user?.role === "PLATFORM_ADMIN";
   const [plans, lastEnd] = await Promise.all([

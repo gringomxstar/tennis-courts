@@ -1,5 +1,3 @@
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import "./globals.css";

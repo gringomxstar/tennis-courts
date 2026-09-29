@@ -146,7 +146,6 @@ export function ReserveView({
     const skip = res.skipped.map((d) => new Date(d).toLocaleDateString("de-CH", { day: "numeric", month: "numeric" }));
     toast(`${res.created} Trainings gebucht${skip.length ? ` · belegt, übersprungen: ${skip.join(", ")}` : ""}`, { duration: skip.length ? 10_000 : 4000 });
     router.push(`/c/${tenant.slug}/bookings`);
-    router.refresh();
   }
 
   async function confirm() {
@@ -177,7 +176,6 @@ export function ReserveView({
     }
     toast(`Reserviert · ${l.name}, ${hh(startDate.getHours())}`);
     router.push(`/c/${tenant.slug}/bookings`);
-    router.refresh();
   }
 
   return (

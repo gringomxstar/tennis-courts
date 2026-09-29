@@ -5,7 +5,7 @@ import { CalendarView } from "@/components/app/calendar-view";
 export default async function AdminCalendarPage({ params }: { params: Promise<{ clubSlug: string }> }) {
   const { clubSlug } = await params;
   await requireTenantAdmin(clubSlug);
-  const d = await loadClubData(clubSlug, 8, { admin: true });
+  const d = await loadClubData(clubSlug, 8, { admin: true, members: true });
   return (
     <CalendarView
       tenant={d.tenant}

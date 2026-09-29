@@ -12,7 +12,7 @@ export default async function ReservePage({
 }) {
   const { clubSlug } = await params;
   const sp = await searchParams;
-  const d = await loadClubData(clubSlug);
+  const d = await loadClubData(clubSlug, 8, { members: true });
   const court = d.courts.find((c) => c.id === sp.court);
   const start = sp.start && !Number.isNaN(Date.parse(sp.start)) ? sp.start : null;
   if (!d.user) redirect(`/c/${clubSlug}/profile`);

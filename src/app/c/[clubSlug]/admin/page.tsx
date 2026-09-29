@@ -1,3 +1,4 @@
+import { after } from "next/server";
 import { requireTenantAdmin } from "@/lib/tenant";
 import { getBlocksInRange, getBookingsInRange, getCourtsByTenantId } from "@/lib/data";
 import { syncPendingBookingPayments } from "@/lib/booking-payment";
@@ -13,7 +14,7 @@ function range() {
 export default async function AdminTodayPage({ params }: { params: Promise<{ clubSlug: string }> }) {
   const { clubSlug } = await params;
   const { tenant } = await requireTenantAdmin(clubSlug);
-  await syncPendingBookingPayments(tenant.id);
+  after(() => syncPendingBookingPayments(tenant.id));
 
   // server passes a wide ISO range; the client picks "today" in its local time
   const [from, to] = range();

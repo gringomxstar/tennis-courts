@@ -1,3 +1,4 @@
+import { after } from "next/server";
 import { getTenantContext } from "@/lib/tenant";
 import {
   getBlocksInRange,
@@ -33,10 +34,10 @@ function publicBooking(b: Booking, showNames: boolean): Booking {
 }
 
 /** Everything the player screens need; the client derives local-time slots from the ISO data. */
-export async function loadClubData(slug: string, days = 8, opts: { admin?: boolean } = {}) {
+export async function loadClubData(slug: string, days = 8, opts: { admin?: boolean; members?: boolean } = {}) {
   const ctx = await getTenantContext(slug);
   const { tenant, user } = ctx;
-  await syncPendingBookingPayments(tenant.id);
+  after(() => syncPendingBookingPayments(tenant.id));
 
   // one day of slack either side covers any client timezone offset
   const from = new Date(Date.now() - 86_400_000);
@@ -47,7 +48,7 @@ export async function loadClubData(slug: string, days = 8, opts: { admin?: boole
     getCourtsByTenantId(tenant.id),
     getBookingsInRange(tenant.id, from.toISOString(), to.toISOString()),
     getBlocksInRange(tenant.id, from.toISOString(), to.toISOString()),
-    getTenantMembers(tenant.id),
+    opts.members ? getTenantMembers(tenant.id) : Promise.resolve([]),
     user ? getUserBookings(user.id, tenant.id) : Promise.resolve([]),
     user ? getUserWallet(tenant.id, user.id) : null,
     user ? getMemberContext(tenant.id, user.id) : null,

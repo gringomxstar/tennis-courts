@@ -29,12 +29,11 @@ export async function getCurrentUser() {
 
 // cache(): layout + page both call this per request — dedupe the tenant query.
 export const getTenantContext = cache(async function getTenantContext(slug: string): Promise<TenantContext> {
-  const tenant = await getTenantBySlug(slug);
+  const [tenant, session] = await Promise.all([getTenantBySlug(slug), auth()]);
   if (!tenant) {
     redirect("/?error=TenantNotFound");
   }
 
-  const session = await auth();
   const rawUser = session?.user;
 
   if (!rawUser) {
