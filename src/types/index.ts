@@ -65,6 +65,9 @@ export interface TenantSettings {
   lateBookingMinutes?: number;
   payOnSite?: boolean;
   payByInvoice?: boolean;
+  /** Bank details printed on Abo invoices; without an IBAN "Auf Rechnung" is not offered. */
+  invoiceIban?: string;
+  invoiceBank?: string;
   priceRules?: PriceRule[];
   /** Diner Tennis: in this window a member with Abo brings 1 guest free (they lunch together at the club). */
   dinerTennis?: { enabled: boolean; weekdays: number[]; fromHour: number; toHour: number };

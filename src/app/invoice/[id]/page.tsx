@@ -3,6 +3,8 @@ import { notFound, redirect } from "next/navigation";
 import { PrintButton } from "@/components/ui/print-button";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
+import { formatIban } from "@/lib/iban";
+import type { TenantSettings } from "@/types";
 
 export default async function InvoicePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -42,13 +44,16 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
   const paymentReference = `ABO-${membership.id.slice(-8).toUpperCase()}`;
   const invoiceDate = membership.createdAt.toLocaleDateString("de-CH");
   const dueDate = new Date(membership.createdAt.getTime() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString("de-CH");
-  const price = Number(membership.plan.price);
+  // the amount at purchase, not today's plan price
+  const price = Number(membership.pricePaid ?? membership.plan.price);
+  const paid = membership.status === "ACTIVE" || membership.status === "EXPIRED";
+  const s = membership.tenant.settingsJson as TenantSettings | null;
 
   const cur = membership.plan.currency;
   return (
     <InvoiceLayout
-      title="Reserviert."
-      subtitle="Dein Zugang wird freigeschaltet, sobald die Zahlung bei uns eingegangen ist."
+      title={paid ? "Bezahlt." : "Reserviert."}
+      subtitle={paid ? "Danke, die Zahlung ist eingegangen." : "Dein Zugang wird freigeschaltet, sobald die Zahlung bei uns eingegangen ist."}
       clubName={membership.tenant.name}
       clubAddress={membership.tenant.address}
       docLabel="Rechnung"
@@ -67,21 +72,23 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
         ["MwSt (0%)", `0.00 ${cur}`],
       ]}
     >
+      {!paid && s?.invoiceIban && (
       <div className="mt-6 rounded-[20px] bg-inset p-[18px] print:rounded-none print:border print:border-black/20 print:bg-white">
         <div className="text-[13px] font-bold uppercase tracking-[.06em] text-muted-foreground print:text-black/60">
           E-Banking Zahlungsinformationen
         </div>
         <div className="mt-3 grid grid-cols-[120px_1fr] gap-y-2 text-[15px]">
           <span className="text-muted-foreground print:text-black/60">Bank</span>
-          <span className="font-semibold">Freiburger Kantonalbank</span>
+          <span className="font-semibold">{s.invoiceBank || "–"}</span>
           <span className="text-muted-foreground print:text-black/60">IBAN</span>
-          <span className="font-bold tracking-wide">CH93 0079 0012 3456 7890 1</span>
+          <span className="font-bold tracking-wide">{formatIban(s.invoiceIban)}</span>
           <span className="text-muted-foreground print:text-black/60">Zugunsten von</span>
           <span className="font-semibold">{membership.tenant.name}</span>
           <span className="text-muted-foreground print:text-black/60">Mitteilung</span>
           <span className="font-bold text-clay-text print:text-black">{paymentReference}</span>
         </div>
       </div>
+      )}
     </InvoiceLayout>
   );
 }

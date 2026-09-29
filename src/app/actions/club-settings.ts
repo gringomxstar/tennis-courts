@@ -17,7 +17,8 @@ import { ensureDemoAccounts, purgeDemoData } from "@/lib/demo";
 import { parseMembers } from "@/lib/member-import";
 import { passwordLink } from "@/lib/booking-link";
 import { sendPasswordLink, sendRenewalReminder } from "@/lib/mail";
-import { grantMembership, seasonEnd } from "@/lib/membership";
+import { grantMembership, isPartnerRow, seasonEnd } from "@/lib/membership";
+import { isValidIban } from "@/lib/iban";
 import { parseDate } from "@/lib/member-import";
 
 function cleanSlotLimits(v: TenantSettings["slotLimits"]): TenantSettings["slotLimits"] {
@@ -167,12 +168,17 @@ export async function updateClubSettingsAction(
     }
   }
 
+  const invoiceIban = (settings.invoiceIban ?? "").replace(/\s+/g, "").toUpperCase();
+  if (invoiceIban && !isValidIban(invoiceIban)) return { success: false, error: "Die IBAN ist ungültig (Prüfziffer stimmt nicht)." };
+
   const updated = await updateTenantSettings(clubSlug, {
     demoMode,
     slotLimits: cleanSlotLimits(settings.slotLimits),
     lateBookingMinutes: late,
     payOnSite: Boolean(settings.payOnSite),
     payByInvoice: Boolean(settings.payByInvoice),
+    invoiceIban,
+    invoiceBank: (settings.invoiceBank ?? "").trim().slice(0, 80),
     priceRules,
     ...(dinerTennis && { dinerTennis }),
     openingHour: opening,
@@ -682,14 +688,14 @@ export async function saveMemberAction(clubSlug: string, m: MemberInput) {
   }
 
   if (m.planId === "__end") {
-    await prisma.membership.updateMany({
-      where: { tenantId: tenant.id, userId, status: { in: ["ACTIVE", "PENDING"] } },
-      data: { status: "CANCELLED", endsAt: new Date() },
-    });
+    // paid Abos end as EXPIRED (their revenue stays in the stats), open invoices are cancelled
+    await prisma.membership.updateMany({ where: { tenantId: tenant.id, userId, status: "ACTIVE" }, data: { status: "EXPIRED", endsAt: new Date() } });
+    await prisma.membership.updateMany({ where: { tenantId: tenant.id, userId, status: "PENDING" }, data: { status: "CANCELLED", endsAt: new Date() } });
   } else if (m.planId) {
     const plan = await prisma.membershipPlan.findFirst({ where: { id: m.planId, tenantId: tenant.id }, select: { id: true } });
     if (!plan) return { success: false as const, error: "Abo nicht gefunden." };
-    if (m.paid) await grantMembership(tenant.id, userId, plan.id);
+    // "Wechseln zu": the new plan replaces the running one today
+    if (m.paid) await grantMembership(tenant.id, userId, plan.id, undefined, undefined, true);
     else if (!(await prisma.membership.findFirst({ where: { tenantId: tenant.id, userId, membershipPlanId: plan.id, status: "PENDING" } }))) {
       await prisma.membership.create({
         data: { tenantId: tenant.id, userId, membershipPlanId: plan.id, status: "PENDING", startsAt: new Date(), endsAt: seasonEnd() },
@@ -720,8 +726,10 @@ export async function renewMembershipAction(clubSlug: string, userId: string, pa
   const current = await prisma.membership.findFirst({
     where: { tenantId, userId, status: "ACTIVE", endsAt: { gt: new Date() } },
     orderBy: { endsAt: "desc" },
+    include: { plan: true },
   });
   if (!current?.endsAt) return { success: false as const, error: "Kein laufendes Abo zum Verlängern." };
+  if (isPartnerRow(current)) return { success: false as const, error: "Paar-Abo: bitte beim Käufer verlängern, nicht beim Partner." };
   const next = await prisma.membership.count({ where: { tenantId, userId, status: { in: ["ACTIVE", "PENDING"] }, startsAt: { gte: current.endsAt } } });
   if (next) return { success: false as const, error: "Ist bereits für die nächste Saison verlängert." };
   if (paid) await grantMembership(tenantId, userId, current.membershipPlanId);
