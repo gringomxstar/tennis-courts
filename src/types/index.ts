@@ -72,6 +72,8 @@ export interface TenantSettings {
   demoMode?: boolean;
   /** Club accent color (#rrggbb), replaces the default clay orange. */
   brandColor?: string;
+  /** Calendar box color (#rrggbb) of other people's bookings per booking role; defaults in BOOKING_COLORS. */
+  bookingColors?: Partial<Record<LimitRole, string>>;
 }
 
 export type LimitRole = "MEMBER" | "COACH" | "GUEST";

@@ -8,7 +8,7 @@ import { LabeledSwitch } from "@/components/app/switch";
 import { Dot } from "@/components/app/avatar";
 import { useSheetSlot } from "@/components/app/use-sheet-slot";
 import { useNow } from "@/components/app/use-now";
-import { addDays, atHour, bookingAt, courtColor, courtLabel, shortName, slotState, startOfToday, surfaceKind, WD, type SlotState, type SurfaceKind } from "@/lib/courts";
+import { addDays, atHour, BOOKING_ROLE_LABEL, bookingAt, bookingColor, courtColor, courtLabel, shortName, slotState, startOfToday, surfaceKind, WD, type SlotState, type SurfaceKind } from "@/lib/courts";
 import type { Person } from "@/lib/partners";
 import type { BlockReason, Booking, Court, CourtBlock, Tenant, SportType } from "@/types";
 import { cn } from "@/lib/utils";
@@ -117,6 +117,23 @@ export function CalendarView({
   // today: start at the current hour; later days: evenings, when most people play
   const startHour = day === 0 ? now.getHours() : 17;
   const shown = courts.filter((c) => filter === "all" || surfaceKind(c) === filter);
+  const tint = (color: string, pct: number) => ({ background: `color-mix(in srgb, ${color} ${pct}%, transparent)`, color: `color-mix(in srgb, ${color} 75%, var(--foreground))` });
+  const legend = (
+    <div className="flex flex-wrap gap-x-3.5 gap-y-1 px-5 pt-2.5 text-[13px] font-semibold text-muted-foreground">
+      {(["MEMBER", "GUEST", "COACH"] as const).map((r) => (
+        <span key={r} className="flex items-center gap-1.5">
+          <Dot color={bookingColor({ bookingType: r }, tenant.settingsJson)} size={9} />
+          {BOOKING_ROLE_LABEL[r]}
+        </span>
+      ))}
+      {userId && (
+        <span className="flex items-center gap-1.5">
+          <Dot color="var(--tennis-clay)" size={9} />
+          Deine
+        </span>
+      )}
+    </div>
+  );
 
   return (
     <>
@@ -149,6 +166,7 @@ export function CalendarView({
             })}
           </div>
           </div>
+          {legend}
           <div className="flex flex-col gap-3 px-5 pt-4 lg:grid lg:grid-cols-2 2xl:grid-cols-3">
             {shown.map((c) => {
               const l = courtLabel(c);
@@ -167,6 +185,7 @@ export function CalendarView({
                     {weekHours.map((h) => {
                       const { start, state } = cell(c, h);
                       const inert = (state === "taken" && !admin) || state === "past";
+                      const taken = state === "taken" ? tint(bookingColor(bookingAt(c.id, start, 60, bookings), tenant.settingsJson), 16) : undefined;
                       return (
                         <button
                           key={h}
@@ -174,12 +193,13 @@ export function CalendarView({
                           disabled={inert}
                           onClick={() => tap(c, start, state)}
                           aria-label={`${l.name}, ${h}:00, ${STATE_LABEL[state]}`}
+                          style={taken}
                           className={cn(
                             "flex h-[58px] w-[72px] flex-none items-center justify-center rounded-[15px] border text-[18px] font-bold tracking-[-.01em] transition-transform duration-300 ease-spring",
                             state === "free" && "border-free-border bg-seg-on text-foreground active:scale-[.92]",
                             state === "mine" && "border-clay bg-clay text-white active:scale-[.92]",
                             state === "blocked" && "border-transparent bg-inset text-muted-foreground opacity-55",
-                            state === "taken" && "cursor-default border-transparent bg-inset text-muted-foreground opacity-45",
+                            state === "taken" && "cursor-default border-transparent",
                             state === "past" && "cursor-default border-transparent bg-inset text-muted-foreground opacity-40"
                           )}
                         >
@@ -198,6 +218,7 @@ export function CalendarView({
       {ready && view === "grid" && (
         <>
           {dayButtons(true)}
+          {legend}
           <div className="mt-2.5 flex h-[650px] overflow-auto border-t border-border lg:mx-5 lg:h-[calc(100dvh-220px)]">
             <div className="sticky left-0 z-[4] h-max w-[56px] flex-none bg-background">
               <div className="sticky top-0 z-[5] h-[62px] bg-background" />
@@ -232,12 +253,13 @@ export function CalendarView({
                           disabled={inert}
                           onClick={() => tap(c, start, state)}
                           aria-label={`${l.name}, ${h}:00, ${STATE_LABEL[state]}${text && state === "taken" ? `, ${text}` : ""}`}
+                          style={state === "taken" ? { ...tint(bookingColor(b, tenant.settingsJson), 18), boxShadow: `inset 3px 0 0 ${bookingColor(b, tenant.settingsJson)}` } : undefined}
                           className={cn(
                             "box-border flex h-full w-full items-center rounded-[12px] px-2.5 text-left text-[16px] font-bold leading-tight transition-transform duration-[250ms] ease-spring",
                             state === "free" && "bg-free-tint text-clay-text active:scale-[.94]",
                             state === "mine" && "bg-clay text-white active:scale-[.94]",
                             state === "blocked" && "cursor-default bg-acc text-muted-foreground",
-                            state === "taken" && "cursor-default bg-acc text-muted-foreground opacity-70",
+                            state === "taken" && "cursor-default",
                             state === "past" && "cursor-default bg-inset opacity-35"
                           )}
                         >

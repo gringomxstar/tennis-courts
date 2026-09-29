@@ -503,12 +503,21 @@ export async function purgeDemoDataAction(clubSlug: string) {
 const HEX = /^#[0-9a-f]{6}$/i;
 const LOGO = /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/;
 
-/** Club color and logo. `logo`: data URL to set, null to remove, undefined to keep. */
-export async function updateClubBrandingAction(clubSlug: string, brandColor: string | null, logo?: string | null) {
+/** Club color, logo and booking colors. `logo`: data URL to set, null to remove, undefined to keep. */
+export async function updateClubBrandingAction(
+  clubSlug: string,
+  brandColor: string | null,
+  logo?: string | null,
+  bookingColors?: TenantSettings["bookingColors"]
+) {
   const authCheck = await verifyClubAdmin(clubSlug);
   if (!authCheck.authorized || !authCheck.tenant) return { success: false as const, error: authCheck.error };
   if (!process.env.DATABASE_URL) return { success: false as const, error: "Branding braucht eine Datenbank." };
   if (brandColor !== null && !HEX.test(brandColor)) return { success: false as const, error: "Ungültige Farbe." };
+  const roleColors = Object.entries(bookingColors ?? {});
+  if (roleColors.some(([k, v]) => !["MEMBER", "GUEST", "COACH"].includes(k) || !HEX.test(v ?? ""))) {
+    return { success: false as const, error: "Ungültige Buchungsfarbe." };
+  }
   // the logo is resized client-side to max 256px, so a few 100 KB is plenty
   if (logo && (logo.length > 400_000 || !LOGO.test(logo))) {
     return { success: false as const, error: "Logo muss ein PNG, JPG oder WebP unter 300 KB sein." };
@@ -517,6 +526,9 @@ export async function updateClubBrandingAction(clubSlug: string, brandColor: str
   const settings = { ...((tenant.settingsJson ?? {}) as TenantSettings) };
   if (brandColor) settings.brandColor = brandColor.toLowerCase();
   else delete settings.brandColor;
+  if (bookingColors) {
+    settings.bookingColors = Object.fromEntries(roleColors.map(([k, v]) => [k, v!.toLowerCase()]));
+  }
   await prisma.tenant.update({
     where: { id: tenant.id },
     data: { settingsJson: settings as object, ...(logo !== undefined ? { logoUrl: logo } : {}) },

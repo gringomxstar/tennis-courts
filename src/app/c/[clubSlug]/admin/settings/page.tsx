@@ -106,7 +106,7 @@ export default async function ClubSettingsPage({ params }: ClubSettingsPageProps
           <MembershipPlansManager clubSlug={tenant.slug} initialPlans={membershipPlans} />
         </div>
         <div id="branding" className="scroll-mt-20">
-          <BrandingForm clubSlug={tenant.slug} clubName={tenant.name} color={tenant.settingsJson?.brandColor} logo={tenant.logoUrl} />
+          <BrandingForm clubSlug={tenant.slug} clubName={tenant.name} color={tenant.settingsJson?.brandColor} logo={tenant.logoUrl} bookingColors={tenant.settingsJson?.bookingColors} />
         </div>
       </div>
     </>

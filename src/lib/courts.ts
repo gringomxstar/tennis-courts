@@ -1,4 +1,13 @@
-import type { Booking, Court, CourtBlock } from "@/types";
+import type { Booking, Court, CourtBlock, LimitRole, TenantSettings } from "@/types";
+
+export const BOOKING_COLORS: Record<LimitRole, string> = { MEMBER: "#64748b", GUEST: "#d97706", COACH: "#7c3aed" };
+export const BOOKING_ROLE_LABEL: Record<LimitRole, string> = { MEMBER: "Mitglied", GUEST: "Gast", COACH: "Trainer" };
+
+/** Calendar color of a booking by its type; tournaments/events etc. use the member color. */
+export function bookingColor(b: Pick<Booking, "bookingType"> | undefined, settings?: TenantSettings | null) {
+  const role: LimitRole = b?.bookingType === "GUEST" ? "GUEST" : b?.bookingType === "COACH" ? "COACH" : "MEMBER";
+  return settings?.bookingColors?.[role] ?? BOOKING_COLORS[role];
+}
 
 export type SurfaceKind = "clay" | "hard" | "padel";
 

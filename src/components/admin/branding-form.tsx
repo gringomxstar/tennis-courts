@@ -6,6 +6,8 @@ import { toast } from "sonner";
 import { updateClubBrandingAction } from "@/app/actions/club-settings";
 import { Spinner } from "@/components/app/avatar";
 import { cn } from "@/lib/utils";
+import { BOOKING_COLORS, BOOKING_ROLE_LABEL } from "@/lib/courts";
+import type { LimitRole, TenantSettings } from "@/types";
 
 const DEFAULT = "#e25b36";
 const PRESETS: [string, string][] = [
@@ -39,15 +41,17 @@ function toDataUrl(file: File): Promise<string> {
 
 const preview = (hex: string) => document.documentElement.style.setProperty("--tennis-clay", hex);
 
-export function BrandingForm({ clubSlug, clubName, color: initialColor, logo: initialLogo }: {
+export function BrandingForm({ clubSlug, clubName, color: initialColor, logo: initialLogo, bookingColors }: {
   clubSlug: string;
   clubName: string;
   color?: string;
   logo?: string | null;
+  bookingColors?: TenantSettings["bookingColors"];
 }) {
   const router = useRouter();
   const [color, setColor] = useState(initialColor ?? DEFAULT);
   const [logo, setLogo] = useState<string | null | undefined>(undefined); // undefined = unchanged
+  const [roleColors, setRoleColors] = useState({ ...BOOKING_COLORS, ...bookingColors });
   const [busy, setBusy] = useState(false);
   const shownLogo = logo === undefined ? initialLogo : logo;
   // drop the unsaved live preview when leaving the page
@@ -68,7 +72,7 @@ export function BrandingForm({ clubSlug, clubName, color: initialColor, logo: in
 
   async function save() {
     setBusy(true);
-    const res = await updateClubBrandingAction(clubSlug, color.toLowerCase() === DEFAULT ? null : color, logo).catch(() => null);
+    const res = await updateClubBrandingAction(clubSlug, color.toLowerCase() === DEFAULT ? null : color, logo, roleColors).catch(() => null);
     setBusy(false);
     if (!res?.success) return void toast.error(res?.error ?? "Speichern fehlgeschlagen.");
     toast("Branding gespeichert");
@@ -104,6 +108,27 @@ export function BrandingForm({ clubSlug, clubName, color: initialColor, logo: in
           Eigene
           <input type="color" value={color} onChange={(e) => pick(e.target.value)} className="absolute inset-0 cursor-pointer opacity-0" aria-label="Eigene Farbe" />
         </label>
+      </div>
+
+      <div className="mt-5 text-[13px] font-bold uppercase tracking-[.06em] text-muted-foreground">Buchungen im Kalender</div>
+      <p className="mt-1 text-[14px] leading-[1.4] text-muted-foreground">Farbe der Buchungen anderer Spieler. Eigene Buchungen erscheinen in der Clubfarbe.</p>
+      <div className="mt-2.5 flex flex-wrap gap-2.5">
+        {(Object.keys(BOOKING_COLORS) as LimitRole[]).map((r) => (
+          <label key={r} className="relative flex h-11 cursor-pointer items-center gap-2 rounded-full border border-border px-3.5 text-[14px] font-semibold">
+            <span className="h-5 w-5 rounded-full" style={{ background: roleColors[r] }} />
+            {BOOKING_ROLE_LABEL[r]}
+            <input
+              type="color"
+              value={roleColors[r]}
+              onChange={(e) => setRoleColors((c) => ({ ...c, [r]: e.target.value }))}
+              className="absolute inset-0 cursor-pointer opacity-0"
+              aria-label={`Farbe ${BOOKING_ROLE_LABEL[r]}`}
+            />
+          </label>
+        ))}
+        <button type="button" onClick={() => setRoleColors({ ...BOOKING_COLORS })} className="px-2 text-[14px] font-bold text-clay-text">
+          Standard
+        </button>
       </div>
 
       <div className="mt-5 text-[13px] font-bold uppercase tracking-[.06em] text-muted-foreground">Logo</div>
