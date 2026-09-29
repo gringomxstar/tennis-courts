@@ -64,6 +64,7 @@ export function ReserveView({
   const [players, setPlayers] = useState<string[]>(initialPlayers);
   const [ball, setBall] = useState(false);
   const [search, setSearch] = useState("");
+  const [showAll, setShowAll] = useState(false);
   const [paying, setPaying] = useState(false);
   const [guests, setGuests] = useState<{ name: string; email: string }[]>([]);
   const [guestForm, setGuestForm] = useState<{ name: string; email: string } | null>(null);
@@ -180,6 +181,33 @@ export function ReserveView({
     router.refresh();
   }
 
+  const summary = (
+    <>
+          <div className="flex justify-between px-1 pb-2.5 text-[14px] font-semibold text-muted-foreground">
+            <span>Total</span>
+            <span className="text-[17px] font-bold text-foreground">{cost.total ? `CHF ${cost.total}${until !== null ? " pro Termin" : ""}` : "Inklusive"}</span>
+          </div>
+          {until === null && cost.total > 0 && opts.length > 1 && (
+            <Segmented size="lg" className="mb-2.5" label="Zahlungsart" value={pay} onChange={setMethod} options={opts} />
+          )}
+          <button
+            type="button"
+            onClick={confirm}
+            disabled={paying || (needPartner && count === 0) || (until === null && rtype === "double" && count < 3)}
+            className="flex h-[58px] w-full items-center justify-center gap-2.5 rounded-[20px] bg-clay text-[18px] font-bold text-white shadow-[0_14px_30px_-10px_var(--tennis-clay)] active:scale-[.97] disabled:bg-inset disabled:text-muted-foreground disabled:shadow-none disabled:active:scale-100"
+          >
+            {paying && <Spinner />}
+            {paying ? "Einen Moment…" : until !== null ? "Serie buchen" : cost.total > 0 ? payButtonLabel(pay, cost.total) : "Reservieren"}
+          </button>
+          {until === null && rtype === "double" && count < 3 && (
+            <div className="mt-2 w-full text-center text-[14px] font-semibold text-muted-foreground">Doppel: noch {3 - count} Mitspieler oder Gäste wählen</div>
+          )}
+          {needPartner && count === 0 && rtype === "single" && (
+            <div className="mt-2 w-full text-center text-[14px] font-semibold text-muted-foreground">Mindestens 1 Mitspieler oder Gast wählen</div>
+          )}
+    </>
+  );
+
   return (
     <div className="fixed inset-0 z-[45] flex flex-col bg-background lg:left-64">
       <div className="mx-auto flex w-full max-w-[640px] flex-1 flex-col overflow-hidden lg:max-w-[1100px] lg:px-6">
@@ -219,12 +247,12 @@ export function ReserveView({
               }}
               options={[["single", "Einzel"], ["double", "Doppel"]] as const}
             />
-            <Segmented size="lg" className="flex-1" label="Dauer" value={dur} onChange={pickDur} options={[[1, "1 Std"], [2, rtype === "double" ? "2 Std" : "2 Std · Doppel"]] as const} />
+            <Segmented size="lg" className="flex-1" label="Dauer" value={dur} onChange={pickDur} muted={rtype === "single" && !isCoach ? [2] : []} options={[[1, "1 Std"], [2, "2 Std"]] as const} />
           </div>
           </div>
 
           <div className="lg:col-start-2 lg:row-span-2 lg:row-start-1">
-          <div className="mt-6 flex items-baseline justify-between lg:mt-0">
+          <div className="mt-7 flex items-baseline justify-between lg:mt-0">
             <h2 className="text-[20px] font-bold tracking-[-.02em]">Mitspieler</h2>
             <div className="text-[14px] font-semibold text-muted-foreground">{count} von {max}</div>
           </div>
@@ -236,7 +264,7 @@ export function ReserveView({
                   type="button"
                   aria-label={`${nameOf(id)} entfernen`}
                   onClick={() => toggle(id)}
-                  className="flex animate-[pop_.4s_var(--ease-spring)] items-center gap-2 rounded-full border border-border bg-card py-[5px] pl-[5px] pr-3"
+                  className="flex min-h-[44px] animate-[pop_.4s_var(--ease-spring)] items-center gap-2 rounded-full border border-border bg-card py-[6px] pl-[6px] pr-3"
                 >
                   <span className="flex h-[30px] w-[30px] items-center justify-center rounded-full bg-clay text-[12px] font-bold text-white">
                     {initials(nameOf(id))}
@@ -251,7 +279,7 @@ export function ReserveView({
                   type="button"
                   aria-label={`Gast ${g.name} entfernen`}
                   onClick={() => setGuests(guests.filter((_, j) => j !== i))}
-                  className="flex animate-[pop_.4s_var(--ease-spring)] items-center gap-2 rounded-full border border-border bg-card py-[5px] pl-[5px] pr-3"
+                  className="flex min-h-[44px] animate-[pop_.4s_var(--ease-spring)] items-center gap-2 rounded-full border border-border bg-card py-[6px] pl-[6px] pr-3"
                 >
                   <span className="flex h-[30px] w-[30px] items-center justify-center rounded-full bg-acc text-[12px] font-bold">G</span>
                   <span className="text-[15px] font-semibold">{g.name.split(" ")[0]}</span>
@@ -263,7 +291,7 @@ export function ReserveView({
 
           {favs.some((id) => byId.has(id)) && (
             <>
-              <div className="mt-[18px] flex items-center gap-1.5 text-[13px] font-bold uppercase tracking-[.06em] text-muted-foreground">
+              <div className="mt-[18px] flex items-center gap-1.5 text-[15px] font-bold text-muted-foreground">
                 <svg aria-hidden width="14" height="14" viewBox="0 0 24 24" fill="#f59e0b" stroke="#f59e0b" strokeWidth="2" strokeLinejoin="round"><path d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8-6.2-3.3-6.2 3.3L8 14.2 3 9.3l6.9-1z" /></svg>
                 Favoriten
               </div>
@@ -278,7 +306,7 @@ export function ReserveView({
                       >
                         {initials(nameOf(id))}
                       </span>
-                      <span className="text-[13px] font-semibold text-muted-foreground">{nameOf(id).split(" ")[0]}</span>
+                      <span className="text-[14px] font-semibold text-muted-foreground">{nameOf(id).split(" ")[0]}</span>
                     </button>
                   );
                 })}
@@ -292,19 +320,19 @@ export function ReserveView({
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Mitglied suchen" className="min-w-0 flex-1 border-none bg-transparent text-[16px] text-foreground outline-none placeholder:text-muted-foreground" />
           </label>
           <div className="mt-2.5 overflow-hidden rounded-[22px] border border-border bg-card">
-            {others.filter((m) => !q || m.name.toLowerCase().includes(q)).slice(0, 30).map((m) => {
+            {others.filter((m) => !q || m.name.toLowerCase().includes(q)).slice(0, q || showAll ? 30 : 5).map((m) => {
               const on = players.includes(m.id);
               const fav = favs.includes(m.id);
               return (
                 <div key={m.id} className="flex items-center gap-3 border-t border-border px-3.5 py-2.5 first:border-t-0">
-                  <button type="button" aria-pressed={on} onClick={() => toggle(m.id)} className="flex flex-1 items-center gap-3 text-left">
-                    <span aria-hidden className="flex h-10 w-10 items-center justify-center rounded-full bg-acc text-[13px] font-bold">{initials(m.name)}</span>
-                    <span className="flex-1">
-                      <span className="block text-[16px] font-semibold">{m.name}</span>
-                      {m.plan && <span className="block text-[13px] text-muted-foreground">{m.plan}</span>}
+                  <button type="button" aria-pressed={on} onClick={() => toggle(m.id)} className="flex min-h-[44px] flex-1 items-center gap-3 text-left">
+                    <span aria-hidden className="flex h-10 w-10 items-center justify-center rounded-full bg-acc text-[14px] font-bold">{initials(m.name)}</span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[16px] font-semibold">{m.name}</span>
+                      {m.plan && <span className="block text-[14px] text-muted-foreground">{m.plan}</span>}
                     </span>
                   </button>
-                  <button type="button" aria-pressed={fav} aria-label={`${m.name} als Favorit`} onClick={() => saveFavs(fav ? favs.filter((x) => x !== m.id) : [...favs, m.id])} className="flex h-9 w-9 items-center justify-center">
+                  <button type="button" aria-pressed={fav} aria-label={`${m.name} als Favorit`} onClick={() => saveFavs(fav ? favs.filter((x) => x !== m.id) : [...favs, m.id])} className="flex h-11 w-11 items-center justify-center">
                     <Star on={fav} />
                   </button>
                   <button
@@ -319,6 +347,11 @@ export function ReserveView({
                 </div>
               );
             })}
+            {!q && !showAll && others.length > 5 && (
+              <button type="button" onClick={() => setShowAll(true)} className="w-full border-t border-border px-3.5 py-3 text-[15px] font-bold text-clay-text">
+                Alle {others.length} Mitglieder anzeigen
+              </button>
+            )}
           </div>
           {guestForm ? (
             <div className="mt-2.5 flex flex-col gap-2 rounded-[18px] bg-inset p-3">
@@ -358,21 +391,21 @@ export function ReserveView({
             </button>
           )}
           {diner && (
-            <div className="mt-2 px-1 text-[13px] leading-[1.4] text-muted-foreground">
+            <div className="mt-2 px-1 text-[14px] leading-[1.4] text-muted-foreground">
               <b className="font-bold text-foreground">Diner Tennis:</b> 1 Gast gratis – wenn ihr danach zusammen im Club zu Mittag esst.
             </div>
           )}
           </div>
 
-          <div className="lg:col-start-1 lg:row-start-2">
+          <div className="lg:col-start-1 lg:row-start-2 lg:self-stretch">
 
           {isCoach && (
             <>
-              <h2 className="mt-6 text-[20px] font-bold tracking-[-.02em]">Training</h2>
+              <h2 className="mt-7 text-[20px] font-bold tracking-[-.02em]">Training</h2>
               <button type="button" aria-pressed={until !== null} onClick={() => setUntil(until === null ? (seriesUntil ?? "") : null)} className="mt-2.5 flex w-full items-center gap-3 rounded-[20px] border border-border bg-card px-4 py-3.5 text-left">
                 <span className="flex-1">
                   <span className="block text-[16px] font-semibold">Jede Woche wiederholen</span>
-                  <span className="block text-[13px] text-muted-foreground">Belegte Wochen werden übersprungen · auf Rechnung</span>
+                  <span className="block text-[14px] text-muted-foreground">Belegte Wochen werden übersprungen · auf Rechnung</span>
                 </span>
                 <SwitchKnob on={until !== null} />
               </button>
@@ -387,42 +420,21 @@ export function ReserveView({
 
           {(tenant.settingsJson?.ballMachineAvailable ?? true) && (
             <>
-              <h2 className="mt-6 text-[20px] font-bold tracking-[-.02em]">Extras</h2>
+              <h2 className="mt-7 text-[20px] font-bold tracking-[-.02em]">Extras</h2>
               <button type="button" aria-pressed={ball} onClick={() => setBall(!ball)} className="mt-2.5 flex w-full items-center gap-3 rounded-[20px] border border-border bg-card px-4 py-3.5 text-left">
                 <span className="flex-1">
                   <span className="block text-[16px] font-semibold">Ballmaschine</span>
-                  <span className="block text-[13px] text-muted-foreground">CHF {tenant.settingsJson?.ballMachineFee ?? 10}</span>
+                  <span className="block text-[14px] text-muted-foreground">CHF {tenant.settingsJson?.ballMachineFee ?? 10}</span>
                 </span>
                 <SwitchKnob on={ball} />
               </button>
             </>
           )}
+          <div className="mt-7 hidden rounded-[22px] border border-border bg-card p-5 lg:sticky lg:top-4 lg:block">{summary}</div>
           </div>
         </div>
-        <div className="border-t border-border bg-glass px-5 pb-10 pt-3 backdrop-blur-[24px] lg:flex lg:flex-col lg:items-end lg:pb-6">
-          <div className="flex justify-between px-1 pb-2.5 lg:w-full lg:max-w-md text-[14px] font-semibold text-muted-foreground">
-            <span>Total</span>
-            <span className="text-[17px] font-bold text-foreground">{cost.total ? `CHF ${cost.total}${until !== null ? " pro Termin" : ""}` : "Inklusive"}</span>
-          </div>
-          {until === null && cost.total > 0 && opts.length > 1 && (
-            <Segmented className="mb-2.5 lg:w-full lg:max-w-md" label="Zahlungsart" value={pay} onChange={setMethod} options={opts} />
-          )}
-          <button
-            type="button"
-            onClick={confirm}
-            disabled={paying || (needPartner && count === 0) || (until === null && rtype === "double" && count < 3)}
-            className="flex h-[58px] w-full items-center justify-center gap-2.5 rounded-[20px] text-[18px] font-bold text-white active:scale-[.97] disabled:opacity-50 disabled:active:scale-100 lg:max-w-md"
-            style={{ background: color, boxShadow: `0 14px 30px -10px ${color}` }}
-          >
-            {paying && <Spinner />}
-            {until !== null ? "Serie buchen" : cost.total > 0 ? payButtonLabel(pay, cost.total) : "Reservieren"}
-          </button>
-          {until === null && rtype === "double" && count < 3 && (
-            <div className="text-center text-[13px] text-muted-foreground lg:max-w-md">Doppel: wähle mindestens 3 Mitspieler oder Gäste (noch {3 - count}).</div>
-          )}
-          {needPartner && count === 0 && rtype === "single" && (
-            <div className="text-center text-[13px] text-muted-foreground lg:max-w-md">Wähle mindestens einen Mitspieler oder füge einen Gast hinzu.</div>
-          )}
+        <div className="border-t border-border bg-glass px-5 pb-[max(24px,env(safe-area-inset-bottom))] pt-3 backdrop-blur-[24px] lg:hidden">
+          {summary}
         </div>
       </div>
     </div>
