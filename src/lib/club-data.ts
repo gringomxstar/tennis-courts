@@ -73,5 +73,7 @@ export async function loadClubData(slug: string, days = 8) {
     favoriteUserIds: member?.favoriteUserIds ?? [],
     /** Price preview: anonymous visitors and GUEST accounts without Abo pay the guest rate. */
     guestRate: paysGuestRate(Boolean(user), member?.role, Boolean(member?.plan)),
+    /** Sports the active Abo covers (price preview); null = no Abo. */
+    planSports: member?.plan?.sports ?? null,
   };
 }

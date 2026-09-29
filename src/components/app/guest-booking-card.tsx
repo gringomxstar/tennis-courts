@@ -145,7 +145,7 @@ export function GuestBookingCard({
 
       {minPlanPrice != null && (
         <Link href={`/c/${slug}/abos`} className="mt-4 block text-center text-[15px] font-semibold text-clay-text">
-          Öfter hier? Mit Abo ohne Platzgebühr – ab CHF {minPlanPrice}/Jahr
+          Öfter hier? Mit Abo ohne Platzgebühr – ab CHF {minPlanPrice} · Saison bis 31. März
         </Link>
       )}
     </div>

@@ -1,7 +1,15 @@
 import { getTenantContext } from "@/lib/tenant";
 import { getMembershipPlansByTenantId } from "@/lib/data";
 import { prisma } from "@/lib/prisma";
+import { seasonEnd } from "@/lib/membership";
+import { autoRenewPlanId } from "@/lib/abo-renewal";
+import { DINER_DEFAULT } from "@/lib/pricing";
+import { playWindowLabel } from "@/lib/booking-rules";
 import { AbosView } from "@/components/app/abos-view";
+
+const DAY = 86_400_000;
+// formatted here so server and client render the same string
+const date = (d: Date) => d.toLocaleDateString("de-CH", { timeZone: "Europe/Zurich", day: "2-digit", month: "2-digit", year: "numeric" });
 
 export default async function AbosPage({
   params,
@@ -12,19 +20,30 @@ export default async function AbosPage({
 }) {
   const [{ clubSlug }, { plan }] = await Promise.all([params, searchParams]);
   const { tenant, user } = await getTenantContext(clubSlug);
-  const [plans, m] = await Promise.all([
+  const now = new Date();
+  const [plans, rows, u] = await Promise.all([
     getMembershipPlansByTenantId(tenant.id),
     user && process.env.DATABASE_URL
       ? prisma.membership
-          .findFirst({
-            where: { userId: user.id, tenantId: tenant.id, status: { in: ["ACTIVE", "PENDING"] } },
+          .findMany({
+            where: { userId: user.id, tenantId: tenant.id, status: { in: ["ACTIVE", "PENDING"] }, OR: [{ endsAt: null }, { endsAt: { gt: now } }] },
             include: { plan: true },
-            orderBy: { startsAt: "desc" },
+            orderBy: { startsAt: "asc" },
           })
-          .catch(() => null)
+          .catch(() => [])
+      : [],
+    user && process.env.DATABASE_URL
+      ? prisma.user.findUnique({ where: { id: user.id }, select: { stripeCustomerId: true } }).catch(() => null)
       : null,
   ]);
+  const active = rows.filter((m) => m.status === "ACTIVE");
+  const current = active.find((m) => m.startsAt <= now);
+  const renewal = current?.endsAt ? active.find((m) => m.startsAt >= current.endsAt!) : undefined;
+  const pending = !current && rows.find((m) => m.status === "PENDING");
+  const autoRenew = current ? Boolean(await autoRenewPlanId(u?.stripeCustomerId, tenant.id).catch(() => null)) : false;
+
   const s = tenant.settingsJson;
+  const diner = s?.dinerTennis ?? DINER_DEFAULT;
   return (
     <AbosView
       slug={tenant.slug}
@@ -33,19 +52,24 @@ export default async function AbosPage({
       plans={plans.filter((p) => p.price > 0) /* the free "Gast" plan is not an Abo */}
       initialPlan={plan}
       guestRate={s?.defaultHourlyRateTennis ?? 30}
+      guestRatePadel={s?.defaultHourlyRatePadel ?? 40}
+      guestFee={s?.guestFee ?? 15}
       invoice={Boolean(s?.payByInvoice)}
+      seasonYear={seasonEnd(now).getUTCFullYear()}
+      dinerLabel={diner.enabled ? playWindowLabel(diner) : null}
       membership={
-        m && {
-          planId: m.membershipPlanId,
-          name: m.plan.name,
-          // formatted here so server and client render the same string
-          validity:
-            m.status === "PENDING"
-              ? "Zahlung ausstehend"
-              : m.endsAt
-                ? `Gültig bis ${m.endsAt.toLocaleDateString("de-CH", { timeZone: "Europe/Zurich", day: "2-digit", month: "2-digit", year: "numeric" })}`
-                : "Unbefristet",
-        }
+        current
+          ? {
+              planId: current.membershipPlanId,
+              name: current.plan.name,
+              validity: current.endsAt ? `Gültig bis ${date(current.endsAt)}` : "Unbefristet",
+              renewal: renewal?.endsAt ? `Verlängert bis ${date(renewal.endsAt)}` : null,
+              autoRenew,
+              renewDue: !renewal && !!current.endsAt && current.endsAt.getTime() - now.getTime() < 60 * DAY,
+            }
+          : pending
+            ? { planId: pending.membershipPlanId, name: pending.plan.name, validity: "Zahlung ausstehend", renewal: null, autoRenew: false, renewDue: false }
+            : null
       }
     />
   );

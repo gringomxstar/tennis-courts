@@ -1,4 +1,4 @@
-import type { Court, PaymentMethod, PriceRule, TenantSettings } from "@/types";
+import type { Court, PaymentMethod, PriceRule, SportType, TenantSettings } from "@/types";
 
 /** Hour (local) from which floodlight is charged on lit courts. */
 export const FLOODLIGHT_FROM_HOUR = 19;
@@ -11,6 +11,8 @@ export interface BookingCostInput {
   settings: TenantSettings | null | undefined;
   court: Pick<Court, "sportType" | "isIndoor" | "hourlyRate">;
   isGuest: boolean;
+  /** Sports of the member's active Abo; null = no Abo (plain MEMBER: outdoor tennis free, padel paid). */
+  planSports?: SportType[] | null;
   durationMinutes: number;
   guestCount: number;
   hasBallMachine: boolean;
@@ -52,23 +54,38 @@ export function matchingPriceRules(rules: PriceRule[] | undefined, start: Date, 
 export const paysGuestRate = (loggedIn: boolean, role: string | null | undefined, hasPlan: boolean) =>
   !loggedIn || (role === "GUEST" && !hasPlan);
 
+export const DINER_DEFAULT = { enabled: false, weekdays: [1, 2, 3, 4, 5], fromHour: 11, toHour: 13 };
+
+/** Diner Tennis applies to this start (club time)? Only the start counts: 12:00–13:30 is still lunch. */
+export function isDinerSlot(settings: TenantSettings | null | undefined, start: Date | undefined) {
+  const d = settings?.dinerTennis;
+  if (!d?.enabled || !start) return false;
+  const p = Object.fromEntries(zurich.formatToParts(start).map((x) => [x.type, x.value]));
+  const h = Number(p.hour);
+  return d.weekdays.includes(WEEKDAY[p.weekday]) && h >= d.fromHour && h < d.toHour;
+}
+
 /** Single source of truth for booking prices (server action + client preview). */
 export function computeBookingCost(i: BookingCostInput): BookingCost {
   const s = i.settings ?? undefined;
   const hours = i.durationMinutes / 60;
   let court = 0;
+  const covered = !i.isGuest && Boolean(i.planSports?.includes(i.court.sportType));
   if (i.court.sportType === "PADEL") {
-    court = (s?.defaultHourlyRatePadel ?? i.court.hourlyRate ?? 40) * hours;
+    if (!covered) court = (s?.defaultHourlyRatePadel ?? i.court.hourlyRate ?? 40) * hours;
   } else if (i.court.isIndoor) {
     court = (s?.defaultHourlyRateHalle ?? i.court.hourlyRate ?? 45) * hours;
-  } else if (i.isGuest) {
+  } else if (i.isGuest || (i.planSports && !covered)) {
+    // a padel-only Abo doesn't include tennis
     court = (s?.defaultHourlyRateTennis ?? i.court.hourlyRate ?? 30) * hours;
   }
   if (court > 0 && i.start) {
     const pct = matchingPriceRules(s?.priceRules, i.start, i.now).reduce((n, r) => n + r.percent, 0);
     court = Math.max(0, Math.round(court * (1 + pct / 100) * 100) / 100);
   }
-  const guests = i.guestCount * (s?.guestFee ?? 15);
+  // Diner Tennis: one guest free for members with an Abo
+  const freeGuests = i.planSports && !i.isGuest && isDinerSlot(s, i.start) ? 1 : 0;
+  const guests = Math.max(0, i.guestCount - freeGuests) * (s?.guestFee ?? 15);
   const ballMachine = i.hasBallMachine ? (s?.ballMachineFee ?? 10) * hours : 0;
   const lighting = i.hasLighting ? (s?.floodlightFee ?? 5) : 0;
   return { court, guests, ballMachine, lighting, total: court + guests + ballMachine + lighting };

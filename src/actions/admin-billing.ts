@@ -2,6 +2,7 @@
 
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { seasonEnd } from "@/lib/membership";
 import { getStripe } from "@/lib/stripe";
 import { revalidatePath } from "next/cache";
 import { sendPaymentReminder } from "@/lib/mail";
@@ -60,13 +61,15 @@ export async function markInvoiceAsPaidManually(tenantId: string, userId: string
     }
 
     // 4. Prisma DB Update: Schalte den User sofort frei (nur innerhalb des verifizierten Tenants)
+    // the 365 days start when the money is in, not when the invoice was ordered
     await prisma.membership.updateMany({
-      where: { userId, tenantId, status: { in: ["PENDING", "EXPIRED"] } },
-      data: { status: "ACTIVE" }
+      where: { userId, tenantId, status: "PENDING" },
+      data: { status: "ACTIVE", startsAt: new Date(), endsAt: seasonEnd() }
     });
 
-    await prisma.tenantUser.update({
-      where: { tenantId_userId: { tenantId, userId } },
+    // GUEST → MEMBER only; admins and coaches keep their role
+    await prisma.tenantUser.updateMany({
+      where: { tenantId, userId, role: "GUEST" },
       data: { role: "MEMBER" }
     });
 

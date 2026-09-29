@@ -64,6 +64,8 @@ export interface TenantSettings {
   payOnSite?: boolean;
   payByInvoice?: boolean;
   priceRules?: PriceRule[];
+  /** Diner Tennis: in this window a member with Abo brings 1 guest free (they lunch together at the club). */
+  dinerTennis?: { enabled: boolean; weekdays: number[]; fromHour: number; toHour: number };
   /** Role switcher with the fixed demo personas (src/lib/demo.ts); off = demo logins refused. */
   demoMode?: boolean;
 }
@@ -191,6 +193,18 @@ export interface MembershipPlan {
   allowedDurations: number[];
   /** Max. guests the member may bring per calendar week; null/undefined = unlimited. */
   guestsPerWeek?: number | null;
+  /** Sports the plan waives the court fee for (stored in rulesJson; default Tennis). */
+  sports?: SportType[];
+  /** Grouping on the Abo page, e.g. "Erwachsene", "Junioren". */
+  category?: string | null;
+  /** 2 = Paar-Abo: the buyer names a second person who gets the same membership. */
+  persons?: 1 | 2;
+  ageMin?: number | null;
+  ageMax?: number | null;
+  /** e.g. student card; the club checks it, the app only shows the hint. */
+  proofRequired?: boolean;
+  /** Only bookable inside this window (Abo Soleil: Mo–Fr 8–16). Weekdays 0 = Sunday. */
+  playWindow?: { weekdays: number[]; fromHour: number; toHour: number } | null;
 }
 
 export type WalletTransactionType =

@@ -1,18 +1,12 @@
 import { PrismaClient, SportType, CourtSurface } from '@prisma/client'
 import { hash } from 'bcryptjs'
+import { TCM_PLANS } from './tcm-plans'
 
 const prisma = new PrismaClient()
 
 const TENANT_ID = "tc-marly"
 const LOCATION_ID = "loc-marly"
 
-const MEMBERSHIP_PLANS = [
-  { id: "actif-2026", name: "Actif (Erwachsene)", price: 350, description: "Volle Spielberechtigung." },
-  { id: "etudiant-2026", name: "Etudiant (19-25 J.)", price: 250, description: "Gültiger Ausweis erforderlich." },
-  { id: "junior-2026", name: "Junior (bis 18 J.)", price: 150, description: "Für den Nachwuchs." },
-  { id: "famille-2026", name: "Famille (Paar + Kinder)", price: 750, description: "Das komplette Paket für Familien." },
-  { id: "guest-pass", name: "Gast (Pay & Play)", price: 0, description: "Ohne Grundgebühr, pro Platz zahlen." },
-]
 
 const COURTS: { id: string; name: string; sportType: SportType; surface: CourtSurface; hasLighting: boolean; sortOrder: number }[] = [
   { id: "court-marly-1", name: "Platz 1 (Allwetter)", sportType: "TENNIS", surface: "HARD", hasLighting: true, sortOrder: 1 },
@@ -69,20 +63,11 @@ async function main() {
     },
   })
 
-  for (const plan of MEMBERSHIP_PLANS) {
+  for (const { id, ...plan } of TCM_PLANS) {
     await prisma.membershipPlan.upsert({
-      where: { id: plan.id },
-      update: { price: plan.price, name: plan.name, description: plan.description },
-      create: {
-        id: plan.id,
-        tenantId: TENANT_ID,
-        name: plan.name,
-        description: plan.description,
-        price: plan.price,
-        currency: "CHF",
-        status: "ACTIVE",
-        simultaneousBookingLimit: 4,
-      },
+      where: { id },
+      update: plan,
+      create: { id, tenantId: TENANT_ID, currency: "CHF", status: "ACTIVE", ...plan },
     })
   }
 

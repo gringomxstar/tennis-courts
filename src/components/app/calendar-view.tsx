@@ -10,7 +10,7 @@ import { useSheetSlot } from "@/components/app/use-sheet-slot";
 import { useNow } from "@/components/app/use-now";
 import { addDays, atHour, bookingAt, courtColor, courtLabel, shortName, slotState, startOfToday, surfaceKind, WD, type SlotState, type SurfaceKind } from "@/lib/courts";
 import type { Person } from "@/lib/partners";
-import type { BlockReason, Booking, Court, CourtBlock, Tenant } from "@/types";
+import type { BlockReason, Booking, Court, CourtBlock, Tenant, SportType } from "@/types";
 import { cn } from "@/lib/utils";
 
 const WINS = { morn: [7, 8, 9, 10, 11], day: [12, 13, 14, 15, 16], eve: [17, 18, 19, 20, 21] } as const;
@@ -30,6 +30,7 @@ export function CalendarView({
   wallet,
   windowDays,
   guestRate,
+  planSports,
 }: {
   tenant: Tenant;
   courts: Court[];
@@ -41,6 +42,7 @@ export function CalendarView({
   /** Booking window of the user's plan; the strip never shows more than 7 days. */
   windowDays: number | null;
   guestRate: boolean;
+  planSports: SportType[] | null;
 }) {
   const router = useRouter();
   const sheet = useSheetSlot();
@@ -242,7 +244,7 @@ export function CalendarView({
         </>
       )}
 
-      <BookingSheet slug={tenant.slug} settings={tenant.settingsJson} slot={sheet.slot} onClose={sheet.close} pool={partners} isAnon={!userId} guestRate={guestRate} wallet={wallet} />
+      <BookingSheet slug={tenant.slug} settings={tenant.settingsJson} slot={sheet.slot} onClose={sheet.close} pool={partners} isAnon={!userId} guestRate={guestRate} planSports={planSports} wallet={wallet} />
     </>
   );
 }

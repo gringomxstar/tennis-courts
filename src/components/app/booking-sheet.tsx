@@ -8,10 +8,10 @@ import { Sheet } from "@/components/app/sheet";
 import { Dot, Spinner } from "@/components/app/avatar";
 import { Segmented } from "@/components/app/segmented";
 import { createBookingAction } from "@/app/actions/booking";
-import { computeBookingCost, needsFloodlight, payButtonLabel, payOptions } from "@/lib/pricing";
+import { computeBookingCost, isDinerSlot, needsFloodlight, payButtonLabel, payOptions } from "@/lib/pricing";
 import { courtColor, courtLabel, hh, initials, longDate } from "@/lib/courts";
 import type { Person } from "@/lib/partners";
-import type { Court, PaymentMethod, TenantSettings } from "@/types";
+import type { Court, PaymentMethod, TenantSettings, SportType } from "@/types";
 import { cn } from "@/lib/utils";
 
 export interface SheetSlot {
@@ -30,6 +30,7 @@ export function BookingSheet({
   pool,
   isAnon,
   guestRate = isAnon,
+  planSports = null,
   wallet = 0,
 }: {
   slug: string;
@@ -40,6 +41,7 @@ export function BookingSheet({
   isAnon: boolean;
   /** Logged-in GUEST accounts without Abo also pay the guest court rate. */
   guestRate?: boolean;
+  planSports?: SportType[] | null;
   wallet?: number;
 }) {
   const router = useRouter();
@@ -63,6 +65,7 @@ export function BookingSheet({
         settings,
         court: s.court,
         isGuest: guestRate,
+        planSports,
         durationMinutes: 60,
         guestCount: 0,
         hasBallMachine: false,
@@ -192,6 +195,11 @@ export function BookingSheet({
               <span>{base > 0 ? `CHF ${base}` : "im Abo inklusive"}</span>
             </div>
           </div>
+          {!isAnon && !guestRate && planSports && isDinerSlot(settings, s?.start) && (
+            <Link href={reserveHref} className="mt-2 block text-center text-[13px] text-muted-foreground">
+              Diner Tennis: Gast gratis mitnehmen – <span className="font-semibold text-clay-text">Gast hinzufügen</span>
+            </Link>
+          )}
           {isAnon && (
             <Link href={`/c/${slug}/abos`} className="mt-2 block text-center text-[13px] text-muted-foreground">
               Mit Abo: Sandplätze ohne Platzgebühr – <span className="font-semibold text-clay-text">Abos ansehen</span>

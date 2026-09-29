@@ -4,6 +4,7 @@ import { useState } from "react";
 import { LimitRole, PriceRule, SportType, TenantSettings } from "@/types";
 import { LIMIT_ROLES, SPORTS } from "@/lib/booking-rules";
 import { WD } from "@/lib/courts";
+import { DINER_DEFAULT } from "@/lib/pricing";
 import { purgeDemoDataAction, updateClubSettingsAction } from "@/app/actions/club-settings";
 import { SwitchKnob } from "@/components/app/switch";
 import { Spinner } from "@/components/app/avatar";
@@ -113,6 +114,7 @@ export function ClubSettingsForm({
   const [priceRules, setPriceRules] = useState<PriceRule[]>(initialSettings?.priceRules ?? []);
   const setRule = (i: number, patch: Partial<PriceRule>) =>
     setPriceRules(priceRules.map((r, j) => (j === i ? { ...r, ...patch } : r)));
+  const [diner, setDiner] = useState(initialSettings?.dinerTennis ?? DINER_DEFAULT);
   const optNum = (v: string) => (v === "" ? undefined : Number(v));
   const [ballMachineFee, setBallMachineFee] = useState<number>(
     initialSettings?.ballMachineFee ?? 10
@@ -166,6 +168,7 @@ export function ClubSettingsForm({
         payOnSite,
         payByInvoice,
         priceRules,
+        dinerTennis: diner,
         ballMachineFee: Number(ballMachineFee),
         floodlightFee: Number(floodlightFee),
         guestFee: Number(guestFee),
@@ -442,6 +445,48 @@ export function ClubSettingsForm({
               </label>
             ))}
           </div>
+        </div>
+
+        <div className={well}>
+          <Toggle
+            on={diner.enabled}
+            set={(enabled) => setDiner({ ...diner, enabled })}
+            title="Diner Tennis"
+            sub="Mitglieder mit Abo nehmen in diesem Zeitfenster 1 Gast gratis mit, wenn sie danach zusammen im Club essen."
+          />
+          {diner.enabled && (
+            <>
+              <div className="mt-3 flex gap-1">
+                {[1, 2, 3, 4, 5, 6, 0].map((d) => {
+                  const on = diner.weekdays.includes(d);
+                  return (
+                    <button
+                      key={d}
+                      type="button"
+                      aria-pressed={on}
+                      onClick={() => setDiner({ ...diner, weekdays: on ? diner.weekdays.filter((x) => x !== d) : [...diner.weekdays, d] })}
+                      className={`h-9 flex-1 rounded-[10px] text-[13px] font-bold ${on ? "bg-clay text-white" : "bg-card"}`}
+                    >
+                      {WD[d]}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-4">
+                {(
+                  [
+                    ["fromHour", "Von Uhr"],
+                    ["toHour", "Bis Uhr"],
+                  ] as const
+                ).map(([k, l]) => (
+                  <label key={k} className="block">
+                    <span className={label}>{l}</span>
+                    <input type="number" min={0} max={24} value={diner[k]} onChange={(e) => setDiner({ ...diner, [k]: Number(e.target.value) })} className={wellInput} />
+                  </label>
+                ))}
+              </div>
+            </>
+          )}
         </div>
 
         <Toggle

@@ -3,6 +3,7 @@ import { ballMachineConflict, checkBookingRules, slotLimitFor, type RuleInput } 
 
 const H = 3_600_000;
 const now = Date.UTC(2030, 0, 7, 8); // Monday
+const DAY_MS = 86_400_000;
 const at = (h: number) => new Date(now + h * H);
 const own = (h: number, sport: "TENNIS" | "PADEL" = "TENNIS", guestCount = 0) => ({
   startsAt: at(h).toISOString(), endsAt: at(h + 1).toISOString(), sport, guestCount,
@@ -32,6 +33,14 @@ assert.equal(slotLimitFor(null, "MEMBER", "TENNIS"), Infinity);
 // plan rules
 const plan = { bookingWindowDays: 7, allowedDurations: [60], simultaneousBookingLimit: 3, guestsPerWeek: 2 };
 const p: RuleInput = { ...base, settings: null, plan };
+// Abo Soleil: Mo–Fr 8–16; z(h) = h:00 Zurich (winter = UTC+1) on a Monday far ahead
+const z = (h: number) => new Date(Date.UTC(2030, 0, 7, h - 1));
+const ps: RuleInput = { ...p, now: z(0).getTime() - DAY_MS };
+const soleil = { ...plan, sports: ["TENNIS" as const], playWindow: { weekdays: [1, 2, 3, 4, 5], fromHour: 8, toHour: 16 } };
+assert.equal(checkBookingRules({ ...ps, plan: soleil, start: z(10), end: z(11) }), null);
+assert.match(checkBookingRules({ ...ps, plan: soleil, start: z(15), end: z(17) })!, /Mo–Fr 8–16 Uhr/);
+assert.match(checkBookingRules({ ...ps, plan: soleil, start: z(7), end: z(8) })!, /nur Mo–Fr/);
+assert.equal(checkBookingRules({ ...ps, plan: soleil, sport: "PADEL", start: z(18), end: z(19) }), null); // padel not covered, paid instead
 assert.equal(checkBookingRules(p), null);
 assert.match(checkBookingRules({ ...p, start: at(24 * 8), end: at(24 * 8 + 1) })!, /7 Tage/);
 assert.match(checkBookingRules({ ...p, end: at(11.5) })!, /60 Minuten/);

@@ -21,7 +21,7 @@ import {
   WDL,
 } from "@/lib/courts";
 import type { Person } from "@/lib/partners";
-import type { Booking, Court, CourtBlock, Tenant } from "@/types";
+import type { Booking, Court, CourtBlock, Tenant, SportType } from "@/types";
 
 const SURFACE_ORDER = { clay: 0, hard: 1, padel: 2 } as const;
 
@@ -36,7 +36,9 @@ export function HomeView({
   partners,
   wallet,
   guestRate,
+  planSports,
   minPlanPrice,
+  aboCta,
 }: {
   tenant: Tenant;
   courts: Court[];
@@ -48,7 +50,10 @@ export function HomeView({
   partners: Person[];
   wallet: number;
   guestRate: boolean;
+  planSports: SportType[] | null;
   minPlanPrice: number | null;
+  /** Logged-in Abo prompt: no Abo yet, or the Abo ends within 30 days without renewal. */
+  aboCta: "join" | "renew" | null;
 }) {
   const sheet = useSheetSlot();
   // local-time rendering only on the client, so server/client never disagree about "now"
@@ -191,12 +196,27 @@ export function HomeView({
           >
             Mitglied? Anmelden
           </Link>
-          {minPlanPrice !== null && (
-            <Link href={`/c/${tenant.slug}/abos`} className="mt-3 block text-center text-[15px] font-semibold text-clay-text">
-              Abos ab CHF {Number.isInteger(minPlanPrice) ? minPlanPrice : minPlanPrice.toFixed(2)}/Jahr
-            </Link>
-          )}
         </div>
+      )}
+
+      {minPlanPrice !== null && (!userId || aboCta) && (
+        <Link
+          href={`/c/${tenant.slug}/abos`}
+          className="mx-5 mt-2.5 flex items-center gap-3.5 rounded-[22px] border border-border bg-card px-[18px] py-4 transition-transform duration-[350ms] ease-spring active:scale-[.98]"
+        >
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-clay text-white">
+            <svg aria-hidden width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.4l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z" /></svg>
+          </span>
+          <span className="flex-1">
+            <span className="block text-[16px] font-bold">{aboCta === "renew" ? "Abo verlängern" : "Mitglied werden"}</span>
+            <span className="mt-px block text-[14px] text-muted-foreground">
+              {aboCta === "renew"
+                ? "Läuft am 31. März ab. Jetzt für die nächste Saison verlängern."
+                : `${userId ? "Sandplätze ohne Platzgebühr" : "Saison"} bis 31. März · ab CHF ${Number.isInteger(minPlanPrice) ? minPlanPrice : minPlanPrice.toFixed(2)}`}
+            </span>
+          </span>
+          <Chevron />
+        </Link>
       )}
 
       {userId && ready && !next && (
@@ -272,7 +292,7 @@ export function HomeView({
         · {open}–{close} Uhr
       </div>
 
-      <BookingSheet slug={tenant.slug} settings={settings} slot={sheet.slot} onClose={sheet.close} pool={partners} isAnon={!userId} guestRate={guestRate} wallet={wallet} />
+      <BookingSheet slug={tenant.slug} settings={settings} slot={sheet.slot} onClose={sheet.close} pool={partners} isAnon={!userId} guestRate={guestRate} planSports={planSports} wallet={wallet} />
     </>
   );
 }

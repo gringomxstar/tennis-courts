@@ -1,5 +1,6 @@
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
+import { seasonEnd } from "@/lib/membership";
 
 /**
  * Fixed demo personas. Their passwords live in the repo, so src/auth.ts refuses them unless a club
@@ -56,7 +57,7 @@ export async function ensureDemoAccounts(tenantId: string) {
             userId: user.id,
             membershipPlanId: cheapest.id,
             startsAt: now,
-            endsAt: new Date(now.getTime() + 365 * 86_400_000),
+            endsAt: seasonEnd(now),
           },
         });
       }
