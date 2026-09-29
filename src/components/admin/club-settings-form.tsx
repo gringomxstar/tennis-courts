@@ -112,6 +112,8 @@ export function ClubSettingsForm({
   const [lateBookingMinutes, setLateBookingMinutes] = useState<number>(initialSettings?.lateBookingMinutes ?? 15);
   const [payOnSite, setPayOnSite] = useState<boolean>(initialSettings?.payOnSite ?? false);
   const [payByInvoice, setPayByInvoice] = useState<boolean>(initialSettings?.payByInvoice ?? false);
+  const [invoiceIban, setInvoiceIban] = useState(initialSettings?.invoiceIban ?? "");
+  const [invoiceBank, setInvoiceBank] = useState(initialSettings?.invoiceBank ?? "");
   const [demoMode, setDemoMode] = useState<boolean>(initialSettings?.demoMode ?? false);
   const [priceRules, setPriceRules] = useState<PriceRule[]>(initialSettings?.priceRules ?? []);
   const setRule = (i: number, patch: Partial<PriceRule>) =>
@@ -169,6 +171,8 @@ export function ClubSettingsForm({
         lateBookingMinutes: Number(lateBookingMinutes),
         payOnSite,
         payByInvoice,
+        invoiceIban,
+        invoiceBank,
         priceRules,
         dinerTennis: diner,
         ballMachineFee: Number(ballMachineFee),
@@ -366,6 +370,18 @@ export function ClubSettingsForm({
           <div className="mt-3 flex flex-col gap-2">
             <Toggle on={payOnSite} set={setPayOnSite} title="Vor Ort bezahlen" sub="Bar oder Karte im Club. Du markierst die Zahlung unter Heute." />
             <Toggle on={payByInvoice} set={setPayByInvoice} title="Auf Rechnung" sub="Nur für angemeldete Spieler." />
+            {payByInvoice && (
+              <div className="grid grid-cols-2 gap-2">
+                <label className="block">
+                  <span className={label}>IBAN für Rechnungen</span>
+                  <input value={invoiceIban} onChange={(e) => setInvoiceIban(e.target.value)} placeholder="CH.." autoComplete="off" className={wellInput} />
+                </label>
+                <label className="block">
+                  <span className={label}>Bank</span>
+                  <input value={invoiceBank} onChange={(e) => setInvoiceBank(e.target.value)} autoComplete="off" className={wellInput} />
+                </label>
+              </div>
+            )}
           </div>
         </div>
 

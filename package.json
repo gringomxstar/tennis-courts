@@ -8,6 +8,7 @@
     "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
+    "test": "for f in booking-rules pricing season password-token import-stats iban; do tsx scripts/check-$f.ts || exit 1; done",
     "db:provision": "tsx scripts/provision-db.ts",
     "db:test-constraints": "tsx scripts/test-exclusion-constraint.ts",
     "db:seed": "tsx prisma/seed.ts"

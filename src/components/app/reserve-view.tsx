@@ -117,7 +117,7 @@ export function ReserveView({
     setDur(n);
   };
 
-  const light = needsFloodlight(court, startDate.getHours()) || (dur === 2 && needsFloodlight(court, startDate.getHours() + 1));
+  const light = needsFloodlight(court, startDate, dur * 60);
   const cost = computeBookingCost({
     settings: tenant.settingsJson,
     court,
@@ -171,7 +171,6 @@ export function ReserveView({
         ...guests.map((g) => ({ type: "GUEST" as const, guestName: g.name, guestEmail: g.email || undefined })),
       ],
       hasBallMachine: ball,
-      hasLighting: light,
       ...(cost.total > 0 ? { paymentMethod: pay, splitCosts: canSplit && split } : {}),
     }).catch(() => ({ success: false as const, error: "Verbindung fehlgeschlagen. Bitte erneut versuchen." }));
     if (res.success && "checkoutUrl" in res && res.checkoutUrl) {
@@ -362,7 +361,7 @@ export function ReserveView({
               className="mt-2.5 flex w-full items-center justify-between rounded-[18px] bg-inset px-4 py-3.5 text-[16px] font-semibold text-foreground"
             >
               <span>Gast hinzufügen</span>
-              <span>{diner && guests.length === 0 ? "Gratis" : `CHF ${tenant.settingsJson?.guestFee ?? 15}`}</span>
+              <span>{guestRate || (diner && guests.length === 0) ? "Gratis" : `CHF ${tenant.settingsJson?.guestFee ?? 15}`}</span>
             </button>
           )}
           {diner && (

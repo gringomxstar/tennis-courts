@@ -1,7 +1,7 @@
 import type Stripe from "stripe";
 import { getStripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
-import { grantMembership, grantPartnerMembership, type Partner } from "@/lib/membership";
+import { grantMembership, grantPartnerMembership, isPartnerRow, type Partner } from "@/lib/membership";
 import { sendMail, sendRenewalReminder } from "@/lib/mail";
 
 // Auto-renewal state lives on the Stripe customer (metadata + default card): no extra DB columns.
@@ -38,6 +38,25 @@ export async function stopAutoRenew(customerId: string, tenantId: string) {
 
 const DAY = 86_400_000;
 
+/** Off-session charge of the saved card for the next season of membership `m`. */
+function charge(stripe: Stripe, customer: Stripe.Customer, plan: { id: string; name: string; price: unknown; currency: string }, m: { id: string; tenantId: string; userId: string; tenant: { name: string } }) {
+  const pm = customer.invoice_settings?.default_payment_method as string | null;
+  if (!pm) throw new Error("no saved card");
+  return stripe.paymentIntents.create(
+    {
+      amount: Math.round(Number(plan.price) * 100),
+      currency: plan.currency.toLowerCase(),
+      customer: customer.id,
+      payment_method: pm,
+      off_session: true,
+      confirm: true,
+      description: `${plan.name}, Saison-Verlängerung ${m.tenant.name}`,
+      metadata: { planId: plan.id, tenantId: m.tenantId, userId: m.userId, membershipId: m.id, renewal: "1" },
+    },
+    { idempotencyKey: `renew-${m.id}` }
+  );
+}
+
 /**
  * Daily cron: 14 days before the season end, remind everyone without auto-renewal; within the last
  * 3 days, charge the saved card of auto-renewers (off-session). Idempotent per membership.
@@ -52,43 +71,44 @@ export async function runAboRenewals(now = new Date()) {
     // already renewed for next season?
     const next = await prisma.membership.count({ where: { userId: m.userId, tenantId: m.tenantId, status: "ACTIVE", startsAt: { gte: m.endsAt! } } });
     if (next) continue;
+    if (isPartnerRow(m)) continue; // the buyer renews the Paar-Abo for both
     const planId = await autoRenewPlanId(m.user.stripeCustomerId, m.tenantId).catch(() => null);
     const plan = planId ? await prisma.membershipPlan.findFirst({ where: { id: planId, status: "ACTIVE" } }) : null;
 
     if (plan && m.endsAt!.getTime() - now.getTime() <= 3 * DAY) {
+      let pi: Stripe.PaymentIntent | null = null;
       try {
         const stripe = getStripe();
         const customer = (await stripe.customers.retrieve(m.user.stripeCustomerId!)) as Stripe.Customer;
-        const pm = customer.invoice_settings?.default_payment_method as string | null;
-        if (!pm) throw new Error("no saved card");
-        const pi = await stripe.paymentIntents.create(
-          {
-            amount: Math.round(Number(plan.price) * 100),
-            currency: plan.currency.toLowerCase(),
-            customer: customer.id,
-            payment_method: pm,
-            off_session: true,
-            confirm: true,
-            description: `${plan.name}, Saison-Verlängerung ${m.tenant.name}`,
-            metadata: { planId: plan.id, tenantId: m.tenantId, userId: m.userId, renewal: "1" },
-          },
-          { idempotencyKey: `renew-${m.id}` }
-        );
-        if (pi.status !== "succeeded") throw new Error(`payment ${pi.status}`);
-        await grantMembership(m.tenantId, m.userId, plan.id, pi.id);
-        const partner = customer.metadata?.[partnerKey(m.tenantId)];
-        if (partner) await grantPartnerMembership(m.tenantId, plan.id, JSON.parse(partner) as Partner, pi.id);
-        await sendMail(m.user.email, `Abo verlängert: ${m.tenant.name}`, [
-          `Hallo ${m.user.firstName}`, "",
-          `dein Abo «${plan.name}» wurde automatisch um eine Saison verlängert (CHF ${Number(plan.price)}).`,
-          `Automatische Verlängerung ausschalten: ${appUrl()}/c/${m.tenant.slug}/abos`,
-        ].join("\n"));
-        done.renewed++;
-        continue;
+        // idempotency keys only live ~24h and the window has up to 3 runs: look for an earlier successful charge first
+        const earlier = await stripe.paymentIntents.search({ query: `metadata['membershipId']:'${m.id}' AND status:'succeeded'` });
+        const p = earlier.data[0] ?? (await charge(stripe, customer, plan, m));
+        if (p.status !== "succeeded") throw new Error(`payment ${p.status}`);
+        pi = p;
       } catch (e) {
         console.error(`Auto-Verlängerung ${m.id} fehlgeschlagen:`, e);
         done.failed++;
         // fall through to the reminder so the member can pay by hand
+      }
+      if (pi) {
+        // charged: never remind or charge again; a failed grant is retried tomorrow (the search finds this payment)
+        try {
+          const customer = (await getStripe().customers.retrieve(m.user.stripeCustomerId!)) as Stripe.Customer;
+          const partner = customer.metadata?.[partnerKey(m.tenantId)];
+          // partner first: once the buyer is renewed, `next` skips this membership for good
+          if (partner) await grantPartnerMembership(m.tenantId, plan.id, JSON.parse(partner) as Partner, pi.id);
+          await grantMembership(m.tenantId, m.userId, plan.id, pi.id, pi.amount / 100);
+          await sendMail(m.user.email, `Abo verlängert: ${m.tenant.name}`, [
+            `Hallo ${m.user.firstName}`, "",
+            `dein Abo «${plan.name}» wurde automatisch um eine Saison verlängert (CHF ${pi.amount / 100}).`,
+            `Automatische Verlängerung ausschalten: ${appUrl()}/c/${m.tenant.slug}/abos`,
+          ].join("\n"));
+          done.renewed++;
+        } catch (e) {
+          console.error(`Verlängerung ${m.id} bezahlt, Freischaltung fehlgeschlagen (morgen erneut):`, e);
+          done.failed++;
+        }
+        continue;
       }
     } else if (plan) continue; // auto-renewer, not due yet
 

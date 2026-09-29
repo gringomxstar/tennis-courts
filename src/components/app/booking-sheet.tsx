@@ -65,7 +65,7 @@ export function BookingSheet({
   }
 
   const s = shown;
-  const light = s ? needsFloodlight(s.court, s.start.getHours()) : false;
+  const light = s ? needsFloodlight(s.court, s.start, 60) : false;
   const cost = s
     ? computeBookingCost({
         settings,
@@ -105,7 +105,6 @@ export function BookingSheet({
         ...players.map((userId) => ({ type: "MEMBER" as const, userId })),
         ...(guestName ? [{ type: "GUEST" as const, guestName }] : []),
       ],
-      hasLighting: light,
       ...(total > 0 ? { paymentMethod: pay } : {}),
       ...(isAnon ? { guestFirstName: guest.first, guestLastName: guest.last, guestEmail: guest.email } : {}),
     }).catch(() => ({ success: false as const, error: "Verbindung fehlgeschlagen. Bitte erneut versuchen." }));
@@ -245,7 +244,7 @@ export function BookingSheet({
               </div>
             )}
             <div className="flex justify-between text-[16px] font-semibold">
-              <span>{isAnon ? "Platz + Gastgebühr" : coGuest !== null ? "Platz + Gast" : "Platz"}</span>
+              <span>{guestRate ? "Platz (Gasttarif)" : coGuest !== null ? "Platz + Gast" : "Platz"}</span>
               <span>{base > 0 ? `CHF ${base}` : "im Abo inklusive"}</span>
             </div>
           </div>

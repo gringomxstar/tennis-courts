@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { Avatar, Spinner } from "@/components/app/avatar";
 import { Sheet } from "@/components/app/sheet";
 import { AdminGrantCreditsButton } from "@/components/admin/admin-grant-credits-button";
-import { markInvoiceAsPaidManually, sendPaymentReminderAction } from "@/actions/admin-billing";
+import { sendPaymentReminderAction } from "@/actions/admin-billing";
 import {
   importMembersAction, markMembershipPaidAction, removeMemberAction, renewMembershipAction, saveMemberAction, sendRenewalRemindersAction, type MemberInput,
 } from "@/app/actions/club-settings";
@@ -141,9 +141,8 @@ export function AdminMembers({ slug, tenantId, members, plans }: { slug: string;
   const allOn = shown.length > 0 && shown.every((m) => sel.includes(m.id));
   const toggle = (id: string) => setSel((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
 
-  // Stripe invoices go through Stripe; Abos assigned by hand are paid cash / by transfer
-  const payOne = (m: MemberRow) =>
-    m.stripeCustomerId && m.state === "invoice" ? markInvoiceAsPaidManually(tenantId, m.id, m.stripeCustomerId) : markMembershipPaidAction(slug, m.id);
+  // newest open invoice → ACTIVE via grantMembership (price snapshot, starts after a running Abo)
+  const payOne = (m: MemberRow) => markMembershipPaidAction(slug, m.id);
 
   async function markPaid(m: MemberRow) {
     if (busy) return;

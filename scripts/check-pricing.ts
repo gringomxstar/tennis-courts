@@ -12,15 +12,23 @@ assert.equal(computeBookingCost({ ...base, court: outdoor, isGuest: false, guest
 assert.equal(computeBookingCost({ ...base, court: outdoor, isGuest: false, hasBallMachine: true, durationMinutes: 120 }).total, 20);
 assert.equal(computeBookingCost({ ...base, court: outdoor, isGuest: false, hasLighting: true }).total, 0); // floodlight free by default
 assert.equal(computeBookingCost({ ...base, settings: { floodlightFee: 5 } as never, court: outdoor, isGuest: false, hasLighting: true }).total, 5);
-assert.equal(computeBookingCost({ ...base, court: outdoor, isGuest: true, settings: { guestFee: 20, defaultHourlyRateTennis: 25 } as never, guestCount: 1 }).total, 45);
-assert.equal(needsFloodlight({ hasLighting: true }, 19), true);
-assert.equal(needsFloodlight({ hasLighting: true }, 18), false);
-assert.equal(needsFloodlight({ hasLighting: false }, 20), false);
+// guest rate: full court, no guest fee on top for the co-players (the court price is per court, not per person)
+assert.equal(computeBookingCost({ ...base, court: outdoor, isGuest: true, settings: { guestFee: 20, defaultHourlyRateTennis: 25 } as never, guestCount: 1 }).total, 25);
+assert.equal(computeBookingCost({ ...base, court: outdoor, isGuest: true, guestCount: 3 }).total, 30);
+// z(h) = h:00 Zurich (summer, UTC+2), independent of the machine's time zone
+const z = (h: number, m = 0) => new Date(Date.UTC(2030, 6, 1, h - 2, m));
+assert.equal(needsFloodlight({ hasLighting: true }, z(19), 60), true);
+assert.equal(needsFloodlight({ hasLighting: true }, z(18), 60), false); // ends 19:00
+assert.equal(needsFloodlight({ hasLighting: true }, z(18), 90), true); // runs until 19:30
+assert.equal(needsFloodlight({ hasLighting: true }, z(18), 120), true);
+assert.equal(needsFloodlight({ hasLighting: false }, z(20), 60), false);
 assert.equal(paysGuestRate(false, null, false), true);
 assert.equal(paysGuestRate(true, "GUEST", false), true); // registered/claimed account without Abo
 assert.equal(paysGuestRate(true, "GUEST", true), false);
 assert.equal(paysGuestRate(true, "MEMBER", false), false);
 assert.equal(paysGuestRate(true, "COACH", false), false);
+assert.equal(paysGuestRate(true, null, false), true); // logged in, but not part of this club
+assert.equal(paysGuestRate(true, undefined, true), false);
 assert.equal(computeBookingCost({ ...base, court: padel, isGuest: false, planSports: ["PADEL"] }).total, 0); // padel Abo
 assert.equal(computeBookingCost({ ...base, court: padel, isGuest: false, planSports: ["TENNIS"] }).total, 40);
 assert.equal(computeBookingCost({ ...base, court: outdoor, isGuest: false, planSports: ["PADEL"] }).total, 30); // padel-only Abo

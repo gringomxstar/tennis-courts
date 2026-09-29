@@ -4,6 +4,7 @@ import { getStripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
 import { planFromDb } from "@/lib/data";
 import { seasonEnd, parsePartner } from "@/lib/membership";
+import type { TenantSettings } from "@/types";
 
 export async function POST(req: Request) {
   try {
@@ -29,8 +30,13 @@ export async function POST(req: Request) {
     if (!plan || plan.status !== "ACTIVE") {
       return NextResponse.json({ error: "Membership Plan not found" }, { status: 404 });
     }
+    const rules = planFromDb(plan);
+    const settings = plan.tenant.settingsJson as TenantSettings | null;
+    if (paymentMethod === "OFFLINE_INVOICE" && !(settings?.payByInvoice && settings.invoiceIban)) {
+      return NextResponse.json({ error: "Dieser Club bietet keine Zahlung auf Rechnung an." }, { status: 400 });
+    }
     // Paar-Abo: second person comes with the purchase; online only (invoice can't carry the partner)
-    const couple = planFromDb(plan).persons === 2;
+    const couple = rules.persons === 2;
     const partner = couple ? parsePartner(rawPartner, session.user.email) : null;
     if (typeof partner === "string") return NextResponse.json({ error: partner }, { status: 400 });
     if (couple && paymentMethod === "OFFLINE_INVOICE") {
@@ -41,6 +47,14 @@ export async function POST(req: Request) {
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
     });
+
+    // age-limited plans (Junioren, Kinder): same Jahrgang rule as the Abo page; a missing birth date is flagged in the admin list instead
+    if (user?.birthDate && (rules.ageMin != null || rules.ageMax != null)) {
+      const age = new Date().getFullYear() - user.birthDate.getUTCFullYear();
+      if (age < (rules.ageMin ?? 0) || age > (rules.ageMax ?? 200)) {
+        return NextResponse.json({ error: `Dieses Abo gilt für ${rules.ageMin ?? 0}–${rules.ageMax ?? "∞"} Jahre (Jahrgang).` }, { status: 400 });
+      }
+    }
 
     let customerId = user?.stripeCustomerId;
 
@@ -70,17 +84,21 @@ export async function POST(req: Request) {
     // MODE A: KAUF AUF RECHNUNG (Offline E-Banking)
     // ==========================================
     if (paymentMethod === "OFFLINE_INVOICE") {
-      // Erstelle das Abo im PENDING Status in der Datenbank
-      const membership = await prisma.membership.create({
-        data: {
-          tenantId: plan.tenantId,
-          userId: user!.id,
-          membershipPlanId: plan.id,
-          startsAt: new Date(),
-          endsAt: seasonEnd(), // same as grantMembership
-          status: "PENDING"
-        }
+      // one open invoice per plan: a second click shows the same invoice instead of a second PENDING row
+      const open = await prisma.membership.findFirst({
+        where: { tenantId: plan.tenantId, userId: user!.id, membershipPlanId: plan.id, status: "PENDING" },
       });
+      // with an Abo still running the new season starts when it ends (same as grantMembership)
+      const running = await prisma.membership.findFirst({
+        where: { tenantId: plan.tenantId, userId: user!.id, status: "ACTIVE", endsAt: { gt: new Date() } },
+        orderBy: { endsAt: "desc" },
+      });
+      const startsAt = running?.endsAt ? new Date(running.endsAt.getTime() + 1000) : new Date();
+      const membership =
+        open ??
+        (await prisma.membership.create({
+          data: { tenantId: plan.tenantId, userId: user!.id, membershipPlanId: plan.id, startsAt, endsAt: seasonEnd(startsAt), status: "PENDING" },
+        }));
 
       return NextResponse.json({
         success: true,

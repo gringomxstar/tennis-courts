@@ -187,7 +187,7 @@ export function AdminToday({
                   <div className="flex-1">
                     <div className="text-[16px] font-bold">{p.name}</div>
                     <div className="text-[14px] text-muted-foreground">
-                      {now ? `${longDate(new Date(p.startsAt))}, ${hhmm(new Date(p.startsAt))}` : ""} · CHF {p.amount} · {p.method}
+                      {now ? `${longDate(new Date(p.startsAt))}, ${hhmm(new Date(p.startsAt))}` : ""} · CHF {Number(p.amount).toFixed(2)} · {p.method}
                     </div>
                   </div>
                   <button

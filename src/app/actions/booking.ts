@@ -14,8 +14,8 @@ import { prisma } from "@/lib/prisma";
 import { getStripe } from "@/lib/stripe";
 import { revalidatePath } from "next/cache";
 import { computeBookingCost, needsFloodlight, paysGuestRate } from "@/lib/pricing";
-import { BookingType, BlockReason, BookingParticipant, PaymentMethod, TenantSettings } from "@/types";
-import { sendBookingCancellation, sendBookingConfirmation } from "@/lib/mail";
+import { BlockReason, BookingParticipant, PaymentMethod, TenantSettings } from "@/types";
+import { sendBookingCancellation, sendBookingConfirmation, sendMail } from "@/lib/mail";
 import { ballMachineConflict, cancelDeadlineMinutes, checkBookingRules, deadlineText, lateBookingCutoff, weeklyStarts } from "@/lib/booking-rules";
 import { randomUUID } from "node:crypto";
 import { InsufficientFundsError, creditWallet, debitWallets, refundBookingWallets } from "@/lib/wallet";
@@ -34,13 +34,11 @@ export interface CreateBookingInput {
   courtId: string;
   startsAt: string; // ISO String
   durationMinutes: number; // 60, 90, 120
-  bookingType?: BookingType;
   matchType?: "SINGLE" | "DOUBLE";
   participants?: CreateBookingParticipantInput[];
   opponentUserId?: string;
   guestName?: string;
   hasBallMachine?: boolean;
-  hasLighting?: boolean;
   notes?: string;
   // Identity of the person booking, required when there is no session (anonymous guest).
   // Distinct from `guestName` above, which names an invited playing partner, not the organizer.
@@ -281,6 +279,8 @@ export async function createBookingAction(input: CreateBookingInput) {
     }
   }
 
+  // never trust the browser for the floodlight fee
+  const hasLighting = needsFloodlight(court, startDate, input.durationMinutes);
   const { total: totalCost } = computeBookingCost({
     settings,
     court,
@@ -289,7 +289,7 @@ export async function createBookingAction(input: CreateBookingInput) {
     durationMinutes: input.durationMinutes,
     guestCount,
     hasBallMachine: Boolean(input.hasBallMachine),
-    hasLighting: Boolean(input.hasLighting),
+    hasLighting,
     start: startDate,
   });
 
@@ -348,11 +348,11 @@ export async function createBookingAction(input: CreateBookingInput) {
       startsAt: startDate.toISOString(),
       endsAt: endDate.toISOString(),
       status: "CONFIRMED",
-      bookingType: isGuest ? "GUEST" : input.bookingType || "MEMBER",
+      bookingType: isGuest ? "GUEST" : member?.role === "COACH" ? "COACH" : "MEMBER",
       price: totalCost,
       totalCost,
       hasBallMachine: Boolean(input.hasBallMachine),
-      hasLighting: Boolean(input.hasLighting),
+      hasLighting,
       notes: input.notes || null,
       organizer: participants[0].user!,
       participants,
@@ -370,11 +370,11 @@ export async function createBookingAction(input: CreateBookingInput) {
     status: m === "ONLINE" ? ("PENDING" as const) : ("CONFIRMED" as const),
     paymentStatus: !m ? ("WAIVED" as const) : m === "WALLET" ? ("PAID" as const) : ("UNPAID" as const),
     paymentMethod: m,
-    bookingType: isGuest ? ("GUEST" as const) : input.bookingType || (member?.role === "COACH" ? ("COACH" as const) : "MEMBER"),
+    bookingType: isGuest ? ("GUEST" as const) : member?.role === "COACH" ? ("COACH" as const) : ("MEMBER" as const),
     price: totalCost,
     totalCost,
     hasBallMachine: Boolean(input.hasBallMachine),
-    hasLighting: Boolean(input.hasLighting),
+    hasLighting,
     notes: input.notes || null,
     createdById: organizerId,
     participants: {
@@ -512,8 +512,7 @@ export async function createCoachSeriesAction(input: {
   const seriesId = randomUUID().slice(0, 8);
   const rows = free.map((s, n) => {
     const e = new Date(s.getTime() + minutes * 60_000);
-    const hour = Number(s.toLocaleString("en-US", { timeZone: "Europe/Zurich", hour: "numeric", hourCycle: "h23" }));
-    const light = needsFloodlight(court, hour) || needsFloodlight(court, hour + minutes / 60 - 1);
+    const light = needsFloodlight(court, s, minutes);
     const { total } = computeBookingCost({
       settings: tenant.settingsJson,
       court,
@@ -586,7 +585,7 @@ function cancelDeadlineError(startsAt: Date, settings: TenantSettings | null | u
 
 /** Cancel once, refund wallets and online payments, send the mail. */
 async function cancelAndRefund(
-  b: { id: string; status: string; paymentStatus: string; stripeSessionId: string | null },
+  b: { id: string; tenantId: string; status: string; stripeSessionId: string | null },
   cancelledById: string | null
 ) {
   const walletRefund = await prisma.$transaction(async (tx) => {
@@ -600,18 +599,30 @@ async function cancelAndRefund(
   if (walletRefund === null) return { success: false as const, error: "Diese Buchung ist bereits storniert." };
 
   let refund = walletRefund;
+  let refundFailed = false;
   if (b.stripeSessionId) {
-    if (b.paymentStatus === "PAID") {
-      refund += await refundStripeBooking(b.stripeSessionId).catch((e) => {
-        console.error(`Stripe-Rückerstattung für Buchung ${b.id} fehlgeschlagen:`, e);
-        return 0;
-      });
-    } else if (b.status === "PENDING") {
-      // close the open checkout so it can't be paid for a cancelled booking
-      await getStripe().checkout.sessions.expire(b.stripeSessionId).catch(() => {});
-    }
+    // ask Stripe, not the row read before the cancel: the payment may have landed in between
+    const online = await refundStripeBooking(b.stripeSessionId).catch(async (e) => {
+      console.error(`Stripe-Rückerstattung für Buchung ${b.id} fehlgeschlagen:`, e);
+      refundFailed = true;
+      await prisma.auditLog
+        .create({ data: { tenantId: b.tenantId, action: "REFUND_FAILED", entityType: "Booking", entityId: b.id } })
+        .catch(() => {});
+      const club = await prisma.tenant.findUnique({ where: { id: b.tenantId }, select: { email: true, name: true } }).catch(() => null);
+      if (club?.email) {
+        await sendMail(club.email, `Rückerstattung fehlgeschlagen: Buchung ${b.id}`, `Die Buchung ${b.id} wurde storniert, die Stripe-Rückerstattung ist fehlgeschlagen.\nBitte im Stripe-Dashboard manuell erstatten.\n\nFehler: ${String(e)}`);
+      }
+      return 0;
+    });
+    refund += online;
+    // still unpaid: close the open checkout so it can't be paid for a cancelled booking
+    if (!online && !refundFailed) await getStripe().checkout.sessions.expire(b.stripeSessionId).catch(() => {});
   }
-  if (b.status !== "PENDING") await sendBookingCancellation(b.id, refund);
+  refund = Math.round(refund * 100) / 100;
+  if (b.status !== "PENDING" || refund > 0) await sendBookingCancellation(b.id, refund);
+  if (refundFailed) {
+    return { success: false as const, error: "Storniert, aber die Online-Rückerstattung ist fehlgeschlagen. Bitte melde dich beim Club, er erstattet den Betrag manuell." };
+  }
   return { success: true as const, refundAmount: refund };
 }
 

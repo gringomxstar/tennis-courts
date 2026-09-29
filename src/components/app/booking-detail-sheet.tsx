@@ -65,7 +65,7 @@ export function BookingDetailSheet({
     setBusy(false);
     if (!res.success) return void toast(res.error ?? "Stornieren fehlgeschlagen");
     const refund = "refundAmount" in res ? res.refundAmount : 0;
-    toast(refund ? `Storniert · CHF ${refund} zurückerstattet` : "Buchung storniert");
+    toast(refund ? `Storniert · CHF ${refund.toFixed(2)} zurückerstattet` : "Buchung storniert");
     onClose();
     router.refresh();
   }
