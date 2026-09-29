@@ -3,8 +3,10 @@ import type { Court, PaymentMethod, PriceRule, SportType, TenantSettings } from 
 /** Hour (local) from which floodlight is charged on lit courts. */
 export const FLOODLIGHT_FROM_HOUR = 19;
 
-export function needsFloodlight(court: Pick<Court, "hasLighting">, startHour: number): boolean {
-  return court.hasLighting && startHour >= FLOODLIGHT_FROM_HOUR;
+/** Floodlight is due when a booking on a lit court runs past FLOODLIGHT_FROM_HOUR, in club time (server = browser). */
+export function needsFloodlight(court: Pick<Court, "hasLighting">, start: Date, minutes: number): boolean {
+  const hour = Number(Object.fromEntries(zurich.formatToParts(start).map((p) => [p.type, p.value])).hour);
+  return court.hasLighting && hour + minutes / 60 > FLOODLIGHT_FROM_HOUR;
 }
 
 export interface BookingCostInput {
@@ -50,9 +52,9 @@ export function matchingPriceRules(rules: PriceRule[] | undefined, start: Date, 
   );
 }
 
-/** Anonymous visitors and logged-in GUEST accounts without an Abo pay the guest court rate. */
+/** Anonymous visitors, GUEST accounts and logged-in people without a role in this club pay the guest rate unless they have an Abo. */
 export const paysGuestRate = (loggedIn: boolean, role: string | null | undefined, hasPlan: boolean) =>
-  !loggedIn || (role === "GUEST" && !hasPlan);
+  !loggedIn || ((!role || role === "GUEST") && !hasPlan);
 
 export const DINER_DEFAULT = { enabled: false, weekdays: [1, 2, 3, 4, 5], fromHour: 11, toHour: 13 };
 

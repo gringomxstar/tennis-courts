@@ -14,7 +14,7 @@ import { prisma } from "@/lib/prisma";
 import { getStripe } from "@/lib/stripe";
 import { revalidatePath } from "next/cache";
 import { computeBookingCost, needsFloodlight, paysGuestRate } from "@/lib/pricing";
-import { BookingType, BlockReason, BookingParticipant, PaymentMethod, TenantSettings } from "@/types";
+import { BlockReason, BookingParticipant, PaymentMethod, TenantSettings } from "@/types";
 import { sendBookingCancellation, sendBookingConfirmation } from "@/lib/mail";
 import { ballMachineConflict, cancelDeadlineMinutes, checkBookingRules, deadlineText, lateBookingCutoff, weeklyStarts } from "@/lib/booking-rules";
 import { randomUUID } from "node:crypto";
@@ -34,13 +34,11 @@ export interface CreateBookingInput {
   courtId: string;
   startsAt: string; // ISO String
   durationMinutes: number; // 60, 90, 120
-  bookingType?: BookingType;
   matchType?: "SINGLE" | "DOUBLE";
   participants?: CreateBookingParticipantInput[];
   opponentUserId?: string;
   guestName?: string;
   hasBallMachine?: boolean;
-  hasLighting?: boolean;
   notes?: string;
   // Identity of the person booking, required when there is no session (anonymous guest).
   // Distinct from `guestName` above, which names an invited playing partner, not the organizer.
@@ -281,6 +279,8 @@ export async function createBookingAction(input: CreateBookingInput) {
     }
   }
 
+  // never trust the browser for the floodlight fee
+  const hasLighting = needsFloodlight(court, startDate, input.durationMinutes);
   const { total: totalCost } = computeBookingCost({
     settings,
     court,
@@ -289,7 +289,7 @@ export async function createBookingAction(input: CreateBookingInput) {
     durationMinutes: input.durationMinutes,
     guestCount,
     hasBallMachine: Boolean(input.hasBallMachine),
-    hasLighting: Boolean(input.hasLighting),
+    hasLighting,
     start: startDate,
   });
 
@@ -348,11 +348,11 @@ export async function createBookingAction(input: CreateBookingInput) {
       startsAt: startDate.toISOString(),
       endsAt: endDate.toISOString(),
       status: "CONFIRMED",
-      bookingType: isGuest ? "GUEST" : input.bookingType || "MEMBER",
+      bookingType: isGuest ? "GUEST" : member?.role === "COACH" ? "COACH" : "MEMBER",
       price: totalCost,
       totalCost,
       hasBallMachine: Boolean(input.hasBallMachine),
-      hasLighting: Boolean(input.hasLighting),
+      hasLighting,
       notes: input.notes || null,
       organizer: participants[0].user!,
       participants,
@@ -370,11 +370,11 @@ export async function createBookingAction(input: CreateBookingInput) {
     status: m === "ONLINE" ? ("PENDING" as const) : ("CONFIRMED" as const),
     paymentStatus: !m ? ("WAIVED" as const) : m === "WALLET" ? ("PAID" as const) : ("UNPAID" as const),
     paymentMethod: m,
-    bookingType: isGuest ? ("GUEST" as const) : input.bookingType || (member?.role === "COACH" ? ("COACH" as const) : "MEMBER"),
+    bookingType: isGuest ? ("GUEST" as const) : member?.role === "COACH" ? ("COACH" as const) : ("MEMBER" as const),
     price: totalCost,
     totalCost,
     hasBallMachine: Boolean(input.hasBallMachine),
-    hasLighting: Boolean(input.hasLighting),
+    hasLighting,
     notes: input.notes || null,
     createdById: organizerId,
     participants: {
@@ -512,8 +512,7 @@ export async function createCoachSeriesAction(input: {
   const seriesId = randomUUID().slice(0, 8);
   const rows = free.map((s, n) => {
     const e = new Date(s.getTime() + minutes * 60_000);
-    const hour = Number(s.toLocaleString("en-US", { timeZone: "Europe/Zurich", hour: "numeric", hourCycle: "h23" }));
-    const light = needsFloodlight(court, hour) || needsFloodlight(court, hour + minutes / 60 - 1);
+    const light = needsFloodlight(court, s, minutes);
     const { total } = computeBookingCost({
       settings: tenant.settingsJson,
       court,
