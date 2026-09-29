@@ -17,7 +17,9 @@ export default async function AdminMembersPage({ params }: { params: Promise<{ c
     startsAt: Date; endsAt: Date | null; paidAt: Date | null; pricePaid: number | null;
   }>();
   const profile = new Map<string, { birthDate: string; gender: string }>();
+  const renewal = new Map<string, { endsAt: Date | null; status: string }>();
   if (process.env.DATABASE_URL) {
+    const now = new Date();
     const memberships = await prisma.membership.findMany({
       where: { tenantId: tenant.id },
       include: { user: true, plan: true },
@@ -25,11 +27,20 @@ export default async function AdminMembersPage({ params }: { params: Promise<{ c
     });
     for (const m of memberships) {
       const cur = best.get(m.userId);
-      if (!cur || RANK[m.status] < RANK[cur.status]) {
+      // same status: prefer the running Abo over an already renewed next season
+      const running = cur && RANK[m.status] === RANK[cur.status] && cur.startsAt > now && m.startsAt <= now;
+      if (!cur || RANK[m.status] < RANK[cur.status] || running) {
         best.set(m.userId, {
           status: m.status, planName: m.plan.name, planId: m.plan.id, stripeCustomerId: m.user.stripeCustomerId,
           startsAt: m.startsAt, endsAt: m.endsAt, paidAt: m.paidAt, pricePaid: m.pricePaid == null ? null : Number(m.pricePaid),
         });
+      }
+    }
+    // next season already booked (renewed Abo starts when the current one ends)
+    for (const m of memberships) {
+      const cur = best.get(m.userId);
+      if (cur?.endsAt && (m.status === "ACTIVE" || m.status === "PENDING") && m.startsAt >= cur.endsAt) {
+        renewal.set(m.userId, { endsAt: m.endsAt, status: m.status });
       }
     }
   }
@@ -64,6 +75,8 @@ export default async function AdminMembersPage({ params }: { params: Promise<{ c
         planEnd: ms?.endsAt?.toISOString() ?? "",
         paidAt: ms?.paidAt?.toISOString() ?? "",
         pricePaid: ms?.pricePaid ?? null,
+        renewedUntil: renewal.get(m.id)?.endsAt?.toISOString() ?? "",
+        renewalOpen: renewal.get(m.id)?.status === "PENDING",
       };
     });
 
@@ -76,7 +89,7 @@ export default async function AdminMembersPage({ params }: { params: Promise<{ c
         </div>
         <ImportMembers slug={tenant.slug} />
       </div>
-      <AdminMembers slug={tenant.slug} tenantId={tenant.id} members={rows} plans={plans.map((p) => ({ id: p.id, name: p.name, price: p.price }))} />
+      <AdminMembers slug={tenant.slug} tenantId={tenant.id} members={rows} plans={plans.map((p) => ({ id: p.id, name: p.name, price: p.price, ageMin: p.ageMin ?? null, ageMax: p.ageMax ?? null, proofRequired: Boolean(p.proofRequired) }))} />
     </>
   );
 }

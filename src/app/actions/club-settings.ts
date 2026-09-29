@@ -16,7 +16,7 @@ import { LIMIT_ROLES, SPORTS } from "@/lib/booking-rules";
 import { ensureDemoAccounts, purgeDemoData } from "@/lib/demo";
 import { parseMembers } from "@/lib/member-import";
 import { passwordLink } from "@/lib/booking-link";
-import { sendPasswordLink } from "@/lib/mail";
+import { sendPasswordLink, sendRenewalReminder } from "@/lib/mail";
 import { grantMembership, seasonEnd } from "@/lib/membership";
 import { parseDate } from "@/lib/member-import";
 
@@ -710,6 +710,45 @@ export async function markMembershipPaidAction(clubSlug: string, userId: string)
   await grantMembership(authCheck.tenant.id, userId, pending.membershipPlanId);
   revalidatePath(`/c/${clubSlug}/admin`, "layout");
   return { success: true as const };
+}
+
+/** Next season of the current Abo: paid = ACTIVE right away, else an open invoice (PENDING) starting when the current one ends. */
+export async function renewMembershipAction(clubSlug: string, userId: string, paid: boolean) {
+  const authCheck = await verifyClubAdmin(clubSlug);
+  if (!authCheck.authorized || !authCheck.tenant) return { success: false as const, error: authCheck.error };
+  const tenantId = authCheck.tenant.id;
+  const current = await prisma.membership.findFirst({
+    where: { tenantId, userId, status: "ACTIVE", endsAt: { gt: new Date() } },
+    orderBy: { endsAt: "desc" },
+  });
+  if (!current?.endsAt) return { success: false as const, error: "Kein laufendes Abo zum Verlängern." };
+  const next = await prisma.membership.count({ where: { tenantId, userId, status: { in: ["ACTIVE", "PENDING"] }, startsAt: { gte: current.endsAt } } });
+  if (next) return { success: false as const, error: "Ist bereits für die nächste Saison verlängert." };
+  if (paid) await grantMembership(tenantId, userId, current.membershipPlanId);
+  else {
+    const startsAt = new Date(current.endsAt.getTime() + 1000);
+    await prisma.membership.create({ data: { tenantId, userId, membershipPlanId: current.membershipPlanId, status: "PENDING", startsAt, endsAt: seasonEnd(startsAt) } });
+  }
+  revalidatePath(`/c/${clubSlug}/admin`, "layout");
+  return { success: true as const };
+}
+
+/** Renewal mail to each given member with a running Abo; returns how many were sent. */
+export async function sendRenewalRemindersAction(clubSlug: string, userIds: string[]) {
+  const authCheck = await verifyClubAdmin(clubSlug);
+  if (!authCheck.authorized || !authCheck.tenant) return { success: false as const, error: authCheck.error };
+  const tenant = authCheck.tenant;
+  const running = await prisma.membership.findMany({
+    where: { tenantId: tenant.id, userId: { in: userIds.slice(0, 500) }, status: "ACTIVE", endsAt: { gt: new Date() } },
+    include: { user: true, plan: true },
+    orderBy: { endsAt: "desc" },
+    distinct: ["userId"],
+  });
+  let sent = 0;
+  for (const m of running) {
+    if (await sendRenewalReminder(m.user.email, m.user.firstName, m.plan.name, m.membershipPlanId, m.endsAt!, tenant.name, tenant.slug)) sent++;
+  }
+  return { success: true as const, sent, skipped: userIds.length - sent };
 }
 
 /** Removes the person from this club. Account, bookings and payments stay for the books. */

@@ -106,6 +106,17 @@ export async function sendPaymentReminder(to: string, firstName: string, clubNam
   );
 }
 
+/** Abo about to end: link to renew the same plan (renewal cron + admin bulk mail). */
+export async function sendRenewalReminder(to: string, firstName: string, planName: string, planId: string, endsAt: Date, clubName: string, clubSlug: string) {
+  const end = endsAt.toLocaleDateString("de-CH", { day: "numeric", month: "long", timeZone: "Europe/Zurich" });
+  return sendMail(to, `Dein Abo läuft am ${end} ab: ${clubName}`, [
+    `Hallo ${firstName}`, "",
+    `dein Abo «${planName}» beim ${clubName} läuft am ${end} ab.`,
+    `Jetzt für die nächste Saison verlängern (Twint oder Karte): ${appUrl()}/c/${clubSlug}/abos?plan=${planId}`,
+    "", "Mit «automatisch verlängern» musst du nächstes Jahr nicht mehr daran denken.",
+  ].join("\n"));
+}
+
 /** Invite (member import) or activation/reset link; url comes from passwordLink(). */
 export async function sendPasswordLink(to: string, firstName: string, clubName: string, url: string, kind: "invite" | "reset") {
   const invite = kind === "invite";

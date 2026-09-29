@@ -7,7 +7,9 @@ import { Avatar, Spinner } from "@/components/app/avatar";
 import { Sheet } from "@/components/app/sheet";
 import { AdminGrantCreditsButton } from "@/components/admin/admin-grant-credits-button";
 import { markInvoiceAsPaidManually, sendPaymentReminderAction } from "@/actions/admin-billing";
-import { importMembersAction, markMembershipPaidAction, removeMemberAction, saveMemberAction, type MemberInput } from "@/app/actions/club-settings";
+import {
+  importMembersAction, markMembershipPaidAction, removeMemberAction, renewMembershipAction, saveMemberAction, sendRenewalRemindersAction, type MemberInput,
+} from "@/app/actions/club-settings";
 import { parseMembers } from "@/lib/member-import";
 import type { TenantRole } from "@/types";
 import { initials } from "@/lib/courts";
@@ -33,12 +35,19 @@ export interface MemberRow {
   planEnd: string;
   paidAt: string;
   pricePaid: number | null;
+  /** end of the already booked next season, empty when not renewed */
+  renewedUntil: string;
+  /** renewal is an open invoice */
+  renewalOpen: boolean;
 }
 
 export interface PlanOption {
   id: string;
   name: string;
   price: number;
+  ageMin: number | null;
+  ageMax: number | null;
+  proofRequired: boolean;
 }
 
 const ROLES: [TenantRole, string][] = [
@@ -52,11 +61,51 @@ const pill = "rounded-full px-3.5 py-2 text-[13px] font-bold";
 const DAY = 86_400_000;
 const date = (iso: string) => new Date(iso).toLocaleDateString("de-CH", { day: "numeric", month: "numeric", year: "numeric", timeZone: "Europe/Zurich" });
 const daysLeft = (m: MemberRow) => (m.planId && m.planEnd ? Math.ceil((Date.parse(m.planEnd) - Date.now()) / DAY) : null);
+const unpaid = (m: MemberRow) => m.state === "invoice" || m.renewalOpen;
+const STATUS: Record<NonNullable<MemberRow["planStatus"]>, string> = { ACTIVE: "Aktiv", PENDING: "Rechnung offen", EXPIRED: "Abgelaufen", CANCELLED: "Beendet" };
+
+/** What the club has to verify for the current Abo: age range (by birth year, like Swiss Tennis) and proofs like a student card. */
+function checks(m: MemberRow, plans: PlanOption[]): string[] {
+  const p = m.planId ? plans.find((x) => x.id === m.planId) : undefined;
+  if (!p) return [];
+  const out: string[] = [];
+  if (p.ageMin != null || p.ageMax != null) {
+    const age = m.birthDate ? new Date().getFullYear() - Number(m.birthDate.slice(0, 4)) : null;
+    if (age === null) out.push("Geburtsdatum fehlt");
+    else if ((p.ageMin != null && age < p.ageMin) || (p.ageMax != null && age > p.ageMax)) {
+      out.push(`Alter ${age} ausserhalb ${p.ageMin ?? 0}–${p.ageMax ?? "∞"}`);
+    }
+  }
+  if (p.proofRequired) out.push("Ausweis prüfen");
+  return out;
+}
+
+/** Excel-friendly CSV (";" + BOM) of the given rows. */
+function downloadCsv(rows: MemberRow[]) {
+  const d = (iso: string) => (iso ? date(iso) : "");
+  // a leading = + - @ would run as a formula in Excel
+  const cell = (v: unknown) => `"${String(v ?? "").replace(/^([=+\-@])/, "'$1").replaceAll('"', '""')}"`;
+  const lines = [
+    ["Name", "E-Mail", "Telefon", "Geburtsdatum", "Rolle", "Abo", "Status", "Von", "Bis", "Verlängert bis", "Bezahlt am", "CHF"],
+    ...rows.map((m) => [
+      m.name, m.email, m.phone, m.birthDate, ROLES.find(([r]) => r === m.role)?.[1] ?? m.role,
+      m.planId ? m.plan : "", m.planStatus ? STATUS[m.planStatus] : "", d(m.planStart), d(m.planEnd), d(m.renewedUntil), d(m.paidAt), m.pricePaid ?? "",
+    ]),
+  ];
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob(["\ufeff" + lines.map((r) => r.map(cell).join(";")).join("\r\n")], { type: "text/csv;charset=utf-8" }));
+  a.download = `mitglieder-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
 
 /** "bis 31.3.2027" with a warning tone near/after the end. */
 function Validity({ m }: { m: MemberRow }) {
   const d = daysLeft(m);
   if (d === null) return <span className="text-muted-foreground">–</span>;
+  if (m.renewedUntil) {
+    return <span className="text-paid-fg">verlängert bis {date(m.renewedUntil)}{m.renewalOpen ? " · offen" : ""}</span>;
+  }
   return (
     <span className={cn(d < 0 ? "text-destructive" : d <= 30 ? "text-amber-600" : "text-muted-foreground")}>
       bis {date(m.planEnd)}
@@ -65,14 +114,15 @@ function Validity({ m }: { m: MemberRow }) {
   );
 }
 
-const FILTERS = [
+type FilterId = "all" | "abo" | "none" | "open" | "soon" | "check";
+const filtersFor = (plans: PlanOption[]): [FilterId, string, (m: MemberRow) => boolean][] => [
   ["all", "Alle", () => true],
-  ["abo", "Mit Abo", (m: MemberRow) => Boolean(m.planId)],
-  ["none", "Ohne Abo", (m: MemberRow) => !m.planId],
-  ["open", "Unbezahlt", (m: MemberRow) => m.state === "invoice"],
-  ["soon", "Läuft ab", (m: MemberRow) => (daysLeft(m) ?? Infinity) <= 30],
-] as const;
-type FilterId = (typeof FILTERS)[number][0];
+  ["abo", "Mit Abo", (m) => Boolean(m.planId)],
+  ["none", "Ohne Abo", (m) => !m.planId],
+  ["open", "Unbezahlt", unpaid],
+  ["soon", "Läuft ab", (m) => !m.renewedUntil && (daysLeft(m) ?? Infinity) <= 30],
+  ["check", "Prüfen", (m) => checks(m, plans).length > 0],
+];
 
 export function AdminMembers({ slug, tenantId, members, plans }: { slug: string; tenantId: string; members: MemberRow[]; plans: PlanOption[] }) {
   const [editing, setEditing] = useState<MemberRow | "new" | null>(null);
@@ -82,17 +132,23 @@ export function AdminMembers({ slug, tenantId, members, plans }: { slug: string;
   const [busy, setBusy] = useState<string | null>(null);
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState<FilterId>("all");
+  const [sel, setSel] = useState<string[]>([]);
+  const filters = useMemo(() => filtersFor(plans), [plans]);
   const needle = q.trim().toLowerCase();
-  const test = FILTERS.find(([id]) => id === filter)![2];
+  const test = filters.find(([id]) => id === filter)![2];
   const shown = members.filter((m) => test(m) && (!needle || `${m.name} ${m.email} ${m.plan}`.toLowerCase().includes(needle)));
+  const picked = members.filter((m) => sel.includes(m.id));
+  const allOn = shown.length > 0 && shown.every((m) => sel.includes(m.id));
+  const toggle = (id: string) => setSel((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
+
+  // Stripe invoices go through Stripe; Abos assigned by hand are paid cash / by transfer
+  const payOne = (m: MemberRow) =>
+    m.stripeCustomerId && m.state === "invoice" ? markInvoiceAsPaidManually(tenantId, m.id, m.stripeCustomerId) : markMembershipPaidAction(slug, m.id);
 
   async function markPaid(m: MemberRow) {
     if (busy) return;
     setBusy(m.id);
-    // Stripe invoices go through Stripe; Abos assigned by hand are paid cash / by transfer
-    const res = m.stripeCustomerId
-      ? await markInvoiceAsPaidManually(tenantId, m.id, m.stripeCustomerId)
-      : await markMembershipPaidAction(slug, m.id);
+    const res = await payOne(m);
     setBusy(null);
     if (!res.success) {
       toast.error(res.error || "Rechnung konnte nicht als bezahlt markiert werden.");
@@ -115,6 +171,27 @@ export function AdminMembers({ slug, tenantId, members, plans }: { slug: string;
     toast("Zahlungserinnerung gesendet");
   }
 
+  /** Runs one action per selected member, one after another, and reports the count. */
+  async function bulk(kind: "remind" | "paid" | "renew") {
+    if (busy) return;
+    setBusy("bulk");
+    let ok = 0;
+    if (kind === "renew") {
+      const res = await sendRenewalRemindersAction(slug, picked.filter((m) => m.planId).map((m) => m.id)).catch(() => null);
+      ok = res?.success ? res.sent : 0;
+    } else {
+      const targets = kind === "paid" ? picked.filter(unpaid) : picked.filter((m) => m.state !== "paid" && m.role !== "CLUB_ADMIN" && m.role !== "COACH");
+      for (const m of targets) {
+        const res = await (kind === "paid" ? payOne(m) : sendPaymentReminderAction(tenantId, m.id)).catch(() => null);
+        if (res?.success) ok++;
+      }
+    }
+    setBusy(null);
+    toast(`${ok} von ${picked.length}: ${{ remind: "Zahlungserinnerung gesendet", paid: "als bezahlt markiert", renew: "Verlängerungs-Mail gesendet" }[kind]}`);
+    setSel([]);
+    router.refresh();
+  }
+
   return (
     <>
       <div className="flex gap-2.5 px-5 pt-4">
@@ -129,9 +206,12 @@ export function AdminMembers({ slug, tenantId, members, plans }: { slug: string;
         <button type="button" onClick={() => setEditing("new")} className="h-[50px] shrink-0 rounded-[15px] bg-clay px-4 text-[15px] font-bold text-white">
           + Mitglied
         </button>
+        <button type="button" onClick={() => downloadCsv(shown)} className="hidden h-[50px] shrink-0 rounded-[15px] border border-border px-4 text-[15px] font-bold sm:block">
+          Export
+        </button>
       </div>
       <div className="no-scrollbar flex gap-2 overflow-x-auto px-5 pt-3">
-        {FILTERS.map(([id, label, t]) => {
+        {filters.map(([id, label, t]) => {
           const on = filter === id;
           return (
             <button
@@ -151,8 +231,15 @@ export function AdminMembers({ slug, tenantId, members, plans }: { slug: string;
       </div>
       <MemberSheet slug={slug} plans={plans} member={editing} onClose={() => setEditing(null)} />
       {/* desktop: scannable table; mobile: the same rows stack as cards */}
-      <div className="flex flex-col gap-2 px-5 pt-3 lg:gap-0 lg:overflow-hidden lg:rounded-[20px] lg:border lg:border-border lg:bg-card lg:mx-5 lg:mt-3 lg:px-0 lg:pt-0">
-        <div className="hidden grid-cols-[minmax(0,2.2fr)_minmax(0,1.6fr)_minmax(0,1.4fr)_150px] gap-4 border-b border-border px-5 py-3 text-[12px] font-bold uppercase tracking-[.06em] text-muted-foreground lg:grid">
+      <div className={cn("flex flex-col gap-2 px-5 pt-3 lg:mx-5 lg:mt-3 lg:gap-0 lg:overflow-hidden lg:rounded-[20px] lg:border lg:border-border lg:bg-card lg:px-0 lg:pt-0", picked.length > 0 && "mb-24")}>
+        <div className="hidden grid-cols-[24px_minmax(0,2.2fr)_minmax(0,1.6fr)_minmax(0,1.4fr)_150px] gap-4 border-b border-border px-5 py-3 text-[12px] font-bold uppercase tracking-[.06em] text-muted-foreground lg:grid">
+          <input
+            type="checkbox"
+            aria-label="Alle angezeigten auswählen"
+            checked={allOn}
+            onChange={() => setSel(allOn ? [] : shown.map((m) => m.id))}
+            className="h-[18px] w-[18px] accent-clay"
+          />
           <span>Mitglied</span>
           <span>Abo</span>
           <span>Gültigkeit</span>
@@ -163,22 +250,36 @@ export function AdminMembers({ slug, tenantId, members, plans }: { slug: string;
           const isPaid = m.state === "paid" || paid.includes(m.id);
           const sent = reminded.includes(m.id);
           const role = m.role !== "MEMBER" ? ROLES.find(([r]) => r === m.role)?.[1] : null;
+          const warn = checks(m, plans);
           return (
             <div
               key={m.id}
-              className="flex items-center gap-3 rounded-[20px] border border-border bg-card px-4 py-3 lg:grid lg:grid-cols-[minmax(0,2.2fr)_minmax(0,1.6fr)_minmax(0,1.4fr)_150px] lg:gap-4 lg:rounded-none lg:border-0 lg:border-b lg:px-5 lg:last:border-b-0 lg:hover:bg-inset/50"
+              className="flex items-center gap-3 rounded-[20px] border border-border bg-card px-4 py-3 lg:grid lg:grid-cols-[24px_minmax(0,2.2fr)_minmax(0,1.6fr)_minmax(0,1.4fr)_150px] lg:gap-4 lg:rounded-none lg:border-0 lg:border-b lg:px-5 lg:last:border-b-0 lg:hover:bg-inset/50"
             >
+              <input
+                type="checkbox"
+                aria-label={`${m.name} auswählen`}
+                checked={sel.includes(m.id)}
+                onChange={() => toggle(m.id)}
+                className="h-[18px] w-[18px] shrink-0 accent-clay"
+              />
               <button type="button" onClick={() => setEditing(m)} aria-label={`${m.name} bearbeiten`} className="flex min-w-0 flex-1 items-center gap-3 text-left">
                 <Avatar ini={initials(m.name)} />
                 <span className="min-w-0 flex-1">
                   <span className="flex items-center gap-2">
                     <span className="truncate text-[16px] font-bold underline-offset-2 hover:underline">{m.name}</span>
                     {role && <span className="shrink-0 rounded-full bg-inset px-2 py-0.5 text-[11px] font-bold uppercase tracking-[.04em] text-muted-foreground">{role}</span>}
+                    {warn.length > 0 && (
+                      <span title={warn.join(" · ")} className="shrink-0 rounded-full bg-amber-100 max-sm:hidden px-2 py-0.5 text-[11px] font-bold text-amber-800">
+                        {warn.length === 1 ? warn[0] : `${warn.length} prüfen`}
+                      </span>
+                    )}
                   </span>
                   <span className="block truncate text-[13px] text-muted-foreground">{m.email}</span>
                   {/* mobile: Abo + validity under the name */}
                   <span className="block truncate text-[13px] lg:hidden">
                     {m.planId ? <><b className="font-semibold">{m.plan}</b> · <Validity m={m} /></> : <span className="text-muted-foreground">Kein Abo</span>}
+                    {warn.length > 0 && <span className="font-semibold text-amber-700 sm:hidden"> · ⚠ {warn[0]}</span>}
                   </span>
                 </span>
               </button>
@@ -197,7 +298,11 @@ export function AdminMembers({ slug, tenantId, members, plans }: { slug: string;
                 {m.planId && m.planStart && <div className="text-[12px] text-muted-foreground">seit {date(m.planStart)}</div>}
               </div>
               <div className="shrink-0 lg:flex lg:justify-end">
-                {isPaid ? (
+                {m.renewalOpen && !paid.includes(m.id) ? (
+                  <button type="button" onClick={() => markPaid(m)} disabled={busy === m.id} aria-label={`Verlängerung von ${m.name} als bezahlt markieren`} className={cn(pill, "bg-clay text-white")}>
+                    Bezahlt markieren
+                  </button>
+                ) : isPaid ? (
                   <span className={cn(pill, "bg-paid-bg text-paid-fg")}>Bezahlt</span>
                 ) : m.state === "invoice" ? (
                   <button
@@ -227,6 +332,19 @@ export function AdminMembers({ slug, tenantId, members, plans }: { slug: string;
           );
         })}
       </div>
+      {picked.length > 0 && (
+        <div className="fixed inset-x-3 bottom-[calc(max(10px,env(safe-area-inset-bottom))+84px)] z-40 mx-auto flex max-w-[720px] flex-wrap items-center gap-2 rounded-[20px] border border-border bg-card p-2.5 shadow-lg lg:bottom-6 lg:left-64">
+          <span className="px-2 text-[14px] font-bold">{picked.length} ausgewählt</span>
+          <div className="flex-1" />
+          <button type="button" disabled={busy === "bulk"} onClick={() => bulk("remind")} className={cn(pill, "border border-border")}>Erinnern</button>
+          <button type="button" disabled={busy === "bulk"} onClick={() => bulk("paid")} className={cn(pill, "border border-border")}>Bezahlt</button>
+          <button type="button" disabled={busy === "bulk"} onClick={() => bulk("renew")} className={cn(pill, "border border-border")}>Verlängerung anbieten</button>
+          <button type="button" onClick={() => downloadCsv(picked)} className={cn(pill, "border border-border")}>CSV</button>
+          <button type="button" onClick={() => setSel([])} aria-label="Auswahl aufheben" className={cn(pill, "bg-inset")}>
+            {busy === "bulk" ? <Spinner /> : "✕"}
+          </button>
+        </div>
+      )}
     </>
   );
 }
@@ -401,6 +519,17 @@ function MemberSheet({ slug, plans, member, onClose }: { slug: string; plans: Pl
     router.refresh();
   }
 
+  async function renew(paid: boolean) {
+    if (!current || busy) return;
+    setBusy(true);
+    const res = await renewMembershipAction(slug, current.id, paid).catch(() => null);
+    setBusy(false);
+    if (!res?.success) return void toast.error(res?.error ?? "Verlängern fehlgeschlagen.");
+    toast(paid ? "Für nächste Saison verlängert" : "Verlängert, Rechnung offen");
+    onClose();
+    router.refresh();
+  }
+
   async function remove() {
     if (!f?.id || busy) return;
     if (!armed) return setArmed(true);
@@ -481,7 +610,7 @@ function MemberSheet({ slug, plans, member, onClose }: { slug: string; plans: Pl
                       current.planStatus === "ACTIVE" ? "bg-paid-bg text-paid-fg" : current.planStatus === "PENDING" ? "bg-amber-100 text-amber-800" : "bg-inset text-muted-foreground"
                     )}
                   >
-                    {{ ACTIVE: "Aktiv", PENDING: "Rechnung offen", EXPIRED: "Abgelaufen", CANCELLED: "Beendet" }[current.planStatus]}
+                    {STATUS[current.planStatus]}
                   </span>
                 </div>
                 <div className="mt-1 text-[14px] text-muted-foreground">
@@ -494,6 +623,23 @@ function MemberSheet({ slug, plans, member, onClose }: { slug: string; plans: Pl
                 {(current.paidAt || current.pricePaid != null) && (
                   <div className="text-[13px] text-muted-foreground">
                     {[current.paidAt && `Bezahlt am ${date(current.paidAt)}`, current.pricePaid != null && `CHF ${current.pricePaid}`].filter(Boolean).join(" · ")}
+                  </div>
+                )}
+                {checks(current, plans).map((w) => (
+                  <div key={w} className="mt-1.5 rounded-[10px] bg-amber-100 px-2.5 py-1.5 text-[13px] font-semibold text-amber-800">⚠ {w}</div>
+                ))}
+                {current.renewedUntil ? (
+                  <div className="mt-2 text-[14px] font-semibold text-paid-fg">
+                    Verlängert bis {date(current.renewedUntil)}{current.renewalOpen ? " · Rechnung offen" : ""}
+                  </div>
+                ) : current.planStatus === "ACTIVE" && (
+                  <div className="mt-2.5 grid grid-cols-2 gap-1.5">
+                    <button type="button" disabled={busy} onClick={() => renew(true)} className="h-10 rounded-[12px] bg-clay text-[14px] font-bold text-white">
+                      Verlängern · bezahlt
+                    </button>
+                    <button type="button" disabled={busy} onClick={() => renew(false)} className="h-10 rounded-[12px] border border-border text-[14px] font-bold">
+                      Verlängern · Rechnung
+                    </button>
                   </div>
                 )}
               </div>

@@ -168,11 +168,11 @@ export function CalendarView({
           </div>
           {legend}
           {/* desktop: courts stacked, all hours in one row that fits the width (no hidden sideways scroll) */}
-          <div className="flex flex-col gap-3 px-5 pt-4 lg:gap-2">
+          <div className="flex flex-col gap-3 px-5 pt-4 sm:gap-2">
             {shown.map((c) => {
               const l = courtLabel(c);
               return (
-                <div key={c.id} className="rounded-[24px] border border-border bg-card p-3.5 lg:rounded-[20px] lg:p-2.5 xl:flex xl:items-center xl:gap-3">
+                <div key={c.id} className="rounded-[24px] border border-border bg-card p-3.5 sm:rounded-[20px] sm:p-2.5 xl:flex xl:items-center xl:gap-3">
                   <div className="flex items-center gap-2 px-1 pb-2.5 xl:w-[210px] xl:flex-none xl:pb-0 xl:pl-2">
                     <Dot color={courtColor(c)} size={9} />
                     <div className="text-[19px] font-bold tracking-[-.01em]">{l.name}</div>
@@ -182,7 +182,7 @@ export function CalendarView({
                       <svg role="img" aria-label="Flutlicht" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z" /></svg>
                     )}
                   </div>
-                  <div ref={(el) => { if (el && el.dataset.day !== String(day)) { el.dataset.day = String(day); el.scrollLeft = Math.max(0, startHour - open) * CHIP; } }} className="no-scrollbar -mx-3.5 flex gap-1.5 overflow-x-auto px-3.5 lg:mx-0 lg:grid lg:auto-cols-fr lg:grid-flow-col lg:overflow-visible lg:px-0 xl:flex-1">
+                  <div ref={(el) => { if (el && el.dataset.day !== String(day)) { el.dataset.day = String(day); el.scrollLeft = Math.max(0, startHour - open) * CHIP; } }} className="no-scrollbar -mx-3.5 flex gap-1.5 overflow-x-auto px-3.5 sm:mx-0 sm:grid sm:auto-cols-fr sm:grid-flow-col sm:gap-1 sm:overflow-visible sm:px-0 xl:flex-1">
                     {weekHours.map((h) => {
                       const { start, state } = cell(c, h);
                       const inert = (state === "taken" && !admin) || state === "past";
@@ -196,17 +196,17 @@ export function CalendarView({
                           aria-label={`${l.name}, ${h}:00, ${STATE_LABEL[state]}`}
                           style={taken}
                           className={cn(
-                            "flex h-[58px] w-[72px] flex-none items-center justify-center rounded-[15px] border text-[18px] font-bold tracking-[-.01em] transition-transform duration-300 ease-spring lg:h-[48px] lg:w-auto lg:min-w-0 lg:rounded-[12px] lg:text-[15px]",
+                            "flex h-[58px] w-[72px] flex-none items-center justify-center rounded-[15px] border text-[18px] font-bold tracking-[-.01em] transition-transform duration-300 ease-spring sm:h-[48px] sm:w-auto sm:min-w-0 sm:rounded-[12px] sm:text-[15px]",
                             state === "free" && "border-free-border bg-seg-on text-foreground active:scale-[.92]",
                             state === "mine" && "border-clay bg-clay text-white active:scale-[.92]",
                             state === "blocked" && "border-transparent bg-inset text-muted-foreground opacity-55",
                             state === "taken" && "cursor-default border-transparent",
                             state === "past" && "cursor-default border-transparent bg-inset text-muted-foreground opacity-40",
-                            // desktop hides elapsed hours by time (not state) so all court rows keep the same columns
-                            start.getTime() < bookableFrom && "lg:hidden"
+                            // wider screens hide elapsed hours by time (not state) so all court rows keep the same columns
+                            start.getTime() < bookableFrom && "sm:hidden"
                           )}
                         >
-                          {state === "blocked" ? "×" : <>{h}<span className="lg:max-2xl:hidden">:00</span></>}
+                          {state === "blocked" ? "×" : <>{h}<span className="sm:max-2xl:hidden">:00</span></>}
                         </button>
                       );
                     })}

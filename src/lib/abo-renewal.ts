@@ -2,7 +2,7 @@ import type Stripe from "stripe";
 import { getStripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
 import { grantMembership, grantPartnerMembership, type Partner } from "@/lib/membership";
-import { sendMail } from "@/lib/mail";
+import { sendMail, sendRenewalReminder } from "@/lib/mail";
 
 // Auto-renewal state lives on the Stripe customer (metadata + default card): no extra DB columns.
 const key = (tenantId: string) => `autorenew_${tenantId}`;
@@ -95,12 +95,7 @@ export async function runAboRenewals(now = new Date()) {
     // one reminder per membership (AuditLog as the "sent" marker)
     const sent = await prisma.auditLog.count({ where: { action: "ABO_REMINDER", entityId: m.id } });
     if (sent) continue;
-    const ok = await sendMail(m.user.email, `Dein Abo läuft am 31. März ab: ${m.tenant.name}`, [
-      `Hallo ${m.user.firstName}`, "",
-      `dein Abo «${m.plan.name}» beim ${m.tenant.name} läuft am 31. März ab.`,
-      `Jetzt für die nächste Saison verlängern (Twint oder Karte): ${appUrl()}/c/${m.tenant.slug}/abos?plan=${m.membershipPlanId}`,
-      "", "Mit «automatisch verlängern» musst du nächstes Jahr nicht mehr daran denken.",
-    ].join("\n"));
+    const ok = await sendRenewalReminder(m.user.email, m.user.firstName, m.plan.name, m.membershipPlanId, m.endsAt!, m.tenant.name, m.tenant.slug);
     if (ok) {
       await prisma.auditLog.create({ data: { tenantId: m.tenantId, action: "ABO_REMINDER", entityType: "Membership", entityId: m.id } });
       done.reminded++;
