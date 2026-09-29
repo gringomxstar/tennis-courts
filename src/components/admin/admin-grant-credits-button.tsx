@@ -37,7 +37,7 @@ export function AdminGrantCreditsButton({
       type="button"
       onClick={handleGrant}
       disabled={loading || success}
-      className={`shrink-0 rounded-[12px] px-3.5 py-2 text-[14px] font-bold ${
+      className={`shrink-0 h-8 rounded-full px-3 text-[13px] font-bold ${
         success ? "bg-paid-bg text-paid-fg" : "bg-inset text-clay-text disabled:opacity-60"
       }`}
       title={`+25 CHF Credits gutschreiben für ${userName}`}

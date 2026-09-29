@@ -87,7 +87,7 @@ export function computeBookingCost(i: BookingCostInput): BookingCost {
   const freeGuests = i.planSports && !i.isGuest && isDinerSlot(s, i.start) ? 1 : 0;
   const guests = Math.max(0, i.guestCount - freeGuests) * (s?.guestFee ?? 15);
   const ballMachine = i.hasBallMachine ? (s?.ballMachineFee ?? 10) * hours : 0;
-  const lighting = i.hasLighting ? (s?.floodlightFee ?? 5) : 0;
+  const lighting = i.hasLighting ? (s?.floodlightFee ?? 0) : 0;
   return { court, guests, ballMachine, lighting, total: court + guests + ballMachine + lighting };
 }
 

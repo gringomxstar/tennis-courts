@@ -35,6 +35,7 @@ export default async function AdminMembersPage({ params }: { params: Promise<{ c
       return {
         id: m.id,
         name: `${m.firstName} ${m.lastName}`.trim(),
+        email: m.email,
         plan: ms?.planName ?? "Keine Mitgliedschaft",
         state: ms?.status === "ACTIVE" ? "paid" : ms?.status === "PENDING" && ms.stripeCustomerId ? "invoice" : "remind",
         stripeCustomerId: ms?.status === "PENDING" ? ms.stripeCustomerId : null,

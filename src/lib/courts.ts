@@ -19,7 +19,7 @@ export const SURFACE_LABEL: Record<SurfaceKind, string> = {
   padel: "Padel",
 };
 
-/** "Platz 3 (Sand - Center)" -> { name: "Platz 3", sub: "Sand · Center" } */
+/** "Platz 2 (Sand - Center)" -> { name: "Platz 2", sub: "Sand · Center" } */
 export function courtLabel(court: Pick<Court, "name" | "sportType" | "surface">) {
   const m = court.name.match(/^(.*?)\s*\((.*)\)\s*$/);
   if (m) return { name: m[1], sub: m[2].replace(/\s+-\s+/g, " · ").replace(/platz$/i, "") };

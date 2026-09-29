@@ -9,14 +9,14 @@ const LOCATION_ID = "loc-marly"
 
 
 const COURTS: { id: string; name: string; sportType: SportType; surface: CourtSurface; hasLighting: boolean; sortOrder: number }[] = [
-  { id: "court-marly-1", name: "Platz 1 (Allwetter)", sportType: "TENNIS", surface: "HARD", hasLighting: true, sortOrder: 1 },
-  { id: "court-marly-2", name: "Platz 2 (Allwetter)", sportType: "TENNIS", surface: "HARD", hasLighting: true, sortOrder: 2 },
-  { id: "court-marly-3", name: "Platz 3 (Sand - Center)", sportType: "TENNIS", surface: "CLAY", hasLighting: true, sortOrder: 3 },
-  { id: "court-marly-4", name: "Platz 4 (Sand)", sportType: "TENNIS", surface: "CLAY", hasLighting: true, sortOrder: 4 },
-  { id: "court-marly-5", name: "Platz 5 (Sand)", sportType: "TENNIS", surface: "CLAY", hasLighting: false, sortOrder: 5 },
-  { id: "court-marly-6", name: "Platz 6 (Sand)", sportType: "TENNIS", surface: "CLAY", hasLighting: false, sortOrder: 6 },
-  { id: "court-marly-7", name: "Platz 7 (Sand)", sportType: "TENNIS", surface: "CLAY", hasLighting: true, sortOrder: 7 },
-  { id: "court-marly-8", name: "Platz 8 (Sand)", sportType: "TENNIS", surface: "CLAY", hasLighting: true, sortOrder: 8 },
+  { id: "court-marly-1", name: "Central (Allwetter)", sportType: "TENNIS", surface: "HARD", hasLighting: true, sortOrder: 1 },
+  { id: "court-marly-2", name: "Platz 1 (Allwetter)", sportType: "TENNIS", surface: "HARD", hasLighting: true, sortOrder: 2 },
+  { id: "court-marly-3", name: "Platz 2 (Sand)", sportType: "TENNIS", surface: "CLAY", hasLighting: true, sortOrder: 3 },
+  { id: "court-marly-4", name: "Platz 3 (Sand)", sportType: "TENNIS", surface: "CLAY", hasLighting: true, sortOrder: 4 },
+  { id: "court-marly-5", name: "Platz 4 (Sand)", sportType: "TENNIS", surface: "CLAY", hasLighting: false, sortOrder: 5 },
+  { id: "court-marly-6", name: "Platz 5 (Sand)", sportType: "TENNIS", surface: "CLAY", hasLighting: false, sortOrder: 6 },
+  { id: "court-marly-7", name: "Platz 6 (Sand)", sportType: "TENNIS", surface: "CLAY", hasLighting: true, sortOrder: 7 },
+  { id: "court-marly-8", name: "Platz 7 (Sand)", sportType: "TENNIS", surface: "CLAY", hasLighting: true, sortOrder: 8 },
   { id: "court-marly-9", name: "Padel 1 (Panoramaplatz)", sportType: "PADEL", surface: "ARTIFICIAL_GRASS", hasLighting: true, sortOrder: 9 },
 ]
 
@@ -54,7 +54,7 @@ async function main() {
         maxActiveSlotsPerPlayer: 2,
         ballMachineAvailable: true,
         ballMachineFee: 10,
-        floodlightFee: 5,
+        floodlightFee: 0,
         guestFee: 15,
         defaultHourlyRateTennis: 30,
         defaultHourlyRateHalle: 45,

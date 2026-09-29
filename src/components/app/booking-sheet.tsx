@@ -176,15 +176,21 @@ export function BookingSheet({
                   );
                 })}
               </div>
-              <Link href={reserveHref} className="mt-3.5 flex items-center justify-center gap-1.5 text-[15px] font-semibold text-clay-text">
-                Mitglieder, Doppel &amp; mehr Optionen
-                <svg aria-hidden width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
+              <Link
+                href={reserveHref}
+                className="mt-4 flex h-[50px] w-full items-center justify-between rounded-[15px] border border-border px-4 transition-transform active:scale-[.98]"
+              >
+                <span className="text-left">
+                  <span className="block text-[16px] font-bold">Mehr Optionen</span>
+                  <span className="block text-[12px] text-muted-foreground">Doppel · Gäste · 2 Stunden · Ballmaschine</span>
+                </span>
+                <svg aria-hidden width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
               </Link>
             </>
           )}
 
           <div className="mt-3.5 rounded-[20px] bg-inset px-[18px] py-4">
-            {light && (
+            {cost && cost.lighting > 0 && (
               <div className="flex justify-between pb-2 text-[16px] font-semibold">
                 <span>Flutlicht</span>
                 <span>CHF {cost?.lighting}</span>

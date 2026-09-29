@@ -622,9 +622,8 @@ export async function grantAdminCreditsAction(input: {
 
 export async function createCourtBlockAction(input: {
   clubSlug: string;
-  courtId: string;
-  startsAt: string;
-  endsAt: string;
+  /** one block per entry; the admin form sends one per day and court */
+  items: { courtId: string; startsAt: string; endsAt: string }[];
   reason: BlockReason;
   description?: string;
 }) {
@@ -648,39 +647,47 @@ export async function createCourtBlockAction(input: {
     return { success: false, error: "Club nicht gefunden." };
   }
 
-  const courts = await getCourtsByTenantId(tenant.id);
-  const courtExists = courts.some((c) => c.id === input.courtId);
-  if (!courtExists) {
+  if (!input.items.length || input.items.length > 1000) {
+    return { success: false, error: "Ungültige Anzahl Sperren." };
+  }
+  const courtIds = new Set((await getCourtsByTenantId(tenant.id)).map((c) => c.id));
+  if (!input.items.every((i) => courtIds.has(i.courtId))) {
     return { success: false, error: "Der ausgewählte Platz gehört nicht zu diesem Club." };
+  }
+  if (!input.items.every((i) => new Date(i.endsAt).getTime() > new Date(i.startsAt).getTime())) {
+    return { success: false, error: "Das Ende muss nach dem Beginn liegen." };
   }
 
   if (process.env.DATABASE_URL) {
     try {
-      await prisma.courtBlock.create({
-        data: {
+      await prisma.courtBlock.createMany({
+        data: input.items.map((i) => ({
           tenantId: tenant.id,
-          courtId: input.courtId,
-          startsAt: new Date(input.startsAt),
-          endsAt: new Date(input.endsAt),
+          courtId: i.courtId,
+          startsAt: new Date(i.startsAt),
+          endsAt: new Date(i.endsAt),
           reason: input.reason,
           description: input.description || null,
           createdById: session.user.id,
-        },
+        })),
       });
     } catch (e) {
       console.warn("Prisma court block creation failed:", e);
+      return { success: false, error: "Sperre konnte nicht gespeichert werden." };
+    }
+  } else {
+    for (const i of input.items) {
+      mockDb.createCourtBlock({
+        tenantId: tenant.id,
+        courtId: i.courtId,
+        startsAt: i.startsAt,
+        endsAt: i.endsAt,
+        reason: input.reason,
+        description: input.description,
+        createdById: session.user.id,
+      });
     }
   }
-
-  mockDb.createCourtBlock({
-    tenantId: tenant.id,
-    courtId: input.courtId,
-    startsAt: input.startsAt,
-    endsAt: input.endsAt,
-    reason: input.reason,
-    description: input.description,
-    createdById: session.user.id,
-  });
 
   revalidatePath(`/c/${input.clubSlug}`, "layout");
   revalidatePath(`/c/${input.clubSlug}/admin`);

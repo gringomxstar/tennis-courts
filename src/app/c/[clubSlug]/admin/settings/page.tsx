@@ -4,12 +4,8 @@ import {
   getTenantMembers,
   getMembershipPlansByTenantId,
 } from "@/lib/data";
-import { CreateCourtBlockForm } from "@/components/admin/create-court-block-form";
 import { ClubSettingsForm } from "@/components/admin/club-settings-form";
 import { MembershipPlansManager } from "@/components/admin/membership-plans-manager";
-import { AdminGrantCreditsButton } from "@/components/admin/admin-grant-credits-button";
-import { MarkInvoicePaidButton } from "@/components/admin/mark-invoice-paid-button";
-import { prisma } from "@/lib/prisma";
 import { slotLimitFor } from "@/lib/booking-rules";
 
 const card = "rounded-[26px] border border-border bg-card p-5";
@@ -34,22 +30,6 @@ export default async function ClubSettingsPage({ params }: ClubSettingsPageProps
     getTenantMembers(tenant.id),
     getMembershipPlansByTenantId(tenant.id),
   ]);
-
-  // Offline-invoice memberships awaiting manual payment confirmation. Membership purchase
-  // is Postgres/Stripe-only (see api/checkout/route.ts) — no mockDb equivalent exists, so
-  // this queries Prisma directly rather than going through the dual-backend data layer.
-  const pendingByUserId = new Map<string, { stripeCustomerId: string; planName: string }>();
-  if (process.env.DATABASE_URL) {
-    const pending = await prisma.membership.findMany({
-      where: { tenantId: tenant.id, status: "PENDING" },
-      include: { user: true, plan: true },
-    });
-    for (const m of pending) {
-      if (m.user.stripeCustomerId) {
-        pendingByUserId.set(m.userId, { stripeCustomerId: m.user.stripeCustomerId, planName: m.plan.name });
-      }
-    }
-  }
 
   return (
     <>
@@ -109,16 +89,6 @@ export default async function ClubSettingsPage({ params }: ClubSettingsPageProps
           <ClubSettingsForm clubSlug={tenant.slug} initialSettings={tenant.settingsJson} />
 
           <section className={card}>
-            <h2 className={h2}>Platzsperre erfassen</h2>
-            <p className={sub}>Sperre Plätze für Wartungsarbeiten, Turniere oder schlechtes Wetter.</p>
-            <CreateCourtBlockForm clubSlug={tenant.slug} courts={courts} />
-          </section>
-        </div>
-
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:items-start lg:gap-6">
-          <MembershipPlansManager clubSlug={tenant.slug} initialPlans={membershipPlans} />
-
-          <section className={card}>
             <h2 className={h2}>Plätze ({courts.length})</h2>
             <p className={sub}>Alle bespielbaren Tennis- und Padel-Plätze mit Stundensätzen.</p>
             <div className="mt-5 overflow-hidden rounded-[22px] border border-border">
@@ -151,53 +121,7 @@ export default async function ClubSettingsPage({ params }: ClubSettingsPageProps
           </section>
         </div>
 
-        <section className={card}>
-          <h2 className={h2}>Mitglieder ({members.length})</h2>
-          <p className={sub}>
-            Zugriffsberechtigte Spieler für {tenant.name}. Bei Schlechtwetter oder Stornierungen kannst du direkt Credits gutschreiben.
-          </p>
-          <div className="mt-5 overflow-hidden rounded-[22px] border border-border">
-            {members.map((member) => (
-              <div
-                key={member.id}
-                className="flex flex-col gap-2.5 border-t border-border px-4 py-3.5 first:border-t-0 sm:flex-row sm:items-center sm:gap-3"
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="text-[16px] font-bold">
-                    {member.firstName} {member.lastName}
-                  </div>
-                  <div className="truncate text-[13px] text-muted-foreground">{member.email}</div>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2">
-                  {pendingByUserId.has(member.id) && (
-                    <MarkInvoicePaidButton
-                      tenantId={tenant.id}
-                      userId={member.id}
-                      userName={`${member.firstName} ${member.lastName}`}
-                      stripeCustomerId={pendingByUserId.get(member.id)!.stripeCustomerId}
-                      planName={pendingByUserId.get(member.id)!.planName}
-                    />
-                  )}
-
-                  <AdminGrantCreditsButton
-                    clubSlug={tenant.slug}
-                    userId={member.id}
-                    userName={`${member.firstName} ${member.lastName}`}
-                  />
-
-                  <span
-                    className={`${pill} ${
-                      member.role === "CLUB_ADMIN" ? "bg-paid-bg text-paid-fg" : "bg-inset text-muted-foreground"
-                    }`}
-                  >
-                    {member.role === "CLUB_ADMIN" ? "Club Admin" : "Mitglied"}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
+        <MembershipPlansManager clubSlug={tenant.slug} initialPlans={membershipPlans} />
       </div>
     </>
   );

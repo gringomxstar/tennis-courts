@@ -10,6 +10,8 @@ export const metadata: Metadata = {
   title: "TC Marly",
   description: "Tennisplätze des Tennis Club Marly reservieren, als Mitglied oder Gast.",
   appleWebApp: { capable: true, title: "TC Marly", statusBarStyle: "black-translucent" },
+  // not live yet: keep search engines out until go-live
+  robots: { index: false, follow: false },
 };
 
 export const viewport: Viewport = {

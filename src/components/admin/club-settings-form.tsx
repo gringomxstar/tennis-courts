@@ -120,7 +120,7 @@ export function ClubSettingsForm({
     initialSettings?.ballMachineFee ?? 10
   );
   const [floodlightFee, setFloodlightFee] = useState<number>(
-    initialSettings?.floodlightFee ?? 5
+    initialSettings?.floodlightFee ?? 0
   );
   const [guestFee, setGuestFee] = useState<number>(
     initialSettings?.guestFee ?? 15
