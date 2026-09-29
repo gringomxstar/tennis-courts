@@ -13,6 +13,7 @@ export default async function CalendarPage({ params }: { params: Promise<{ clubS
       userId={d.user?.id}
       partners={d.partners}
       wallet={d.wallet}
+      guestRate={d.guestRate}
       windowDays={d.windowDays}
     />
   );

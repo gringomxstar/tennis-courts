@@ -68,6 +68,7 @@ export async function POST(req: Request) {
           userId: user!.id,
           membershipPlanId: plan.id,
           startsAt: new Date(),
+          endsAt: new Date(Date.now() + 365 * 86_400_000), // yearly plans, same as the Stripe webhook
           status: "PENDING"
         }
       });
@@ -117,7 +118,7 @@ export async function POST(req: Request) {
         tenantId: plan.tenantId
       },
       success_url: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/membership/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/membership`,
+      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/c/${plan.tenant.slug}/abos?plan=${plan.id}`,
     });
 
     return NextResponse.json({

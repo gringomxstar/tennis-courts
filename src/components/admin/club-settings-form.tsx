@@ -4,7 +4,7 @@ import { useState } from "react";
 import { LimitRole, PriceRule, SportType, TenantSettings } from "@/types";
 import { LIMIT_ROLES, SPORTS } from "@/lib/booking-rules";
 import { WD } from "@/lib/courts";
-import { updateClubSettingsAction } from "@/app/actions/club-settings";
+import { purgeDemoDataAction, updateClubSettingsAction } from "@/app/actions/club-settings";
 import { SwitchKnob } from "@/components/app/switch";
 import { Spinner } from "@/components/app/avatar";
 
@@ -16,6 +16,36 @@ const wellInput =
   "mt-1.5 h-[50px] w-full min-w-0 rounded-[15px] border border-border bg-card px-4 text-[16px] text-foreground outline-none focus-visible:border-clay";
 const row = "flex w-full items-center gap-3 rounded-[18px] border border-border bg-card px-4 py-3.5 text-left";
 const unit = "shrink-0 text-[14px] font-semibold text-muted-foreground";
+
+/** Two taps: "Demo-Daten löschen" → "Wirklich löschen?". */
+function PurgeDemo({ clubSlug }: { clubSlug: string }) {
+  const [step, setStep] = useState<"idle" | "confirm" | "busy">("idle");
+  const [msg, setMsg] = useState("");
+  const run = async () => {
+    if (step === "idle") return setStep("confirm");
+    setStep("busy");
+    const r = await purgeDemoDataAction(clubSlug);
+    setMsg(r.success ? `Gelöscht: ${r.bookings} Buchungen, ${r.blocks} Sperren. Guthaben der Demo-Konten auf 0.` : r.error || "Fehler");
+    setStep("idle");
+  };
+  return (
+    <div className="flex flex-col gap-1.5">
+      <button
+        type="button"
+        onClick={run}
+        onBlur={() => step === "confirm" && setStep("idle")}
+        disabled={step === "busy"}
+        className="flex h-[50px] w-full items-center justify-center gap-2.5 rounded-[17px] bg-inset text-[16px] font-bold text-clay-text disabled:opacity-70"
+      >
+        {step === "busy" && <Spinner />}
+        {step === "confirm" ? "Wirklich alle Demo-Buchungen löschen?" : "Demo-Daten löschen"}
+      </button>
+      <p role="status" className="px-1 text-[13px] leading-[1.35] text-muted-foreground">
+        {msg || "Löscht Buchungen, Sperren und Guthaben-Verlauf der Demo-Konten in diesem Club. Keine Rückzahlungen."}
+      </p>
+    </div>
+  );
+}
 
 function Toggle({ on, set, title, sub }: { on: boolean; set: (v: boolean) => void; title: string; sub: string }) {
   return (
@@ -79,6 +109,7 @@ export function ClubSettingsForm({
   const [lateBookingMinutes, setLateBookingMinutes] = useState<number>(initialSettings?.lateBookingMinutes ?? 15);
   const [payOnSite, setPayOnSite] = useState<boolean>(initialSettings?.payOnSite ?? false);
   const [payByInvoice, setPayByInvoice] = useState<boolean>(initialSettings?.payByInvoice ?? false);
+  const [demoMode, setDemoMode] = useState<boolean>(initialSettings?.demoMode ?? false);
   const [priceRules, setPriceRules] = useState<PriceRule[]>(initialSettings?.priceRules ?? []);
   const setRule = (i: number, patch: Partial<PriceRule>) =>
     setPriceRules(priceRules.map((r, j) => (j === i ? { ...r, ...patch } : r)));
@@ -120,6 +151,7 @@ export function ClubSettingsForm({
         slotDurationMinutes: Number(slotDurationMinutes),
         cancellationDeadlineHours: Number(cancellationDeadlineHours),
         allowGuestBookings,
+        demoMode,
         allowConsecutiveSlotsForDoubles,
         marlyRuleEnabled,
         marlyCooldownMinutes: Number(marlyCooldownMinutes),
@@ -418,6 +450,14 @@ export function ClubSettingsForm({
           title="Gastbuchungen erlauben"
           sub="Nicht registrierte Spieler dürfen freie Slots anfragen oder buchen."
         />
+
+        <Toggle
+          on={demoMode}
+          set={setDemoMode}
+          title="Demo-Modus"
+          sub="Rollen-Umschalter für Tests. Vor dem Livegang ausschalten."
+        />
+        <PurgeDemo clubSlug={clubSlug} />
 
         <button
           type="submit"

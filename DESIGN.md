@@ -26,3 +26,10 @@ Values are the prototype's theme object `t`, for light and `.dark`.
 - Pages outside the prototype (`/` landing, `/login`, `/register`, `/admin`, `/invoice`, `/membership/success`, club settings) are built in the same language: no shadcn Card/Badge/Button, no lucide tiles, no gradients.
 - Desktop (`lg`): a 256px sidebar and main up to 1280px. Views reflow into grids; sheets become centered dialogs. Mobile classes stay the prototype's exact values.
 - PWA: `app/manifest.ts` (standalone), `icon.svg`, `apple-icon.tsx`, and safe-area insets on the tab bar and landing.
+- **Deliberate deviations from the prototype (2026-09-29, owner request "für schlechte Augen"):** the Kalender is larger than the prototype.
+  - Toggle "Liste / Raster" (was "Plätze / Woche").
+  - Raster: exactly 2 courts per phone screen (`w-[calc((min(100vw,640px)-56px)/2)]`, swipe for more), 62px rows, 16px slot text, 18/14px court header, 15px hour labels; desktop columns `min-w-[200px]`.
+  - Liste: 58px / 18px slot buttons, larger day buttons and chips.
+  - Free slots show no text (tint only; "frei" stays in the aria-label). Taken slots show "Max M. / Anna B." to club members only, "Belegt" to everyone else.
+- Anonymous tab bar: Start · Kalender · Abos · Anmelden.
+- `/abos` replaces `/membership` (which now redirects).

@@ -32,6 +32,7 @@ export function ReserveView({
   userId,
   wallet,
   favoriteUserIds,
+  guestRate,
 }: {
   tenant: Tenant;
   court: Court;
@@ -44,6 +45,7 @@ export function ReserveView({
   userId: string;
   wallet: number;
   favoriteUserIds: string[];
+  guestRate: boolean;
 }) {
   const router = useRouter();
   const startDate = new Date(start);
@@ -106,7 +108,7 @@ export function ReserveView({
   const cost = computeBookingCost({
     settings: tenant.settingsJson,
     court,
-    isGuest: false,
+    isGuest: guestRate,
     durationMinutes: dur * 60,
     guestCount: guests.length,
     hasBallMachine: ball,

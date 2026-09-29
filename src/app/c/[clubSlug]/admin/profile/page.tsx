@@ -13,9 +13,7 @@ export default async function AdminProfilePage({ params }: { params: Promise<{ c
       user={ctx.user && { name: ctx.user.name || ctx.user.email }}
       canAdmin
       admin
-      openAbo={false}
       wallet={0}
-      plans={[]}
       membership={null}
       profile={null}
       support={{}}

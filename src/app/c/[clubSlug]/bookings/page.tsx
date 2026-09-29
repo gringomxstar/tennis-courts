@@ -13,5 +13,5 @@ export default async function BookingsPage({ params }: { params: Promise<{ clubS
     getCourtsByTenantId(tenant.id),
   ]);
 
-  return <BookingsView slug={tenant.slug} userId={user?.id} bookings={bookings} courts={courts} />;
+  return <BookingsView slug={tenant.slug} userId={user?.id} bookings={bookings} courts={courts} cancelDeadlineHours={tenant.settingsJson?.cancellationDeadlineHours ?? 24} />;
 }

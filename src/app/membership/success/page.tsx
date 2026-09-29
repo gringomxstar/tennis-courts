@@ -1,12 +1,7 @@
 import Link from "next/link";
 import { auth } from "@/auth";
 
-export default async function MembershipSuccessPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ session_id?: string }>;
-}) {
-  const { session_id } = await searchParams;
+export default async function MembershipSuccessPage() {
   // Same target as /dashboard used to redirect to: the user's first club.
   const session = await auth();
   const slug = session?.user?.tenants?.[0]?.slug ?? "tc-marly";
@@ -17,17 +12,17 @@ export default async function MembershipSuccessPage({
         <div className="flex h-24 w-24 items-center justify-center rounded-full bg-clay animate-[pop_.6s_var(--ease-spring)]">
           <svg aria-hidden width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
         </div>
-        <h1 className="mt-5 text-[34px] font-bold tracking-[-.035em]">Freigeschaltet.</h1>
+        <h1 className="mt-5 text-[34px] font-bold tracking-[-.035em]">Danke für deinen Kauf.</h1>
         <p className="mt-1 text-[16px] text-muted-foreground">
-          Danke für deinen Abo-Kauf. Dein Zugang wird in den nächsten Augenblicken automatisch aktiviert.
+          Dein Abo ist in wenigen Sekunden aktiv. Danach buchst du Sandplätze ohne Platzgebühr.
         </p>
-        {session_id && (
-          <p className="mt-4 break-all text-[12px] text-muted-foreground">Referenz: {session_id}</p>
-        )}
         <Link
-          href={`/c/${slug}/profile`}
+          href={`/c/${slug}/calendar`}
           className="mt-8 flex h-[60px] w-full items-center justify-center rounded-[20px] bg-clay text-[18px] font-bold text-white active:scale-[.97]"
         >
+          Jetzt Platz buchen
+        </Link>
+        <Link href={`/c/${slug}/profile`} className="mt-4 text-[16px] font-semibold text-clay-text">
           Zum Profil
         </Link>
       </div>

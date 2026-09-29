@@ -1,5 +1,5 @@
 import { getTenantContext, type TenantContext } from "@/lib/tenant";
-import { getMembershipPlansByTenantId, getUserClubs, getUserWallet } from "@/lib/data";
+import { getUserClubs, getUserWallet } from "@/lib/data";
 import { prisma } from "@/lib/prisma";
 import { ProfileView } from "@/components/app/profile-view";
 import { creditTopUpSession } from "@/lib/wallet";
@@ -8,10 +8,9 @@ import { creditTopUpSession } from "@/lib/wallet";
 async function loadProfile(ctx: TenantContext) {
   const { tenant, user } = ctx;
   const support = { email: tenant.email, phone: tenant.phone };
-  if (!user) return { wallet: 0, plans: [], membership: null, profile: null, support, clubs: [] };
-  const [wallet, plans, m, me, clubs] = await Promise.all([
+  if (!user) return { wallet: 0, membership: null, profile: null, support, clubs: [] };
+  const [wallet, m, me, clubs] = await Promise.all([
     getUserWallet(tenant.id, user.id),
-    getMembershipPlansByTenantId(tenant.id),
     process.env.DATABASE_URL
       ? prisma.membership
           .findFirst({
@@ -29,10 +28,8 @@ async function loadProfile(ctx: TenantContext) {
     clubs,
     profile: me ? { firstName: me.firstName, lastName: me.lastName, phone: me.phone ?? "" } : null,
     wallet: wallet.balance,
-    plans,
     membership: m
       ? {
-          planId: m.membershipPlanId,
           name: m.plan.name,
           price: Number(m.plan.price),
           // formatted here so server and client render the same string
@@ -52,9 +49,9 @@ export default async function ProfilePage({
   searchParams,
 }: {
   params: Promise<{ clubSlug: string }>;
-  searchParams: Promise<{ abo?: string; topup?: string }>;
+  searchParams: Promise<{ topup?: string; register?: string; next?: string }>;
 }) {
-  const [{ clubSlug }, { abo, topup }] = await Promise.all([params, searchParams]);
+  const [{ clubSlug }, { topup, register, next }] = await Promise.all([params, searchParams]);
   const ctx = await getTenantContext(clubSlug);
   // back from Stripe: credit right away instead of waiting for the webhook (idempotent)
   if (topup && ctx.user) await creditTopUpSession(topup).catch((e) => console.error("Top-up-Abgleich:", e));
@@ -66,7 +63,8 @@ export default async function ProfilePage({
       user={ctx.user && { name: ctx.user.name || ctx.user.email }}
       canAdmin={ctx.isTenantAdmin}
       admin={false}
-      openAbo={abo === "1"}
+      openRegister={register === "1"}
+      next={next?.startsWith("/") && !next.startsWith("//") && !next.startsWith("/\\") ? next : undefined}
       {...data}
     />
   );

@@ -35,6 +35,22 @@ const overlaps = (aStart: number, aEnd: number, bStart: string, bEnd: string) =>
 
 export type SlotState = "free" | "mine" | "taken" | "blocked" | "past";
 
+/** The live booking covering [start, start+minutes) on a court, if any. */
+export function bookingAt(courtId: string, start: Date, minutes: number, bookings: Booking[]) {
+  const s = start.getTime();
+  const e = s + minutes * 60_000;
+  return bookings.find((b) => b.courtId === courtId && b.status !== "CANCELLED" && overlaps(s, e, b.startsAt, b.endsAt));
+}
+
+const initial = (p: { firstName: string; lastName: string } | null | undefined) =>
+  p?.firstName ? `${p.firstName} ${p.lastName ? `${p.lastName[0]}.` : ""}`.trim() : "";
+
+/** "Max M. / Anna B." — empty when the viewer may not see names (see loadClubData). */
+export function shortName(b: Booking) {
+  const partner = b.participants.find((p) => p.role !== "ORGANIZER" && (p.user || p.guestName));
+  return [initial(b.organizer), partner ? initial(partner.user) || partner.guestName || "" : ""].filter(Boolean).join(" / ");
+}
+
 export function slotState(
   courtId: string,
   start: Date,
@@ -46,9 +62,7 @@ export function slotState(
 ): SlotState {
   const s = start.getTime();
   const e = s + minutes * 60_000;
-  const booking = bookings.find(
-    (b) => b.courtId === courtId && b.status !== "CANCELLED" && overlaps(s, e, b.startsAt, b.endsAt)
-  );
+  const booking = bookingAt(courtId, start, minutes, bookings);
   if (booking) {
     const mine =
       userId &&

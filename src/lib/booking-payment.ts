@@ -33,6 +33,20 @@ export async function releaseUnpaidBooking(bookingId: string) {
   return result.count > 0;
 }
 
+/** Back from Checkout via "Zurück": end the Stripe session and free the slot right away (not after 30 min). */
+export async function abandonCheckout(bookingId: string) {
+  const b = await prisma.booking.findUnique({ where: { id: bookingId }, select: { status: true, stripeSessionId: true } });
+  if (b?.status !== "PENDING" || !b.stripeSessionId) return false;
+  const stripe = getStripe();
+  const session = await stripe.checkout.sessions.retrieve(b.stripeSessionId);
+  if (session.payment_status === "paid") {
+    await markBookingPaid(bookingId, session.id);
+    return false;
+  }
+  if (session.status === "open") await stripe.checkout.sessions.expire(session.id);
+  return releaseUnpaidBooking(bookingId);
+}
+
 /**
  * Offene Stripe-Buchungen direkt bei Stripe abgleichen. Der Webhook bleibt der Hauptweg,
  * aber ohne (oder mit falsch konfiguriertem) Webhook blieben bezahlte Buchungen sonst

@@ -1,7 +1,7 @@
 import { requireTenantAdmin } from "@/lib/tenant";
 import { getTenantMembers } from "@/lib/data";
 import { prisma } from "@/lib/prisma";
-import { AdminMembers, type MemberRow } from "@/components/app/admin-members";
+import { AdminMembers, ImportMembers, type MemberRow } from "@/components/app/admin-members";
 
 const RANK = { ACTIVE: 0, PENDING: 1, EXPIRED: 2, CANCELLED: 3 } as const;
 
@@ -29,7 +29,7 @@ export default async function AdminMembersPage({ params }: { params: Promise<{ c
 
   const rows: MemberRow[] = members
     // guest checkouts create GUEST users; keep them only if they bought a membership
-    .filter((m) => m.role !== "GUEST" || best.has(m.id))
+    .filter((m) => m.role !== "PLATFORM_ADMIN" && (m.role !== "GUEST" || best.has(m.id)))
     .map((m) => {
       const ms = best.get(m.id);
       return {
@@ -44,9 +44,12 @@ export default async function AdminMembersPage({ params }: { params: Promise<{ c
 
   return (
     <>
-      <div className="px-5 pt-[66px] lg:pt-12">
-        <h1 className="text-[34px] font-bold tracking-[-.035em]">Mitglieder</h1>
-        <div className="mt-0.5 text-[15px] text-muted-foreground">Zahlungen Saison {new Date().getFullYear()}</div>
+      <div className="flex items-end justify-between gap-3 px-5 pt-[66px] lg:pt-12">
+        <div>
+          <h1 className="text-[34px] font-bold tracking-[-.035em]">Mitglieder</h1>
+          <div className="mt-0.5 text-[15px] text-muted-foreground">Zahlungen Saison {new Date().getFullYear()}</div>
+        </div>
+        <ImportMembers slug={tenant.slug} />
       </div>
       <AdminMembers slug={tenant.slug} tenantId={tenant.id} members={rows} />
     </>
