@@ -19,6 +19,25 @@ export interface PlanRules {
   simultaneousBookingLimit: number;
   dailyBookingLimit?: number;
   guestsPerWeek?: number | null;
+  sports?: SportType[];
+  playWindow?: { weekdays: number[]; fromHour: number; toHour: number } | null;
+}
+
+const WD_SHORT = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
+const zurich = new Intl.DateTimeFormat("en-US", { timeZone: "Europe/Zurich", hour: "numeric", minute: "numeric", hourCycle: "h23", weekday: "short" });
+const WEEKDAY: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+/** Weekday (0 = Sunday) and fractional hour in club time. */
+function clubTime(d: Date) {
+  const p = Object.fromEntries(zurich.formatToParts(d).map((x) => [x.type, x.value]));
+  return { day: WEEKDAY[p.weekday], hour: Number(p.hour) + Number(p.minute) / 60 };
+}
+
+/** "Mo–Fr 8–16 Uhr" */
+export function playWindowLabel(w: { weekdays: number[]; fromHour: number; toHour: number }) {
+  const days = [...w.weekdays].sort((a, b) => ((a + 6) % 7) - ((b + 6) % 7));
+  const contiguous = days.every((d, i) => i === 0 || (days[i - 1] + 1) % 7 === d);
+  const d = contiguous && days.length > 2 ? `${WD_SHORT[days[0]]}–${WD_SHORT[days[days.length - 1]]}` : days.map((x) => WD_SHORT[x]).join(", ");
+  return `${d} ${w.fromHour}–${w.toHour} Uhr`;
 }
 
 /** One of the user's non-cancelled bookings (organized or played in). */
@@ -69,6 +88,13 @@ export function checkBookingRules(i: RuleInput): string | null {
   if (i.plan) {
     if (s - now > i.plan.bookingWindowDays * DAY) {
       return `Mit deinem Abo kannst du höchstens ${i.plan.bookingWindowDays} Tage im Voraus buchen.`;
+    }
+    const w = i.plan.playWindow;
+    if (w && (i.plan.sports ?? ["TENNIS"]).includes(i.sport)) {
+      const a = clubTime(i.start);
+      const b = clubTime(new Date(e - 60_000));
+      const inside = (t: { day: number; hour: number }) => w.weekdays.includes(t.day) && t.hour >= w.fromHour && t.hour < w.toHour;
+      if (!inside(a) || !inside(b)) return `Dein Abo gilt nur ${playWindowLabel(w)}.`;
     }
     const d = i.plan.allowedDurations;
     // a 2h double is two 60-min slots, governed by the club's doubles rule

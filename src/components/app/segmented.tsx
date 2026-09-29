@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 export function Segmented<T extends string | number>({
@@ -10,7 +11,7 @@ export function Segmented<T extends string | number>({
   size = "md",
   label,
 }: {
-  options: readonly (readonly [T, string])[];
+  options: readonly (readonly [T, ReactNode])[];
   value: T;
   onChange: (v: T) => void;
   className?: string;

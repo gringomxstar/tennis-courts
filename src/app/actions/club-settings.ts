@@ -10,7 +10,7 @@ import {
   deleteMembershipPlan,
   getMembershipPlansByTenantId,
 } from "@/lib/data";
-import { PriceRule, TenantRole, TenantSettings } from "@/types";
+import { PriceRule, SportType, TenantRole, TenantSettings } from "@/types";
 import { prisma } from "@/lib/prisma";
 import { LIMIT_ROLES, SPORTS } from "@/lib/booking-rules";
 import { ensureDemoAccounts, purgeDemoData } from "@/lib/demo";
@@ -136,6 +136,19 @@ export async function updateClubSettingsAction(
 
   const priceRules = cleanPriceRules(settings.priceRules);
   if (typeof priceRules === "string") return { success: false, error: priceRules };
+  const d = settings.dinerTennis;
+  const dinerTennis = d && {
+    enabled: Boolean(d.enabled),
+    weekdays: [...new Set((d.weekdays ?? []).map(Number))].filter((x) => Number.isInteger(x) && x >= 0 && x <= 6),
+    fromHour: Number(d.fromHour),
+    toHour: Number(d.toHour),
+  };
+  if (dinerTennis && !(Number.isInteger(dinerTennis.fromHour) && Number.isInteger(dinerTennis.toHour) && dinerTennis.fromHour >= 0 && dinerTennis.fromHour < dinerTennis.toHour && dinerTennis.toHour <= 24)) {
+    return { success: false, error: "Diner Tennis: Von muss vor Bis liegen (0 bis 24 Uhr)." };
+  }
+  if (dinerTennis?.enabled && !dinerTennis.weekdays.length) {
+    return { success: false, error: "Diner Tennis: mindestens einen Wochentag wählen." };
+  }
   const late = Number(settings.lateBookingMinutes ?? 15);
   if (!(late >= 0 && late <= 120)) {
     return { success: false, error: "Buchen nach Spielbeginn: 0 bis 120 Minuten." };
@@ -159,6 +172,7 @@ export async function updateClubSettingsAction(
     payOnSite: Boolean(settings.payOnSite),
     payByInvoice: Boolean(settings.payByInvoice),
     priceRules,
+    ...(dinerTennis && { dinerTennis }),
     openingHour: opening,
     closingHour: closing,
     slotDurationMinutes: slotDuration,
@@ -197,6 +211,54 @@ export interface CreateMembershipPlanInput {
   weeklyBookingLimit: number;
   allowedDurations: number[];
   guestsPerWeek?: number | null;
+  sports?: SportType[];
+  category?: string | null;
+  persons?: 1 | 2;
+  ageMin?: number | null;
+  ageMax?: number | null;
+  proofRequired?: boolean;
+  playWindow?: { weekdays: number[]; fromHour: number; toHour: number } | null;
+}
+
+/** Validates/cleans the rulesJson extras; only keys present in `input` are returned. */
+function cleanPlanExtras(input: Partial<CreateMembershipPlanInput>): { error: string } | { extras: Partial<CreateMembershipPlanInput> } {
+  const extras: Partial<CreateMembershipPlanInput> = {};
+  if (input.sports !== undefined) {
+    const sports = [...new Set(input.sports)];
+    if (!sports.length || sports.some((s) => s !== "TENNIS" && s !== "PADEL")) return { error: "Mindestens eine Sportart (Tennis/Padel) wählen." };
+    extras.sports = sports;
+  }
+  if (input.category !== undefined) {
+    const c = input.category?.trim() || null;
+    if (c && c.length > 40) return { error: "Kategorie darf höchstens 40 Zeichen haben." };
+    extras.category = c;
+  }
+  if (input.persons !== undefined) {
+    if (input.persons !== 1 && input.persons !== 2) return { error: "Personen muss 1 oder 2 sein." };
+    extras.persons = input.persons;
+  }
+  for (const k of ["ageMin", "ageMax"] as const) {
+    const v = input[k];
+    if (v === undefined) continue;
+    if (v !== null && (!Number.isInteger(v) || v < 0 || v > 120)) return { error: "Alter muss zwischen 0 und 120 liegen." };
+    extras[k] = v;
+  }
+  if (extras.ageMin != null && extras.ageMax != null && extras.ageMin > extras.ageMax) {
+    return { error: "\"Alter ab\" darf nicht grösser als \"Alter bis\" sein." };
+  }
+  if (input.proofRequired !== undefined) extras.proofRequired = Boolean(input.proofRequired);
+  if (input.playWindow !== undefined) {
+    const w = input.playWindow;
+    if (w) {
+      const days = [...new Set(w.weekdays)];
+      if (!days.length || days.some((d) => !Number.isInteger(d) || d < 0 || d > 6)) return { error: "Spielzeiten: mindestens einen gültigen Wochentag wählen." };
+      if (!Number.isInteger(w.fromHour) || !Number.isInteger(w.toHour) || w.fromHour < 0 || w.toHour > 24 || w.fromHour >= w.toHour) {
+        return { error: "Spielzeiten: \"von\" muss vor \"bis\" liegen (0–24 Uhr)." };
+      }
+      extras.playWindow = { weekdays: days, fromHour: w.fromHour, toHour: w.toHour };
+    } else extras.playWindow = null;
+  }
+  return { extras };
 }
 
 export async function createMembershipPlanAction(
@@ -220,6 +282,8 @@ export async function createMembershipPlanAction(
   if (input.simultaneousBookingLimit < 1) {
     return { success: false, error: "Gleichzeitiges Buchungslimit muss mind. 1 sein." };
   }
+  const cleaned = cleanPlanExtras(input);
+  if ("error" in cleaned) return { success: false, error: cleaned.error };
 
   const plan = await createMembershipPlan(authCheck.tenant.id, {
     name: input.name.trim(),
@@ -235,6 +299,7 @@ export async function createMembershipPlanAction(
         ? input.allowedDurations
         : [60],
     guestsPerWeek: input.guestsPerWeek == null ? null : Math.max(0, Math.round(Number(input.guestsPerWeek))),
+    ...cleaned.extras,
   });
 
   revalidatePath(`/c/${clubSlug}/admin`);
@@ -257,7 +322,12 @@ export async function updateMembershipPlanAction(
     return { success: false, error: "Tarif gehört nicht zu diesem Club." };
   }
 
-  const updated = await updateMembershipPlan(planId, input);
+  const cleaned = cleanPlanExtras(input);
+  if ("error" in cleaned) return { success: false, error: cleaned.error };
+  if (input.name !== undefined && !input.name.trim()) return { success: false, error: "Tarifname ist erforderlich." };
+  if (input.price !== undefined && !(input.price >= 0)) return { success: false, error: "Preis darf nicht negativ sein." };
+
+  const updated = await updateMembershipPlan(planId, { ...input, ...cleaned.extras });
   if (!updated) {
     return { success: false, error: "Tarif konnte nicht aktualisiert werden." };
   }

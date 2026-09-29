@@ -20,6 +20,19 @@ assert.equal(paysGuestRate(true, "GUEST", false), true); // registered/claimed a
 assert.equal(paysGuestRate(true, "GUEST", true), false);
 assert.equal(paysGuestRate(true, "MEMBER", false), false);
 assert.equal(paysGuestRate(true, "COACH", false), false);
+assert.equal(computeBookingCost({ ...base, court: padel, isGuest: false, planSports: ["PADEL"] }).total, 0); // padel Abo
+assert.equal(computeBookingCost({ ...base, court: padel, isGuest: false, planSports: ["TENNIS"] }).total, 40);
+assert.equal(computeBookingCost({ ...base, court: outdoor, isGuest: false, planSports: ["PADEL"] }).total, 30); // padel-only Abo
+assert.equal(computeBookingCost({ ...base, court: outdoor, isGuest: false, planSports: ["TENNIS", "PADEL"] }).total, 0);
+assert.equal(computeBookingCost({ ...base, court: padel, isGuest: true, planSports: ["PADEL"] }).total, 40); // guest rate wins
+// Diner Tennis Mo–Fr 11–13: 1 free guest for members with Abo; at() = Zurich winter hours on a Monday
+const diner = { dinerTennis: { enabled: true, weekdays: [1, 2, 3, 4, 5], fromHour: 11, toHour: 13 }, guestFee: 15 } as never;
+const mon = (h: number) => new Date(Date.UTC(2030, 0, 7, h - 1));
+assert.equal(computeBookingCost({ ...base, court: outdoor, isGuest: false, planSports: ["TENNIS"], settings: diner, guestCount: 1, start: mon(12) }).guests, 0);
+assert.equal(computeBookingCost({ ...base, court: outdoor, isGuest: false, planSports: ["TENNIS"], settings: diner, guestCount: 2, start: mon(11) }).guests, 15);
+assert.equal(computeBookingCost({ ...base, court: outdoor, isGuest: false, planSports: ["TENNIS"], settings: diner, guestCount: 1, start: mon(13) }).guests, 15); // after lunch
+assert.equal(computeBookingCost({ ...base, court: outdoor, isGuest: false, planSports: null, settings: diner, guestCount: 1, start: mon(12) }).guests, 15); // no Abo
+assert.equal(computeBookingCost({ ...base, court: outdoor, isGuest: false, planSports: ["TENNIS"], settings: diner, guestCount: 1, start: new Date(Date.UTC(2030, 0, 12, 11)) }).guests, 15); // Saturday
 console.log("pricing ok");
 
 // price rules: -20% before 12:00, +10% last minute (< 2h)

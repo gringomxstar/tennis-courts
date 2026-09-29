@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { getStripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
+import { seasonEnd, grantMembership, grantPartnerMembership } from "@/lib/membership";
+import { rememberAutoRenew } from "@/lib/abo-renewal";
 import { markBookingPaid, releaseUnpaidBooking } from "@/lib/booking-payment";
 import { creditTopUpSession } from "@/lib/wallet";
 
@@ -37,7 +39,8 @@ export async function POST(req: Request) {
         } else if (session.metadata?.bookingId) {
           await handleBookingPaymentSuccess(session.metadata.bookingId, session.id);
         } else {
-          await handlePaymentSuccess(session.customer as string, session.metadata as Record<string, string>);
+          await handlePaymentSuccess(session.customer as string, session.metadata as Record<string, string>, session.id);
+          if (session.metadata?.autoRenew === "1") await rememberAutoRenew(session);
         }
         break;
       }
@@ -54,7 +57,7 @@ export async function POST(req: Request) {
       // 2. Kauf auf Rechnung bezahlt (Bank Transfer / E-Banking via QR-Code)
       case "invoice.paid": {
         const invoice = event.data.object as Stripe.Invoice;
-        await handlePaymentSuccess(invoice.customer as string, invoice.metadata as Record<string, string>);
+        await handlePaymentSuccess(invoice.customer as string, invoice.metadata as Record<string, string>, invoice.id);
         break;
       }
 
@@ -94,7 +97,7 @@ async function handleBookingCheckoutExpired(bookingId: string) {
  * Auto-Unlock Logic: Wird gefeuert, sobald Geld eingegangen ist
  * (Egal ob Twint in 2 Sekunden, oder E-Banking nach 14 Tagen)
  */
-async function handlePaymentSuccess(stripeCustomerId: string, metadata?: Record<string, string>) {
+async function handlePaymentSuccess(stripeCustomerId: string, metadata?: Record<string, string>, ref?: string) {
   if (!stripeCustomerId) return;
 
   const user = await prisma.user.findUnique({
@@ -114,23 +117,13 @@ async function handlePaymentSuccess(stripeCustomerId: string, metadata?: Record<
 
   // 1. Wenn wir planId im Metadata haben, erstellen wir das aktive Abo (idempotent bei Webhook-Retries)
   if (metadata?.planId && tenantId) {
-    const existing = await prisma.membership.findFirst({
-      where: { userId: user.id, tenantId, membershipPlanId: metadata.planId, status: { in: ["ACTIVE", "PENDING"] } }
-    });
-    if (!existing) {
-      await prisma.membership.create({
-        data: {
-          userId: user.id,
-          tenantId,
-          membershipPlanId: metadata.planId,
-          startsAt: new Date(),
-          // plans are sold per year ("CHF … / Jahr")
-          endsAt: new Date(Date.now() + 365 * 86_400_000),
-          status: "ACTIVE"
-        }
-      });
-    } else if (existing.status === "PENDING") {
-      await prisma.membership.update({ where: { id: existing.id }, data: { status: "ACTIVE" } });
+    await grantMembership(tenantId, user.id, metadata.planId, ref);
+    if (metadata.partnerEmail) {
+      await grantPartnerMembership(tenantId, metadata.planId, {
+        email: metadata.partnerEmail,
+        firstName: metadata.partnerFirstName ?? "",
+        lastName: metadata.partnerLastName ?? "",
+      }, ref);
     }
   } else {
     // 1b. Für normale Invoices (Offline Zahlung) ohne Tenant-Metadata: nur eindeutig zuordenbare Fälle freischalten
@@ -142,7 +135,7 @@ async function handlePaymentSuccess(stripeCustomerId: string, metadata?: Record<
       tenantId = pending[0].tenantId;
       await prisma.membership.updateMany({
         where: { userId: user.id, tenantId, status: { in: ["PENDING", "EXPIRED"] } },
-        data: { status: "ACTIVE" }
+        data: { status: "ACTIVE", startsAt: new Date(), endsAt: seasonEnd() }
       });
     } else if (distinctTenants.size > 1) {
       console.error(`Ambiguous tenant for invoice payment, user ${user.id} has pending memberships in multiple tenants — skipping auto-activation.`);
@@ -152,14 +145,8 @@ async function handlePaymentSuccess(stripeCustomerId: string, metadata?: Record<
 
   if (!tenantId) return;
 
-  // 2. User-Rolle im Club auf MEMBER hochstufen (nur im verifizierten Tenant)
-  const tenantUser = user.tenantUsers.find(tu => tu.tenantId === tenantId);
-  if (tenantUser) {
-    await prisma.tenantUser.update({
-      where: { id: tenantUser.id },
-      data: { role: "MEMBER" }
-    });
-  }
+  // 2. User-Rolle im Club auf MEMBER hochstufen (nur im verifizierten Tenant, nur von GUEST — Admins bleiben Admins)
+  await prisma.tenantUser.updateMany({ where: { tenantId, userId: user.id, role: "GUEST" }, data: { role: "MEMBER" } });
 }
 
 /**

@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { getStripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
+import { planFromDb } from "@/lib/data";
+import { seasonEnd, parsePartner } from "@/lib/membership";
 
 export async function POST(req: Request) {
   try {
@@ -12,7 +14,7 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { planId, paymentMethod } = body; 
+    const { planId, paymentMethod, partner: rawPartner, autoRenew } = body;
 
     if (!planId) {
       return NextResponse.json({ error: "Plan ID is required" }, { status: 400 });
@@ -24,8 +26,15 @@ export async function POST(req: Request) {
       include: { tenant: true }
     });
 
-    if (!plan) {
+    if (!plan || plan.status !== "ACTIVE") {
       return NextResponse.json({ error: "Membership Plan not found" }, { status: 404 });
+    }
+    // Paar-Abo: second person comes with the purchase; online only (invoice can't carry the partner)
+    const couple = planFromDb(plan).persons === 2;
+    const partner = couple ? parsePartner(rawPartner, session.user.email) : null;
+    if (typeof partner === "string") return NextResponse.json({ error: partner }, { status: 400 });
+    if (couple && paymentMethod === "OFFLINE_INVOICE") {
+      return NextResponse.json({ error: "Paar-Abos bitte mit Twint oder Karte bezahlen." }, { status: 400 });
     }
 
     // 2. Hole oder erstelle den Stripe Customer
@@ -68,7 +77,7 @@ export async function POST(req: Request) {
           userId: user!.id,
           membershipPlanId: plan.id,
           startsAt: new Date(),
-          endsAt: new Date(Date.now() + 365 * 86_400_000), // yearly plans, same as the Stripe webhook
+          endsAt: seasonEnd(), // same as grantMembership
           status: "PENDING"
         }
       });
@@ -115,8 +124,12 @@ export async function POST(req: Request) {
       metadata: {
         userId: user!.id,
         planId: plan.id,
-        tenantId: plan.tenantId
+        tenantId: plan.tenantId,
+        ...(partner && { partnerEmail: partner.email, partnerFirstName: partner.firstName, partnerLastName: partner.lastName }),
+        ...(autoRenew === true && { autoRenew: "1" }),
       },
+      // auto-renewal keeps the card for an off-session charge before next 31 March (Twint can't, Stripe hides it then)
+      ...(autoRenew === true && { payment_intent_data: { setup_future_usage: "off_session" as const } }),
       success_url: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/membership/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/c/${plan.tenant.slug}/abos?plan=${plan.id}`,
     });

@@ -8,10 +8,10 @@ import { Spinner } from "@/components/app/avatar";
 import { SwitchKnob } from "@/components/app/switch";
 import { createBookingAction } from "@/app/actions/booking";
 import { setFavoritesAction } from "@/app/actions/profile";
-import { computeBookingCost, needsFloodlight, payButtonLabel, payOptions } from "@/lib/pricing";
+import { computeBookingCost, isDinerSlot, needsFloodlight, payButtonLabel, payOptions } from "@/lib/pricing";
 import { courtColor, courtLabel, hh, initials, longDate, slotState } from "@/lib/courts";
 import type { Person } from "@/lib/partners";
-import type { Booking, Court, CourtBlock, PaymentMethod, Tenant } from "@/types";
+import type { Booking, Court, CourtBlock, PaymentMethod, Tenant, SportType } from "@/types";
 import { cn } from "@/lib/utils";
 
 const Star = ({ on }: { on: boolean }) => (
@@ -33,6 +33,7 @@ export function ReserveView({
   wallet,
   favoriteUserIds,
   guestRate,
+  planSports,
 }: {
   tenant: Tenant;
   court: Court;
@@ -46,6 +47,7 @@ export function ReserveView({
   wallet: number;
   favoriteUserIds: string[];
   guestRate: boolean;
+  planSports: SportType[] | null;
 }) {
   const router = useRouter();
   const startDate = new Date(start);
@@ -109,12 +111,15 @@ export function ReserveView({
     settings: tenant.settingsJson,
     court,
     isGuest: guestRate,
+    planSports,
     durationMinutes: dur * 60,
     guestCount: guests.length,
     hasBallMachine: ball,
     hasLighting: light,
     start: startDate,
   });
+  // Diner Tennis: computeBookingCost already takes one guest off
+  const diner = Boolean(planSports) && !guestRate && isDinerSlot(tenant.settingsJson, startDate);
   const opts = payOptions(tenant.settingsJson, { isAnon: false, wallet, total: cost.total });
   const pay = method && opts.some(([m]) => m === method) ? method : opts[0][0];
   const canSplit = cost.total > 0 && players.length > 0 && pay === "WALLET";
@@ -327,8 +332,13 @@ export function ReserveView({
               className="mt-2.5 flex w-full items-center justify-between rounded-[18px] bg-inset px-4 py-3.5 text-[16px] font-semibold text-foreground"
             >
               <span>Gast hinzufügen</span>
-              <span>CHF {tenant.settingsJson?.guestFee ?? 15}</span>
+              <span>{diner && guests.length === 0 ? "Gratis" : `CHF ${tenant.settingsJson?.guestFee ?? 15}`}</span>
             </button>
+          )}
+          {diner && (
+            <div className="mt-2 px-1 text-[13px] leading-[1.4] text-muted-foreground">
+              <b className="font-bold text-foreground">Diner Tennis:</b> 1 Gast gratis – wenn ihr danach zusammen im Club zu Mittag esst.
+            </div>
           )}
           </div>
 

@@ -276,6 +276,7 @@ export async function createBookingAction(input: CreateBookingInput) {
     settings,
     court,
     isGuest: guestRate,
+    planSports: member?.plan?.sports ?? null,
     durationMinutes: input.durationMinutes,
     guestCount,
     hasBallMachine: Boolean(input.hasBallMachine),

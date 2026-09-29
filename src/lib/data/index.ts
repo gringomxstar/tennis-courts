@@ -349,26 +349,52 @@ export async function getMembershipPlansByTenantId(tenantId: string): Promise<Me
         orderBy: { price: "asc" },
       });
       if (plans.length > 0) {
-        return plans.map((p) => ({
-          id: p.id,
-          tenantId: p.tenantId,
-          name: p.name,
-          description: p.description || null,
-          price: Number(p.price),
-          currency: p.currency,
-          bookingWindowDays: p.bookingWindowDays,
-          simultaneousBookingLimit: p.simultaneousBookingLimit,
-          dailyBookingLimit: p.dailyBookingLimit,
-          weeklyBookingLimit: p.weeklyBookingLimit,
-          allowedDurations: p.allowedDurations,
-          guestsPerWeek: ((p.rulesJson ?? {}) as { guestsPerWeek?: number | null }).guestsPerWeek ?? null,
-        }));
+        return plans.map(planFromDb);
       }
     } catch (e) {
       dbFailed(e);
     }
   }
   return mockDb.getMembershipPlans(tenantId);
+}
+
+type DbPlan = {
+  id: string; tenantId: string; name: string; description: string | null; price: unknown; currency: string;
+  bookingWindowDays: number; simultaneousBookingLimit: number; dailyBookingLimit: number; weeklyBookingLimit: number;
+  allowedDurations: number[]; rulesJson: unknown;
+};
+const PLAN_RULE_KEYS = ["guestsPerWeek", "sports", "category", "persons", "ageMin", "ageMax", "proofRequired", "playWindow"] as const;
+
+/** The plan's extra fields live in rulesJson (no migration per field). */
+export function planFromDb(p: DbPlan): MembershipPlan {
+  const r = (p.rulesJson ?? {}) as Partial<MembershipPlan>;
+  return {
+    id: p.id,
+    tenantId: p.tenantId,
+    name: p.name,
+    description: p.description || null,
+    price: Number(p.price),
+    currency: p.currency,
+    bookingWindowDays: p.bookingWindowDays,
+    simultaneousBookingLimit: p.simultaneousBookingLimit,
+    dailyBookingLimit: p.dailyBookingLimit,
+    weeklyBookingLimit: p.weeklyBookingLimit,
+    allowedDurations: p.allowedDurations,
+    guestsPerWeek: r.guestsPerWeek ?? null,
+    sports: r.sports?.length ? r.sports : ["TENNIS"],
+    category: r.category ?? null,
+    persons: r.persons === 2 ? 2 : 1,
+    ageMin: r.ageMin ?? null,
+    ageMax: r.ageMax ?? null,
+    proofRequired: Boolean(r.proofRequired),
+    playWindow: r.playWindow ?? null,
+  };
+}
+
+function planRulesJson(plan: Partial<MembershipPlan>, base: unknown = {}) {
+  const out: Record<string, unknown> = { ...((base ?? {}) as object) };
+  for (const k of PLAN_RULE_KEYS) if (plan[k] !== undefined) out[k] = plan[k];
+  return out as object;
 }
 
 export async function updateTenantSettings(
@@ -427,24 +453,11 @@ export async function createMembershipPlan(
           dailyBookingLimit: plan.dailyBookingLimit,
           weeklyBookingLimit: plan.weeklyBookingLimit,
           allowedDurations: plan.allowedDurations,
-          rulesJson: { guestsPerWeek: plan.guestsPerWeek ?? null },
+          rulesJson: planRulesJson({ guestsPerWeek: null, ...plan }),
           status: "ACTIVE",
         },
       });
-      return {
-        id: dbPlan.id,
-        tenantId: dbPlan.tenantId,
-        name: dbPlan.name,
-        description: dbPlan.description,
-        price: Number(dbPlan.price),
-        currency: dbPlan.currency,
-        bookingWindowDays: dbPlan.bookingWindowDays,
-        simultaneousBookingLimit: dbPlan.simultaneousBookingLimit,
-        dailyBookingLimit: dbPlan.dailyBookingLimit,
-        weeklyBookingLimit: dbPlan.weeklyBookingLimit,
-        allowedDurations: dbPlan.allowedDurations,
-        guestsPerWeek: ((dbPlan.rulesJson ?? {}) as { guestsPerWeek?: number | null }).guestsPerWeek ?? null,
-      };
+      return planFromDb(dbPlan);
     } catch (e) {
       dbFailed(e);
     }
@@ -473,23 +486,12 @@ export async function updateMembershipPlan(
           ...(plan.dailyBookingLimit !== undefined && { dailyBookingLimit: plan.dailyBookingLimit }),
           ...(plan.weeklyBookingLimit !== undefined && { weeklyBookingLimit: plan.weeklyBookingLimit }),
           ...(plan.allowedDurations && { allowedDurations: plan.allowedDurations }),
-          ...(plan.guestsPerWeek !== undefined && { rulesJson: { guestsPerWeek: plan.guestsPerWeek } }),
+          ...(PLAN_RULE_KEYS.some((k) => plan[k] !== undefined) && {
+            rulesJson: planRulesJson(plan, (await prisma.membershipPlan.findUnique({ where: { id: planId } }))?.rulesJson),
+          }),
         },
       });
-      return {
-        id: dbPlan.id,
-        tenantId: dbPlan.tenantId,
-        name: dbPlan.name,
-        description: dbPlan.description,
-        price: Number(dbPlan.price),
-        currency: dbPlan.currency,
-        bookingWindowDays: dbPlan.bookingWindowDays,
-        simultaneousBookingLimit: dbPlan.simultaneousBookingLimit,
-        dailyBookingLimit: dbPlan.dailyBookingLimit,
-        weeklyBookingLimit: dbPlan.weeklyBookingLimit,
-        allowedDurations: dbPlan.allowedDurations,
-        guestsPerWeek: ((dbPlan.rulesJson ?? {}) as { guestsPerWeek?: number | null }).guestsPerWeek ?? null,
-      };
+      return planFromDb(dbPlan);
     } catch (e) {
       dbFailed(e);
     }
@@ -567,32 +569,17 @@ export async function getMemberContext(
   const [tu, m] = await Promise.all([
     prisma.tenantUser.findUnique({ where: { tenantId_userId: { tenantId, userId } } }),
     prisma.membership.findFirst({
-      where: { tenantId, userId, status: "ACTIVE", OR: [{ endsAt: null }, { endsAt: { gt: new Date() } }] },
+      // startsAt ≤ now: a renewal for next season is already stored but not the current plan yet
+      where: { tenantId, userId, status: "ACTIVE", startsAt: { lte: new Date() }, OR: [{ endsAt: null }, { endsAt: { gt: new Date() } }] },
       include: { plan: true },
       orderBy: { startsAt: "desc" },
     }),
   ]);
   const p = m?.plan;
-  const rules = (p?.rulesJson ?? {}) as { guestsPerWeek?: number | null };
   return {
     role: (tu?.role as TenantRole) ?? null,
     favoriteUserIds: tu?.favoriteUserIds ?? [],
-    plan: p
-      ? {
-          id: p.id,
-          tenantId: p.tenantId,
-          name: p.name,
-          description: p.description,
-          price: Number(p.price),
-          currency: p.currency,
-          bookingWindowDays: p.bookingWindowDays,
-          simultaneousBookingLimit: p.simultaneousBookingLimit,
-          dailyBookingLimit: p.dailyBookingLimit,
-          weeklyBookingLimit: p.weeklyBookingLimit,
-          allowedDurations: p.allowedDurations,
-          guestsPerWeek: rules.guestsPerWeek ?? null,
-        }
-      : null,
+    plan: p ? planFromDb(p) : null,
   };
 }
 
