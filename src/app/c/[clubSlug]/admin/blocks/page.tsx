@@ -2,10 +2,10 @@ import { requireTenantAdmin } from "@/lib/tenant";
 import { getBlocksInRange, getCourtsByTenantId } from "@/lib/data";
 import { AdminBlocks } from "@/components/app/admin-blocks";
 
-/** now-1d .. now+2d as ISO, wide enough for any client timezone's "today". */
+/** now-1d .. now+90d: "today" in any client timezone plus the planned-blocks list. */
 function range() {
   const now = Date.now();
-  return [new Date(now - 86_400_000).toISOString(), new Date(now + 2 * 86_400_000).toISOString()];
+  return [new Date(now - 86_400_000).toISOString(), new Date(now + 90 * 86_400_000).toISOString()];
 }
 
 export default async function AdminBlocksPage({ params }: { params: Promise<{ clubSlug: string }> }) {

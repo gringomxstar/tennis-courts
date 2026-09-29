@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Avatar, Spinner } from "@/components/app/avatar";
 import { Sheet } from "@/components/app/sheet";
+import { AdminGrantCreditsButton } from "@/components/admin/admin-grant-credits-button";
 import { markInvoiceAsPaidManually, sendPaymentReminderAction } from "@/actions/admin-billing";
 import { importMembersAction, setMemberRoleAction } from "@/app/actions/club-settings";
 import { parseMembers } from "@/lib/member-import";
@@ -15,6 +16,7 @@ import { cn } from "@/lib/utils";
 export interface MemberRow {
   id: string;
   name: string;
+  email: string;
   plan: string;
   /** paid = ACTIVE membership, invoice = PENDING offline invoice, remind = anything else */
   state: "paid" | "invoice" | "remind";
@@ -36,6 +38,9 @@ export function AdminMembers({ slug, tenantId, members }: { slug: string; tenant
   const [reminded, setReminded] = useState<string[]>([]);
   const [paid, setPaid] = useState<string[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
+  const [q, setQ] = useState("");
+  const needle = q.trim().toLowerCase();
+  const shown = needle ? members.filter((m) => `${m.name} ${m.email}`.toLowerCase().includes(needle)) : members;
 
   async function markPaid(m: MemberRow) {
     if (!m.stripeCustomerId || busy) return;
@@ -70,8 +75,20 @@ export function AdminMembers({ slug, tenantId, members }: { slug: string; tenant
   }
 
   return (
-    <div className="flex flex-col gap-2.5 px-5 pt-4 lg:grid lg:grid-cols-2">
-      {members.map((m) => {
+    <>
+      <div className="px-5 pt-4">
+        <input
+          type="search"
+          aria-label="Mitglieder suchen"
+          placeholder={`Suchen in ${members.length} Mitgliedern`}
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          className="h-[50px] w-full rounded-[15px] border border-border bg-inset px-4 text-[16px] text-foreground outline-none placeholder:text-muted-foreground focus-visible:border-clay lg:max-w-[480px]"
+        />
+      </div>
+      <div className="flex flex-col gap-2.5 px-5 pt-3 lg:grid lg:grid-cols-2">
+      {needle && !shown.length && <div className="py-6 text-center text-[15px] text-muted-foreground">Niemand gefunden</div>}
+      {shown.map((m) => {
         const isPaid = m.state === "paid" || paid.includes(m.id);
         const sent = reminded.includes(m.id);
         return (
@@ -79,13 +96,15 @@ export function AdminMembers({ slug, tenantId, members }: { slug: string; tenant
             <Avatar ini={initials(m.name)} />
             <div className="min-w-0 flex-1">
               <div className="text-[16px] font-bold">{m.name}</div>
+              <div className="truncate text-[13px] text-muted-foreground">{m.email}</div>
               <div className="text-[14px] text-muted-foreground">{m.plan}</div>
+              <div className="mt-1.5 flex flex-wrap items-center gap-2">
               {m.role !== "PLATFORM_ADMIN" && (
                 <select
                   aria-label={`Rolle von ${m.name}`}
                   value={m.role}
                   onChange={(e) => setRole(m, e.target.value as TenantRole)}
-                  className="mt-1.5 h-8 rounded-full border border-border bg-inset px-3 text-[13px] font-bold text-foreground outline-none"
+                  className="h-8 rounded-full border border-border bg-inset px-3 text-[13px] font-bold text-foreground outline-none"
                 >
                   {ROLES.map(([r, l]) => (
                     <option key={r} value={r}>
@@ -94,6 +113,8 @@ export function AdminMembers({ slug, tenantId, members }: { slug: string; tenant
                   ))}
                 </select>
               )}
+              <AdminGrantCreditsButton clubSlug={slug} userId={m.id} userName={m.name} />
+              </div>
             </div>
             {isPaid ? (
               <span className={cn(pill, "bg-paid-bg text-paid-fg")}>Bezahlt</span>
@@ -123,7 +144,8 @@ export function AdminMembers({ slug, tenantId, members }: { slug: string; tenant
           </div>
         );
       })}
-    </div>
+      </div>
+    </>
   );
 }
 

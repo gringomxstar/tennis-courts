@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Court, BlockReason } from "@/types";
 import { createCourtBlockAction } from "@/app/actions/booking";
 import { Spinner } from "@/components/app/avatar";
@@ -15,9 +16,11 @@ interface CreateCourtBlockFormProps {
 }
 
 export function CreateCourtBlockForm({ clubSlug, courts }: CreateCourtBlockFormProps) {
-  const todayStr = new Date().toISOString().split("T")[0];
-  const [courtId, setCourtId] = useState(courts[0]?.id || "");
+  const router = useRouter();
+  const todayStr = new Date().toLocaleDateString("sv-SE"); // local YYYY-MM-DD
+  const [courtId, setCourtId] = useState("ALL");
   const [dateStr, setDateStr] = useState(todayStr);
+  const [endDateStr, setEndDateStr] = useState(todayStr);
   const [startTime, setStartTime] = useState("08:00");
   const [endTime, setEndTime] = useState("12:00");
   const [reason, setReason] = useState<BlockReason>("MAINTENANCE");
@@ -27,28 +30,38 @@ export function CreateCourtBlockForm({ clubSlug, courts }: CreateCourtBlockFormP
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     setMessage(null);
-
-    const startsAt = new Date(`${dateStr}T${startTime}:00`).toISOString();
-    const endsAt = new Date(`${dateStr}T${endTime}:00`).toISOString();
-
-    const res = await createCourtBlockAction({
-      clubSlug,
-      courtId,
-      startsAt,
-      endsAt,
-      reason,
-      description: description.trim() || undefined,
-    });
-
-    setLoading(false);
-    if (res.success) {
-      setMessage({ type: "success", text: "Platzsperre erfolgreich im Kalender hinterlegt!" });
-      setDescription("");
-    } else {
-      setMessage({ type: "error", text: res.error || "Fehler beim Erstellen der Platzsperre." });
+    // one block per day and court, so "08–12 from Mon to Wed" doesn't block the nights in between
+    const days: string[] = [];
+    for (let d = new Date(`${dateStr}T12:00:00`); d <= new Date(`${endDateStr}T12:00:00`); d.setDate(d.getDate() + 1)) {
+      days.push(d.toLocaleDateString("sv-SE"));
     }
+    if (!days.length || days.length > 90 || endTime <= startTime) {
+      setMessage({ type: "error", text: "Bitte gültigen Zeitraum wählen (max. 90 Tage, Bis nach Von)." });
+      return;
+    }
+    const ids = courtId === "ALL" ? courts.map((c) => c.id) : [courtId];
+
+    const items = days.flatMap((day) =>
+      ids.map((id) => ({
+        courtId: id,
+        startsAt: new Date(`${day}T${startTime}:00`).toISOString(),
+        endsAt: new Date(`${day}T${endTime}:00`).toISOString(),
+      }))
+    );
+
+    setLoading(true);
+    const res = await createCourtBlockAction({ clubSlug, items, reason, description: description.trim() || undefined }).catch(
+      () => ({ success: false, error: "Verbindung fehlgeschlagen." })
+    );
+    setLoading(false);
+    if (!res.success) {
+      setMessage({ type: "error", text: res.error || "Fehler beim Erstellen der Platzsperre." });
+    } else {
+      setMessage({ type: "success", text: items.length === 1 ? "Sperre erfasst." : `${items.length} Sperren erfasst.` });
+      setDescription("");
+    }
+    router.refresh();
   };
 
   return (
@@ -67,6 +80,7 @@ export function CreateCourtBlockForm({ clubSlug, courts }: CreateCourtBlockFormP
       <label className="block">
         <span className={label}>Platz</span>
         <select id="blockCourt" value={courtId} onChange={(e) => setCourtId(e.target.value)} className={input}>
+          <option value="ALL">Alle Plätze</option>
           {courts.map((court) => (
             <option key={court.id} value={court.id}>
               {court.name}
@@ -75,17 +89,31 @@ export function CreateCourtBlockForm({ clubSlug, courts }: CreateCourtBlockFormP
         </select>
       </label>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        <label className="col-span-2 block sm:col-span-1">
-          <span className={label}>Datum</span>
-          <input id="blockDate" type="date" value={dateStr} onChange={(e) => setDateStr(e.target.value)} className={input} required />
+      <div className="grid grid-cols-2 gap-3">
+        <label className="block">
+          <span className={label}>Von Datum</span>
+          <input
+            id="blockDate"
+            type="date"
+            value={dateStr}
+            onChange={(e) => {
+              setDateStr(e.target.value);
+              if (endDateStr < e.target.value) setEndDateStr(e.target.value);
+            }}
+            className={input}
+            required
+          />
         </label>
         <label className="block">
-          <span className={label}>Von</span>
+          <span className={label}>Bis Datum</span>
+          <input id="blockEndDate" type="date" value={endDateStr} min={dateStr} onChange={(e) => setEndDateStr(e.target.value)} className={input} required />
+        </label>
+        <label className="block">
+          <span className={label}>Von Uhrzeit</span>
           <input id="blockStart" type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className={input} required />
         </label>
         <label className="block">
-          <span className={label}>Bis</span>
+          <span className={label}>Bis Uhrzeit</span>
           <input id="blockEnd" type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className={input} required />
         </label>
       </div>

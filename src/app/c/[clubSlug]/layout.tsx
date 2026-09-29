@@ -19,7 +19,7 @@ export default async function ClubLayout({
   const { tenant, user } = await getTenantContext(clubSlug);
   return (
     <div className="min-h-[100dvh] bg-background text-foreground lg:pl-64">
-      <main className="mx-auto w-full max-w-[640px] pb-[130px] lg:max-w-[1280px] lg:px-6 lg:pb-16">{children}</main>
+      <main className="mx-auto w-full max-w-[640px] pb-[calc(max(10px,env(safe-area-inset-bottom))+88px)] lg:max-w-[1280px] lg:px-6 lg:pb-16">{children}</main>
       <TabBar slug={tenant.slug} clubName={tenant.name} anon={!user} />
       {demoModeOn(tenant.settingsJson) && (
         <DemoSwitcher

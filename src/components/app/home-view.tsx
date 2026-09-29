@@ -178,17 +178,12 @@ export function HomeView({
 
       {!userId && (
         <div className="mx-5 mt-[22px] rounded-[30px] border border-border bg-card p-[22px]">
-          <a
-            href="#frei"
-            onClick={(e) => {
-              e.preventDefault();
-              const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-              document.getElementById("frei")?.scrollIntoView({ behavior: reduce ? "auto" : "smooth" });
-            }}
+          <Link
+            href={`/c/${tenant.slug}/calendar`}
             className="flex h-[54px] w-full items-center justify-center rounded-[17px] bg-clay text-[17px] font-bold text-white active:scale-[.97]"
           >
             Als Gast buchen
-          </a>
+          </Link>
           <div className="mt-2 text-center text-[14px] text-muted-foreground">Ohne Konto. Bezahlen mit Twint oder Karte.</div>
           <Link
             href={`/c/${tenant.slug}/profile`}

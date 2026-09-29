@@ -50,7 +50,7 @@ export function TabBar({ slug, clubName, anon = false }: { slug: string; clubNam
       <div aria-hidden className="pointer-events-none fixed inset-x-0 top-0 z-20 h-[60px] lg:hidden" style={{ background: "var(--top-mask)" }} />
       <nav
         aria-label="Hauptnavigation"
-        className="pointer-events-none fixed inset-x-0 bottom-[calc(30px+env(safe-area-inset-bottom))] z-30 flex justify-center lg:inset-y-0 lg:left-0 lg:right-auto lg:w-64 lg:items-stretch lg:justify-start"
+        className="pointer-events-none fixed inset-x-0 bottom-[max(10px,env(safe-area-inset-bottom))] z-30 flex justify-center lg:inset-y-0 lg:left-0 lg:right-auto lg:w-64 lg:items-stretch lg:justify-start"
       >
         <div className="pointer-events-auto flex gap-1 rounded-full border border-border bg-glass p-1.5 shadow-elevation backdrop-blur-[24px] backdrop-saturate-[1.6] lg:h-full lg:w-full lg:flex-col lg:gap-1 lg:rounded-none lg:border-y-0 lg:border-l-0 lg:px-4 lg:pb-6 lg:pt-10 lg:shadow-none">
           <div className="hidden px-3 pb-6 text-[22px] font-bold tracking-[-.02em] lg:block">{clubName}</div>

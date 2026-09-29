@@ -184,7 +184,7 @@ export async function updateClubSettingsAction(
     maxActiveSlotsPerPlayer: Number(settings.maxActiveSlotsPerPlayer ?? 2),
     ballMachineAvailable: settings.ballMachineAvailable ?? true,
     ballMachineFee: Number(settings.ballMachineFee ?? 10),
-    floodlightFee: Number(settings.floodlightFee ?? 5),
+    floodlightFee: Number(settings.floodlightFee ?? 0),
     guestFee: Number(settings.guestFee ?? 15),
     defaultHourlyRateTennis: Number(settings.defaultHourlyRateTennis ?? 30),
     defaultHourlyRateHalle: Number(settings.defaultHourlyRateHalle ?? 45),
