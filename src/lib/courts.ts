@@ -45,10 +45,10 @@ export function bookingAt(courtId: string, start: Date, minutes: number, booking
 const initial = (p: { firstName: string; lastName: string } | null | undefined) =>
   p?.firstName ? `${p.firstName} ${p.lastName ? `${p.lastName[0]}.` : ""}`.trim() : "";
 
-/** "Max M. / Anna B." — empty when the viewer may not see names (see loadClubData). */
+/** "Max M. / Anna B. / …" — all players; empty when the viewer may not see names (see loadClubData). */
 export function shortName(b: Booking) {
-  const partner = b.participants.find((p) => p.role !== "ORGANIZER" && (p.user || p.guestName));
-  return [initial(b.organizer), partner ? initial(partner.user) || partner.guestName || "" : ""].filter(Boolean).join(" / ");
+  const others = b.participants.filter((p) => p.role !== "ORGANIZER").map((p) => initial(p.user) || p.guestName || "");
+  return [initial(b.organizer), ...others].filter(Boolean).join(" / ");
 }
 
 export function slotState(

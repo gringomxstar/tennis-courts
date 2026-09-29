@@ -150,6 +150,8 @@ export interface Booking {
   hasLighting?: boolean;
   currency?: string;
   notes?: string | null;
+  /** Trainer weekly series this booking belongs to. */
+  seriesId?: string;
   paymentStatus?: "UNPAID" | "PAID" | "WAIVED";
   paymentMethod?: PaymentMethod;
   organizer?: {

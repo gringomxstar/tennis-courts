@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { loadClubData } from "@/lib/club-data";
 import { ReserveView } from "@/components/app/reserve-view";
+import { seasonEnd } from "@/lib/membership";
 
 export default async function ReservePage({
   params,
@@ -32,6 +33,8 @@ export default async function ReservePage({
       guestRate={d.guestRate}
       needPartner={d.needPartner}
       planSports={d.planSports}
+      isCoach={d.isCoach}
+      seriesUntil={seasonEnd().toISOString().slice(0, 10)}
     />
   );
 }

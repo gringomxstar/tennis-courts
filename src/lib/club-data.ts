@@ -34,7 +34,7 @@ function publicBooking(b: Booking, showNames: boolean): Booking {
 }
 
 /** Everything the player screens need; the client derives local-time slots from the ISO data. */
-export async function loadClubData(slug: string, days = 8) {
+export async function loadClubData(slug: string, days = 8, opts: { admin?: boolean } = {}) {
   const ctx = await getTenantContext(slug);
   const { tenant, user } = ctx;
   await syncPendingBookingPayments(tenant.id);
@@ -55,7 +55,8 @@ export async function loadClubData(slug: string, days = 8) {
   ]);
 
   // DB role, not the JWT: a claimed guest account stays GUEST and sees no names
-  const showNames = Boolean(member?.role && member.role !== "GUEST");
+  // callers pass admin only after requireTenantAdmin
+  const showNames = Boolean(opts.admin || (member?.role && member.role !== "GUEST"));
   return {
     ctx,
     tenant,
@@ -77,5 +78,7 @@ export async function loadClubData(slug: string, days = 8) {
     planSports: member?.plan?.sports ?? null,
     /** Members must name at least one co-player or guest; admins, coaches and anonymous guests don't. */
     needPartner: Boolean(user) && !ctx.isTenantAdmin && member?.role !== "COACH",
+    /** Trainer: 2h alone and weekly series. */
+    isCoach: member?.role === "COACH",
   };
 }

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Avatar, Chevron } from "@/components/app/avatar";
 import { useNow } from "@/components/app/use-now";
+import { ModeSwitch } from "@/components/app/mode-switch";
 import { cancelBookingAction, markBookingPaidOfflineAction } from "@/app/actions/booking";
 import { addDays, atHour, courtLabel, hhmm, initials, longDate, slotState } from "@/lib/courts";
 import type { Booking, Court, CourtBlock, TenantSettings } from "@/types";
@@ -99,7 +100,10 @@ export function AdminToday({
   return (
     <>
       <div className="px-5 pt-[66px] lg:pt-12">
-        <h1 className="text-[34px] font-bold tracking-[-.035em]">Heute</h1>
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="text-[34px] font-bold tracking-[-.035em]">Heute</h1>
+          <ModeSwitch slug={slug} admin />
+        </div>
         <div className="mt-0.5 text-[15px] text-muted-foreground">Belegung · {day ? longDate(day) : " "}</div>
       </div>
 
@@ -132,6 +136,16 @@ export function AdminToday({
           ))}
         </div>
       </div>
+      </div>
+
+      <div className="flex flex-col gap-2.5 px-5 pt-3 lg:grid lg:grid-cols-2">
+        <Link
+          href={`/c/${slug}/admin/settings`}
+          className="flex items-center gap-3 rounded-[20px] border border-border bg-card px-4 py-3.5"
+        >
+          <div className="flex-1 text-[16px] font-bold">Club-Einstellungen</div>
+          <Chevron />
+        </Link>
       </div>
 
       <h2 className="px-5 pb-2.5 pt-6 text-[20px] font-bold tracking-[-.02em]">Nächste Buchungen</h2>
@@ -190,15 +204,6 @@ export function AdminToday({
         </>
       )}
 
-      <div className="flex flex-col gap-2.5 px-5 pt-2.5 lg:grid lg:grid-cols-2">
-        <Link
-          href={`/c/${slug}/admin/settings`}
-          className="flex items-center gap-3 rounded-[20px] border border-border bg-card px-4 py-3.5"
-        >
-          <div className="flex-1 text-[16px] font-bold">Club-Einstellungen</div>
-          <Chevron />
-        </Link>
-      </div>
     </>
   );
 }
