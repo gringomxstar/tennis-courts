@@ -3,6 +3,9 @@ export interface ImportRow {
   lastName: string;
   email: string;
   phone?: string;
+  /** yyyy-mm-dd */
+  birthDate?: string;
+  gender?: "M" | "F" | "X";
 }
 
 export interface ImportError {
@@ -10,7 +13,7 @@ export interface ImportError {
   reason: string;
 }
 
-type Col = "firstName" | "lastName" | "name" | "email" | "phone";
+type Col = "firstName" | "lastName" | "name" | "email" | "phone" | "birthDate" | "gender";
 
 const HEADERS: Record<string, Col> = {
   vorname: "firstName",
@@ -30,7 +33,44 @@ const HEADERS: Record<string, Col> = {
   mobil: "phone",
   handy: "phone",
   natel: "phone",
+  // Fairgate contact export
+  geburtsdatum: "birthDate",
+  geburtstag: "birthDate",
+  birthdate: "birthDate",
+  dateofbirth: "birthDate",
+  geschlecht: "gender",
+  gender: "gender",
+  anrede: "gender",
 };
+
+/** Exact alias first, then loose matches like "E-Mail (primär)" or "Telefon (Mobile)". */
+function headerCol(cell: string): Col | undefined {
+  const k = cell.toLowerCase().replace(/[^a-z]/g, "");
+  return HEADERS[k] ?? (k.includes("mail") ? "email" : /telefon|mobil|natel/.test(k) ? "phone" : undefined);
+}
+
+/** 31.12.1990, 31.12.90, 1990-12-31 → "1990-12-31"; anything else undefined. */
+export function parseDate(v: string): string | undefined {
+  let y: number, m: number, d: number;
+  const ch = v.match(/^(\d{1,2})\.(\d{1,2})\.(\d{2}|\d{4})$/);
+  const iso = v.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (ch) [d, m, y] = [+ch[1], +ch[2], +ch[3]];
+  else if (iso) [y, m, d] = [+iso[1], +iso[2], +iso[3]];
+  else return undefined;
+  if (y < 100) y += y > new Date().getFullYear() % 100 ? 1900 : 2000;
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  if (dt.getUTCMonth() !== m - 1 || y < 1900 || dt.getTime() > Date.now()) return undefined;
+  return dt.toISOString().slice(0, 10);
+}
+
+/** m / männlich / Herr / male → M, w / weiblich / Frau / f → F, divers → X. */
+export function parseGender(v: string): "M" | "F" | "X" | undefined {
+  const k = v.toLowerCase().replace(/[^a-z]/g, "");
+  if (/^(m|herr|male|mann)/.test(k)) return "M";
+  if (/^(w|f|frau|weib)/.test(k)) return "F";
+  if (/^(d|x|divers|other)/.test(k)) return "X";
+  return undefined;
+}
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -68,7 +108,9 @@ export function parseMembers(text: string): { rows: ImportRow[]; errors: ImportE
   const first = lines[firstIdx];
 
   const sep = first.includes("\t") ? "\t" : first.includes(";") ? ";" : ",";
-  const head = splitLine(first, sep).map((c) => HEADERS[c.toLowerCase().replace(/[^a-z]/g, "")]);
+  const head = splitLine(first, sep).map(headerCol);
+  // Fairgate: "Vorname" + "Name" means Name is the last name
+  if (head.includes("firstName") && !head.includes("lastName")) head.forEach((c, j) => c === "name" && (head[j] = "lastName"));
   const isHeader = head.includes("email") || head.filter(Boolean).length >= 2;
   const cols: (Col | undefined)[] = isHeader ? head : ["firstName", "lastName", "email", "phone"];
   const seen = new Map<string, number>();
@@ -98,6 +140,8 @@ export function parseMembers(text: string): { rows: ImportRow[]; errors: ImportE
       lastName: (v.lastName ?? "").slice(0, 60),
       email: email.slice(0, 200),
       ...(v.phone ? { phone: v.phone.slice(0, 30) } : {}),
+      ...(v.birthDate && parseDate(v.birthDate) ? { birthDate: parseDate(v.birthDate) } : {}),
+      ...(v.gender && parseGender(v.gender) ? { gender: parseGender(v.gender) } : {}),
     });
   });
 

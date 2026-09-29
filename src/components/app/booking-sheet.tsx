@@ -32,6 +32,7 @@ export function BookingSheet({
   guestRate = isAnon,
   planSports = null,
   wallet = 0,
+  needPartner = false,
 }: {
   slug: string;
   settings: TenantSettings | null | undefined;
@@ -43,17 +44,22 @@ export function BookingSheet({
   guestRate?: boolean;
   planSports?: SportType[] | null;
   wallet?: number;
+  /** Members must pick a co-player or add a guest before booking. */
+  needPartner?: boolean;
 }) {
   const router = useRouter();
   const [players, setPlayers] = useState<string[]>([]);
   const [phase, setPhase] = useState<"form" | "paying" | "done">("form");
   const [guest, setGuest] = useState({ first: "", last: "", email: "" });
+  // co-player guest (logged-in members); null = no guest row
+  const [coGuest, setCoGuest] = useState<string | null>(null);
   const [method, setMethod] = useState<PaymentMethod | null>(null);
   // keep the last slot so the closing animation still shows its content
   const [shown, setShown] = useState<SheetSlot | null>(slot);
   if (slot && slot !== shown) {
     setShown(slot);
     setPlayers([]);
+    setCoGuest(null);
     setPhase("form");
     setMethod(null);
   }
@@ -67,7 +73,7 @@ export function BookingSheet({
         isGuest: guestRate,
         planSports,
         durationMinutes: 60,
-        guestCount: 0,
+        guestCount: coGuest !== null ? 1 : 0,
         hasBallMachine: false,
         hasLighting: light,
         start: s.start,
@@ -78,20 +84,27 @@ export function BookingSheet({
   const base = cost ? cost.total - cost.lighting : 0;
 
   const total = cost?.total ?? 0;
+  const guestName = coGuest?.trim() ?? "";
+  const missingPartner = needPartner && !players.length && !guestName;
   const opts = payOptions(settings, { isAnon, wallet, total });
   const pay = method && opts.some(([m]) => m === method) ? method : opts[0][0];
   const btnLabel = phase === "paying" ? "Einen Moment…" : total > 0 ? payButtonLabel(pay, total) : "Buchen";
 
   async function confirm() {
     if (!s || phase !== "form") return;
+    if (missingPartner) return void toast("Bitte wähle einen Mitspieler oder füge einen Gast hinzu.");
+    if (coGuest !== null && !guestName) return void toast("Bitte den Namen des Gasts angeben.");
     setPhase("paying");
     const res = await createBookingAction({
       clubSlug: slug,
       courtId: s.court.id,
       startsAt: s.start.toISOString(),
       durationMinutes: 60,
-      matchType: players.length >= 3 ? "DOUBLE" : "SINGLE",
-      participants: players.map((userId) => ({ type: "MEMBER" as const, userId })),
+      matchType: players.length + (guestName ? 1 : 0) >= 3 ? "DOUBLE" : "SINGLE",
+      participants: [
+        ...players.map((userId) => ({ type: "MEMBER" as const, userId })),
+        ...(guestName ? [{ type: "GUEST" as const, guestName }] : []),
+      ],
       hasLighting: light,
       ...(total > 0 ? { paymentMethod: pay } : {}),
       ...(isAnon ? { guestFirstName: guest.first, guestLastName: guest.last, guestEmail: guest.email } : {}),
@@ -150,7 +163,7 @@ export function BookingSheet({
           ) : (
             <>
               <div className="mt-6 text-[13px] font-bold uppercase tracking-[.06em] text-muted-foreground">Mitspieler</div>
-              <div className="mt-2.5 flex gap-3">
+              <div className="no-scrollbar -mx-1 mt-1.5 flex gap-3 overflow-x-auto px-1 py-1">
                 {pool.map((p) => {
                   const on = players.includes(p.id);
                   return (
@@ -175,7 +188,42 @@ export function BookingSheet({
                     </button>
                   );
                 })}
+                <button
+                  type="button"
+                  aria-pressed={coGuest !== null}
+                  aria-label="Gast hinzufügen"
+                  onClick={() => setCoGuest(coGuest === null ? "" : null)}
+                  className="flex shrink-0 flex-col items-center gap-1.5"
+                >
+                  <span
+                    className={cn(
+                      "flex h-14 w-14 items-center justify-center rounded-full border-2 border-dashed text-[24px] font-bold transition-all duration-[350ms] ease-spring",
+                      coGuest !== null ? "scale-[1.08] border-clay bg-clay text-white" : "border-border text-muted-foreground"
+                    )}
+                  >
+                    +
+                  </span>
+                  <span className="text-[13px] font-semibold text-muted-foreground">Gast</span>
+                </button>
               </div>
+              {coGuest !== null && (
+                <div className="mt-2.5 flex items-center gap-2.5">
+                  <input
+                    aria-label="Name des Gasts"
+                    placeholder="Name des Gasts"
+                    autoFocus
+                    className={inputCls}
+                    value={coGuest}
+                    onChange={(e) => setCoGuest(e.target.value)}
+                  />
+                  <span className="shrink-0 text-[14px] font-semibold text-muted-foreground">
+                    {cost && cost.guests > 0 ? `+ CHF ${cost.guests}` : "gratis"}
+                  </span>
+                </div>
+              )}
+              {missingPartner && (
+                <div className="mt-2 text-[13px] text-muted-foreground">Mit wem spielst du? Wähle einen Mitspieler oder einen Gast.</div>
+              )}
               <Link
                 href={reserveHref}
                 className="mt-4 flex h-[50px] w-full items-center justify-between rounded-[15px] border border-border px-4 transition-transform active:scale-[.98]"
@@ -197,7 +245,7 @@ export function BookingSheet({
               </div>
             )}
             <div className="flex justify-between text-[16px] font-semibold">
-              <span>{isAnon ? "Platz + Gastgebühr" : "Platz"}</span>
+              <span>{isAnon ? "Platz + Gastgebühr" : coGuest !== null ? "Platz + Gast" : "Platz"}</span>
               <span>{base > 0 ? `CHF ${base}` : "im Abo inklusive"}</span>
             </div>
           </div>
@@ -219,8 +267,8 @@ export function BookingSheet({
           <button
             type="button"
             onClick={confirm}
-            disabled={phase !== "form"}
-            className="mt-4 flex h-[60px] w-full items-center justify-center gap-2.5 rounded-[20px] text-[18px] font-bold text-white transition-transform active:scale-[.97]"
+            disabled={phase !== "form" || missingPartner}
+            className="mt-4 flex h-[60px] w-full items-center justify-center gap-2.5 rounded-[20px] text-[18px] font-bold text-white transition-transform active:scale-[.97] disabled:opacity-50 disabled:active:scale-100"
             style={{ background: color, boxShadow: `0 14px 30px -10px ${color}` }}
           >
             {phase === "paying" && <Spinner />}

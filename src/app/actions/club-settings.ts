@@ -17,6 +17,8 @@ import { ensureDemoAccounts, purgeDemoData } from "@/lib/demo";
 import { parseMembers } from "@/lib/member-import";
 import { passwordLink } from "@/lib/booking-link";
 import { sendPasswordLink } from "@/lib/mail";
+import { grantMembership, seasonEnd } from "@/lib/membership";
+import { parseDate } from "@/lib/member-import";
 
 function cleanSlotLimits(v: TenantSettings["slotLimits"]): TenantSettings["slotLimits"] {
   const out: NonNullable<TenantSettings["slotLimits"]> = {};
@@ -101,7 +103,7 @@ export async function updateClubSettingsAction(
   const opening = Number(settings.openingHour ?? 7);
   const closing = Number(settings.closingHour ?? 22);
   const slotDuration = Number(settings.slotDurationMinutes ?? 60);
-  const cancellationDeadline = Number(settings.cancellationDeadlineHours ?? 24);
+  const cancellationDeadline = Math.round(Number(settings.cancellationDeadlineMinutes ?? (settings.cancellationDeadlineHours ?? 24) * 60));
 
   if (opening < 5 || opening > 12) {
     return {
@@ -127,10 +129,10 @@ export async function updateClubSettingsAction(
       error: "Slot-Dauer muss 30, 45, 60, 90 oder 120 Minuten sein.",
     };
   }
-  if (cancellationDeadline < 0) {
+  if (!Number.isFinite(cancellationDeadline) || cancellationDeadline < 0 || cancellationDeadline > 14 * 24 * 60) {
     return {
       success: false,
-      error: "Stornierungsfrist darf nicht negativ sein.",
+      error: "Stornierungsfrist muss zwischen 0 Minuten und 14 Tagen liegen.",
     };
   }
 
@@ -176,7 +178,8 @@ export async function updateClubSettingsAction(
     openingHour: opening,
     closingHour: closing,
     slotDurationMinutes: slotDuration,
-    cancellationDeadlineHours: cancellationDeadline,
+    cancellationDeadlineMinutes: cancellationDeadline,
+    cancellationDeadlineHours: Math.ceil(cancellationDeadline / 60), // legacy readers
     allowGuestBookings: Boolean(settings.allowGuestBookings),
     allowConsecutiveSlotsForDoubles: settings.allowConsecutiveSlotsForDoubles ?? true,
     marlyRuleEnabled: settings.marlyRuleEnabled ?? true,
@@ -409,10 +412,27 @@ export async function importMembersAction(clubSlug: string, text: string, sendIn
   const fresh = rows.filter((r) => !known.has(r.email));
   const created = (
     await prisma.user.createMany({
-      data: fresh.map((r) => ({ email: r.email, firstName: r.firstName, lastName: r.lastName, phone: r.phone ?? null })),
+      data: fresh.map((r) => ({
+        email: r.email,
+        firstName: r.firstName,
+        lastName: r.lastName,
+        phone: r.phone ?? null,
+        birthDate: r.birthDate ? new Date(r.birthDate) : null,
+        gender: r.gender ?? null,
+      })),
       skipDuplicates: true,
     })
   ).count;
+  // existing users: only fill birth date / gender where still empty (age stats)
+  const fill = rows.filter((r) => known.has(r.email));
+  await prisma.$transaction([
+    ...fill.filter((r) => r.birthDate).map((r) =>
+      prisma.user.updateMany({ where: { email: r.email, birthDate: null }, data: { birthDate: new Date(r.birthDate!) } })
+    ),
+    ...fill.filter((r) => r.gender).map((r) =>
+      prisma.user.updateMany({ where: { email: r.email, gender: null }, data: { gender: r.gender } })
+    ),
+  ]);
 
   const users = await prisma.user.findMany({
     where: { email: { in: emails } },
@@ -478,4 +498,217 @@ export async function purgeDemoDataAction(clubSlug: string) {
   const r = await purgeDemoData(authCheck.tenant.id);
   revalidatePath(`/c/${clubSlug}`, "layout");
   return { success: true as const, ...r };
+}
+
+const HEX = /^#[0-9a-f]{6}$/i;
+const LOGO = /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/;
+
+/** Club color and logo. `logo`: data URL to set, null to remove, undefined to keep. */
+export async function updateClubBrandingAction(clubSlug: string, brandColor: string | null, logo?: string | null) {
+  const authCheck = await verifyClubAdmin(clubSlug);
+  if (!authCheck.authorized || !authCheck.tenant) return { success: false as const, error: authCheck.error };
+  if (!process.env.DATABASE_URL) return { success: false as const, error: "Branding braucht eine Datenbank." };
+  if (brandColor !== null && !HEX.test(brandColor)) return { success: false as const, error: "Ungültige Farbe." };
+  // the logo is resized client-side to max 256px, so a few 100 KB is plenty
+  if (logo && (logo.length > 400_000 || !LOGO.test(logo))) {
+    return { success: false as const, error: "Logo muss ein PNG, JPG oder WebP unter 300 KB sein." };
+  }
+  const tenant = authCheck.tenant;
+  const settings = { ...((tenant.settingsJson ?? {}) as TenantSettings) };
+  if (brandColor) settings.brandColor = brandColor.toLowerCase();
+  else delete settings.brandColor;
+  await prisma.tenant.update({
+    where: { id: tenant.id },
+    data: { settingsJson: settings as object, ...(logo !== undefined ? { logoUrl: logo } : {}) },
+  });
+  revalidatePath(`/c/${clubSlug}`, "layout");
+  return { success: true as const };
+}
+
+export interface CourtInput {
+  id?: string;
+  name: string;
+  sportType: SportType;
+  surface: "CLAY" | "HARD" | "ARTIFICIAL_GRASS" | "CARPET";
+  hourlyRate: number;
+  isIndoor: boolean;
+  hasLighting: boolean;
+  status: "ACTIVE" | "MAINTENANCE" | "INACTIVE";
+  sortOrder: number;
+}
+
+/** Create (no id) or update a court of this club. */
+export async function saveCourtAction(clubSlug: string, c: CourtInput) {
+  const authCheck = await verifyClubAdmin(clubSlug);
+  if (!authCheck.authorized || !authCheck.tenant) return { success: false as const, error: authCheck.error };
+  if (!process.env.DATABASE_URL) return { success: false as const, error: "Plätze bearbeiten braucht eine Datenbank." };
+  const tenant = authCheck.tenant;
+  const name = String(c.name ?? "").trim().slice(0, 60);
+  const rate = Number(c.hourlyRate);
+  if (!name) return { success: false as const, error: "Bitte einen Namen angeben." };
+  if (!["TENNIS", "PADEL"].includes(c.sportType)) return { success: false as const, error: "Ungültige Sportart." };
+  if (!["CLAY", "HARD", "ARTIFICIAL_GRASS", "CARPET"].includes(c.surface)) return { success: false as const, error: "Ungültiger Belag." };
+  if (!["ACTIVE", "MAINTENANCE", "INACTIVE"].includes(c.status)) return { success: false as const, error: "Ungültiger Status." };
+  if (!Number.isFinite(rate) || rate < 0 || rate > 1000) return { success: false as const, error: "Stundensatz zwischen 0 und 1000 CHF." };
+  const data = {
+    name,
+    sportType: c.sportType,
+    surface: c.surface,
+    hourlyRate: rate,
+    isIndoor: Boolean(c.isIndoor),
+    hasLighting: Boolean(c.hasLighting),
+    status: c.status,
+    sortOrder: Math.max(0, Math.min(999, Math.round(Number(c.sortOrder) || 0))),
+  };
+  if (c.id) {
+    const r = await prisma.court.updateMany({ where: { id: c.id, tenantId: tenant.id }, data });
+    if (!r.count) return { success: false as const, error: "Platz nicht gefunden." };
+  } else {
+    const location =
+      (await prisma.location.findFirst({ where: { tenantId: tenant.id }, orderBy: { createdAt: "asc" } })) ??
+      (await prisma.location.create({ data: { tenantId: tenant.id, name: tenant.name, address: tenant.address ?? null } }));
+    await prisma.court.create({ data: { ...data, tenantId: tenant.id, locationId: location.id } });
+  }
+  revalidatePath(`/c/${clubSlug}`, "layout");
+  return { success: true as const };
+}
+
+/** Deletes a court without bookings; one with bookings is set inactive so history stays intact. */
+export async function deleteCourtAction(clubSlug: string, courtId: string) {
+  const authCheck = await verifyClubAdmin(clubSlug);
+  if (!authCheck.authorized || !authCheck.tenant) return { success: false as const, error: authCheck.error };
+  if (!process.env.DATABASE_URL) return { success: false as const, error: "Plätze bearbeiten braucht eine Datenbank." };
+  const tenant = authCheck.tenant;
+  const court = await prisma.court.findFirst({ where: { id: courtId, tenantId: tenant.id }, select: { _count: { select: { bookings: true } } } });
+  if (!court) return { success: false as const, error: "Platz nicht gefunden." };
+  if (court._count.bookings) {
+    await prisma.court.update({ where: { id: courtId }, data: { status: "INACTIVE" } });
+    revalidatePath(`/c/${clubSlug}`, "layout");
+    return { success: true as const, archived: true };
+  }
+  await prisma.court.delete({ where: { id: courtId } });
+  revalidatePath(`/c/${clubSlug}`, "layout");
+  return { success: true as const, archived: false };
+}
+
+export interface MemberInput {
+  id?: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  /** yyyy-mm-dd or "" */
+  birthDate?: string;
+  gender?: "M" | "F" | "X" | "";
+  role: TenantRole;
+  /** plan id to assign, "" = leave as is, "__end" = end the running Abo now */
+  planId?: string;
+  paid?: boolean;
+  invite?: boolean;
+}
+
+/** Add a member by hand or edit one (for clubs without Fairgate & co.). */
+export async function saveMemberAction(clubSlug: string, m: MemberInput) {
+  const authCheck = await verifyClubAdmin(clubSlug);
+  if (!authCheck.authorized || !authCheck.tenant) return { success: false as const, error: authCheck.error };
+  if (!process.env.DATABASE_URL) return { success: false as const, error: "Mitgliederverwaltung braucht eine Datenbank." };
+  const tenant = authCheck.tenant;
+  const selfId = authCheck.session?.user.id;
+
+  const firstName = String(m.firstName ?? "").trim().slice(0, 60);
+  const lastName = String(m.lastName ?? "").trim().slice(0, 60);
+  const email = String(m.email ?? "").trim().toLowerCase().slice(0, 200);
+  const phone = String(m.phone ?? "").trim().slice(0, 30) || null;
+  const birthDate = m.birthDate ? parseDate(m.birthDate) : undefined;
+  if (m.birthDate && !birthDate) return { success: false as const, error: "Ungültiges Geburtsdatum." };
+  const gender = m.gender === "M" || m.gender === "F" || m.gender === "X" ? m.gender : null;
+  if (!firstName) return { success: false as const, error: "Vorname fehlt." };
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { success: false as const, error: "Ungültige E-Mail." };
+  if (!ASSIGNABLE_ROLES.includes(m.role)) return { success: false as const, error: "Ungültige Rolle." };
+  const profile = { firstName, lastName, phone, birthDate: birthDate ? new Date(birthDate) : null, gender };
+
+  let userId = m.id;
+  if (userId) {
+    const tu = await prisma.tenantUser.findUnique({
+      where: { tenantId_userId: { tenantId: tenant.id, userId } },
+      select: { role: true, user: { select: { email: true, _count: { select: { tenantUsers: true } } } } },
+    });
+    if (!tu || tu.role === "PLATFORM_ADMIN") return { success: false as const, error: "Mitglied nicht gefunden." };
+    // a user in several clubs owns their identity; one club's admin must not rewrite it (e.g. the email)
+    const own = tu.user._count.tenantUsers === 1;
+    if (!own && email !== tu.user.email) {
+      return { success: false as const, error: "Dieses Mitglied ist in mehreren Clubs. Die E-Mail ändert es selbst im Profil." };
+    }
+    if (email !== tu.user.email && (await prisma.user.findUnique({ where: { email } }))) {
+      return { success: false as const, error: "Diese E-Mail gehört bereits einem anderen Konto." };
+    }
+    if (own) await prisma.user.update({ where: { id: userId }, data: { ...profile, email } });
+    if (userId !== selfId && m.role !== tu.role) {
+      await prisma.tenantUser.update({ where: { tenantId_userId: { tenantId: tenant.id, userId } }, data: { role: m.role } });
+    }
+  } else {
+    const existing = await prisma.user.findUnique({ where: { email }, select: { id: true, birthDate: true, gender: true, phone: true } });
+    if (existing && (await prisma.tenantUser.findUnique({ where: { tenantId_userId: { tenantId: tenant.id, userId: existing.id } } }))) {
+      return { success: false as const, error: "Diese Person ist bereits im Club." };
+    }
+    // an existing account keeps its name; only empty fields are filled
+    const user = existing
+      ? await prisma.user.update({
+          where: { id: existing.id },
+          data: {
+            phone: existing.phone ?? phone,
+            birthDate: existing.birthDate ?? profile.birthDate,
+            gender: existing.gender ?? gender,
+          },
+        })
+      : await prisma.user.create({ data: { ...profile, email, passwordHash: null } });
+    userId = user.id;
+    await prisma.tenantUser.create({ data: { tenantId: tenant.id, userId, role: m.role } });
+    if (m.invite && !user.passwordHash) {
+      await sendPasswordLink(email, user.firstName, tenant.name, passwordLink(tenant.slug, userId, null), "invite").catch(() => false);
+    }
+  }
+
+  if (m.planId === "__end") {
+    await prisma.membership.updateMany({
+      where: { tenantId: tenant.id, userId, status: { in: ["ACTIVE", "PENDING"] } },
+      data: { status: "CANCELLED", endsAt: new Date() },
+    });
+  } else if (m.planId) {
+    const plan = await prisma.membershipPlan.findFirst({ where: { id: m.planId, tenantId: tenant.id }, select: { id: true } });
+    if (!plan) return { success: false as const, error: "Abo nicht gefunden." };
+    if (m.paid) await grantMembership(tenant.id, userId, plan.id);
+    else if (!(await prisma.membership.findFirst({ where: { tenantId: tenant.id, userId, membershipPlanId: plan.id, status: "PENDING" } }))) {
+      await prisma.membership.create({
+        data: { tenantId: tenant.id, userId, membershipPlanId: plan.id, status: "PENDING", startsAt: new Date(), endsAt: seasonEnd() },
+      });
+    }
+  }
+
+  revalidatePath(`/c/${clubSlug}/admin`, "layout");
+  return { success: true as const };
+}
+
+/** Offline payment of an assigned Abo (cash, bank transfer): PENDING → ACTIVE. */
+export async function markMembershipPaidAction(clubSlug: string, userId: string) {
+  const authCheck = await verifyClubAdmin(clubSlug);
+  if (!authCheck.authorized || !authCheck.tenant) return { success: false as const, error: authCheck.error };
+  const pending = await prisma.membership.findFirst({ where: { tenantId: authCheck.tenant.id, userId, status: "PENDING" }, orderBy: { createdAt: "desc" } });
+  if (!pending) return { success: false as const, error: "Kein offenes Abo gefunden." };
+  await grantMembership(authCheck.tenant.id, userId, pending.membershipPlanId);
+  revalidatePath(`/c/${clubSlug}/admin`, "layout");
+  return { success: true as const };
+}
+
+/** Removes the person from this club. Account, bookings and payments stay for the books. */
+export async function removeMemberAction(clubSlug: string, userId: string) {
+  const authCheck = await verifyClubAdmin(clubSlug);
+  if (!authCheck.authorized || !authCheck.tenant) return { success: false as const, error: authCheck.error };
+  if (userId === authCheck.session?.user.id) return { success: false as const, error: "Du kannst dich nicht selbst entfernen." };
+  const tenantId = authCheck.tenant.id;
+  const r = await prisma.tenantUser.deleteMany({ where: { tenantId, userId, role: { not: "PLATFORM_ADMIN" } } });
+  if (!r.count) return { success: false as const, error: "Mitglied nicht gefunden." };
+  await prisma.membership.updateMany({ where: { tenantId, userId, status: "PENDING" }, data: { status: "CANCELLED" } });
+  revalidatePath(`/c/${clubSlug}/admin`, "layout");
+  return { success: true as const };
 }

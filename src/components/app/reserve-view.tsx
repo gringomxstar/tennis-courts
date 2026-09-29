@@ -33,6 +33,7 @@ export function ReserveView({
   wallet,
   favoriteUserIds,
   guestRate,
+  needPartner = false,
   planSports,
 }: {
   tenant: Tenant;
@@ -47,6 +48,7 @@ export function ReserveView({
   wallet: number;
   favoriteUserIds: string[];
   guestRate: boolean;
+  needPartner?: boolean;
   planSports: SportType[] | null;
 }) {
   const router = useRouter();
@@ -216,7 +218,7 @@ export function ReserveView({
                   onClick={() => toggle(id)}
                   className="flex animate-[pop_.4s_var(--ease-spring)] items-center gap-2 rounded-full border border-border bg-card py-[5px] pl-[5px] pr-3"
                 >
-                  <span className="flex h-[30px] w-[30px] items-center justify-center rounded-full bg-[#e25b36] text-[12px] font-bold text-white">
+                  <span className="flex h-[30px] w-[30px] items-center justify-center rounded-full bg-clay text-[12px] font-bold text-white">
                     {initials(nameOf(id))}
                   </span>
                   <span className="text-[15px] font-semibold">{nameOf(id).split(" ")[0]}</span>
@@ -290,7 +292,7 @@ export function ReserveView({
                     aria-hidden
                     tabIndex={-1}
                     onClick={() => toggle(m.id)}
-                    className={cn("flex h-[26px] w-[26px] items-center justify-center rounded-full border-2 transition-all duration-[250ms] ease-spring", on ? "border-[#e25b36] bg-[#e25b36]" : "border-muted-foreground bg-transparent")}
+                    className={cn("flex h-[26px] w-[26px] items-center justify-center rounded-full border-2 transition-all duration-[250ms] ease-spring", on ? "border-clay bg-clay" : "border-muted-foreground bg-transparent")}
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: on ? 1 : 0 }}><path d="M20 6 9 17l-5-5" /></svg>
                   </button>
@@ -320,7 +322,7 @@ export function ReserveView({
                 <button type="button" onClick={() => setGuestForm(null)} className="h-11 flex-1 rounded-[14px] bg-card text-[15px] font-bold">
                   Abbrechen
                 </button>
-                <button type="button" onClick={addGuest} className="h-11 flex-1 rounded-[14px] bg-[#e25b36] text-[15px] font-bold text-white">
+                <button type="button" onClick={addGuest} className="h-11 flex-1 rounded-[14px] bg-clay text-[15px] font-bold text-white">
                   Hinzufügen
                 </button>
               </div>
@@ -380,13 +382,16 @@ export function ReserveView({
           <button
             type="button"
             onClick={confirm}
-            disabled={paying}
-            className="flex h-[58px] w-full items-center justify-center gap-2.5 rounded-[20px] text-[18px] font-bold text-white active:scale-[.97] lg:max-w-md"
+            disabled={paying || (needPartner && count === 0)}
+            className="flex h-[58px] w-full items-center justify-center gap-2.5 rounded-[20px] text-[18px] font-bold text-white active:scale-[.97] disabled:opacity-50 disabled:active:scale-100 lg:max-w-md"
             style={{ background: color, boxShadow: `0 14px 30px -10px ${color}` }}
           >
             {paying && <Spinner />}
             {cost.total > 0 ? payButtonLabel(pay, cost.total) : "Reservieren"}
           </button>
+          {needPartner && count === 0 && (
+            <div className="text-center text-[13px] text-muted-foreground lg:max-w-md">Wähle mindestens einen Mitspieler oder füge einen Gast hinzu.</div>
+          )}
         </div>
       </div>
     </div>

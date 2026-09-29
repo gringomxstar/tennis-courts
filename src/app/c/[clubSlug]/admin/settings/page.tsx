@@ -5,13 +5,13 @@ import {
   getMembershipPlansByTenantId,
 } from "@/lib/data";
 import { ClubSettingsForm } from "@/components/admin/club-settings-form";
+import { CourtsManager } from "@/components/admin/courts-manager";
+import { BrandingForm } from "@/components/admin/branding-form";
 import { MembershipPlansManager } from "@/components/admin/membership-plans-manager";
 import { slotLimitFor } from "@/lib/booking-rules";
 
 const card = "rounded-[26px] border border-border bg-card p-5";
 const label = "text-[13px] font-bold uppercase tracking-[.06em] text-muted-foreground";
-const h2 = "text-[22px] font-bold tracking-[-.02em]";
-const sub = "mt-1 text-[15px] leading-[1.4] text-muted-foreground";
 const pill = "shrink-0 rounded-full px-3 py-1 text-[13px] font-bold";
 
 interface ClubSettingsPageProps {
@@ -37,6 +37,13 @@ export default async function ClubSettingsPage({ params }: ClubSettingsPageProps
         <h1 className="text-[34px] font-bold tracking-[-.035em]">Club-Einstellungen</h1>
         <div className="mt-0.5 text-[15px] text-muted-foreground">{tenant.name}</div>
       </div>
+      <nav className="no-scrollbar flex gap-2 overflow-x-auto px-5 pt-4" aria-label="Abschnitte">
+        {[["regeln", "Buchungsregeln"], ["plaetze", "Plätze"], ["tarife", "Abos & Tarife"], ["branding", "Farbe & Logo"]].map(([id, l]) => (
+          <a key={id} href={`#${id}`} className="flex-none rounded-full border border-border px-4 py-2 text-[14px] font-semibold">
+            {l}
+          </a>
+        ))}
+      </nav>
 
       <div className="flex flex-col gap-4 px-5 pb-8 pt-4 lg:gap-6">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:gap-6">
@@ -55,12 +62,12 @@ export default async function ClubSettingsPage({ params }: ClubSettingsPageProps
           <div className={card}>
             <div className="flex items-baseline justify-between gap-2">
               <div className={label}>Mitglieder</div>
-              <div className="text-[28px] font-bold leading-none tracking-[-.03em]">{members.length}</div>
+              <div className="text-[28px] font-bold leading-none tracking-[-.03em]">{members.filter((m) => m.role !== "GUEST" && m.role !== "PLATFORM_ADMIN").length}</div>
             </div>
             <div className="mt-3 text-[14px] leading-[1.6] text-muted-foreground">
-              <div>{members.filter((m) => m.role === "CLUB_ADMIN").length} Administratoren</div>
-              <div>{members.filter((m) => m.role === "MEMBER").length} Aktive Clubmitglieder</div>
-              <div>{membershipPlans.length} Tarife</div>
+              <div>{members.filter((m) => m.role === "MEMBER").length} Mitglieder</div>
+              <div>{members.filter((m) => m.role === "COACH").length} Trainer · {members.filter((m) => m.role === "CLUB_ADMIN").length} Admin</div>
+              <div>{members.filter((m) => m.role === "GUEST").length} Gastkonten (nicht gezählt)</div>
             </div>
           </div>
 
@@ -86,42 +93,21 @@ export default async function ClubSettingsPage({ params }: ClubSettingsPageProps
         </div>
 
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:items-start lg:gap-6">
-          <ClubSettingsForm clubSlug={tenant.slug} initialSettings={tenant.settingsJson} />
+          <div id="regeln" className="scroll-mt-20">
+            <ClubSettingsForm clubSlug={tenant.slug} initialSettings={tenant.settingsJson} />
+          </div>
 
-          <section className={card}>
-            <h2 className={h2}>Plätze ({courts.length})</h2>
-            <p className={sub}>Alle bespielbaren Tennis- und Padel-Plätze mit Stundensätzen.</p>
-            <div className="mt-5 overflow-hidden rounded-[22px] border border-border">
-              {courts.map((court) => (
-                <div key={court.id} className="flex items-center gap-3 border-t border-border px-4 py-3.5 first:border-t-0">
-                  <div className="min-w-0 flex-1">
-                    <div className="text-[16px] font-bold">
-                      {court.name}
-                      <span className="ml-2 text-[13px] font-semibold text-muted-foreground">
-                        {court.sportType === "PADEL" ? "Padel" : "Tennis"}
-                      </span>
-                    </div>
-                    <div className="mt-0.5 text-[13px] text-muted-foreground">
-                      {court.surface === "CLAY" ? "Sandplatz" : court.surface === "CARPET" ? "Teppich" : "Hartplatz"}
-                      {" · "}
-                      {court.isIndoor ? "Halle" : "Outdoor"}
-                      {court.hasLighting && " · Flutlicht"}
-                      {" · "}
-                      <span className="font-semibold text-foreground">{court.hourlyRate} CHF/h</span>
-                    </div>
-                  </div>
-                  <span
-                    className={`${pill} ${court.status === "ACTIVE" ? "bg-paid-bg text-paid-fg" : "bg-clay text-white"}`}
-                  >
-                    {court.status === "ACTIVE" ? "Bespielbar" : "Wartung"}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </section>
+          <div id="plaetze" className="scroll-mt-20">
+            <CourtsManager clubSlug={tenant.slug} courts={courts} />
+          </div>
         </div>
 
-        <MembershipPlansManager clubSlug={tenant.slug} initialPlans={membershipPlans} />
+        <div id="tarife" className="scroll-mt-20">
+          <MembershipPlansManager clubSlug={tenant.slug} initialPlans={membershipPlans} />
+        </div>
+        <div id="branding" className="scroll-mt-20">
+          <BrandingForm clubSlug={tenant.slug} clubName={tenant.name} color={tenant.settingsJson?.brandColor} logo={tenant.logoUrl} />
+        </div>
       </div>
     </>
   );

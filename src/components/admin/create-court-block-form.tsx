@@ -2,29 +2,42 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Court, BlockReason } from "@/types";
-import { createCourtBlockAction } from "@/app/actions/booking";
+import { Court, BlockReason, CourtBlock } from "@/types";
+import { createCourtBlockAction, updateCourtBlockAction } from "@/app/actions/booking";
+import { cn } from "@/lib/utils";
 import { Spinner } from "@/components/app/avatar";
 
 const label = "block truncate text-[13px] font-bold uppercase tracking-[.06em] text-muted-foreground";
+const chip = (on: boolean) =>
+  cn("rounded-full border px-3.5 py-2 text-[14px] font-semibold transition-colors", on ? "border-clay bg-clay text-white" : "border-border bg-inset text-foreground");
 const input =
   "mt-1.5 h-[50px] w-full min-w-0 rounded-[15px] border border-border bg-inset px-4 text-[16px] text-foreground outline-none placeholder:text-muted-foreground focus-visible:border-clay";
 
 interface CreateCourtBlockFormProps {
   clubSlug: string;
   courts: Court[];
+  /** edit this one block instead of creating new ones */
+  edit?: CourtBlock;
+  onDone?: () => void;
 }
 
-export function CreateCourtBlockForm({ clubSlug, courts }: CreateCourtBlockFormProps) {
+const hm = (d: Date) => d.toLocaleTimeString("de-CH", { hour: "2-digit", minute: "2-digit" });
+
+export function CreateCourtBlockForm({ clubSlug, courts, edit, onDone }: CreateCourtBlockFormProps) {
   const router = useRouter();
   const todayStr = new Date().toLocaleDateString("sv-SE"); // local YYYY-MM-DD
-  const [courtId, setCourtId] = useState("ALL");
-  const [dateStr, setDateStr] = useState(todayStr);
-  const [endDateStr, setEndDateStr] = useState(todayStr);
-  const [startTime, setStartTime] = useState("08:00");
-  const [endTime, setEndTime] = useState("12:00");
-  const [reason, setReason] = useState<BlockReason>("MAINTENANCE");
-  const [description, setDescription] = useState("");
+  const from = edit ? new Date(edit.startsAt) : null;
+  const to = edit ? new Date(edit.endsAt) : null;
+  const [courtIds, setCourtIds] = useState<string[]>(edit ? [edit.courtId] : courts.map((c) => c.id));
+  const [dateStr, setDateStr] = useState(from ? from.toLocaleDateString("sv-SE") : todayStr);
+  const [endDateStr, setEndDateStr] = useState(from ? from.toLocaleDateString("sv-SE") : todayStr);
+  const [startTime, setStartTime] = useState(from ? hm(from) : "08:00");
+  const [endTime, setEndTime] = useState(to ? hm(to) : "12:00");
+  const [reason, setReason] = useState<BlockReason>(edit?.reason ?? "MAINTENANCE");
+  const [description, setDescription] = useState(edit?.description ?? "");
+  const all = courtIds.length === courts.length;
+  const toggleCourt = (id: string) =>
+    edit ? setCourtIds([id]) : setCourtIds(courtIds.includes(id) ? courtIds.filter((x) => x !== id) : [...courtIds, id]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
@@ -40,7 +53,11 @@ export function CreateCourtBlockForm({ clubSlug, courts }: CreateCourtBlockFormP
       setMessage({ type: "error", text: "Bitte gültigen Zeitraum wählen (max. 90 Tage, Bis nach Von)." });
       return;
     }
-    const ids = courtId === "ALL" ? courts.map((c) => c.id) : [courtId];
+    const ids = courtIds;
+    if (!ids.length) {
+      setMessage({ type: "error", text: "Bitte mindestens einen Platz wählen." });
+      return;
+    }
 
     const items = days.flatMap((day) =>
       ids.map((id) => ({
@@ -51,17 +68,21 @@ export function CreateCourtBlockForm({ clubSlug, courts }: CreateCourtBlockFormP
     );
 
     setLoading(true);
-    const res = await createCourtBlockAction({ clubSlug, items, reason, description: description.trim() || undefined }).catch(
+    const res = await (edit
+      ? updateCourtBlockAction({ clubSlug, blockId: edit.id, ...items[0], reason, description })
+      : createCourtBlockAction({ clubSlug, items, reason, description: description.trim() || undefined })
+    ).catch(
       () => ({ success: false, error: "Verbindung fehlgeschlagen." })
     );
     setLoading(false);
     if (!res.success) {
       setMessage({ type: "error", text: res.error || "Fehler beim Erstellen der Platzsperre." });
     } else {
-      setMessage({ type: "success", text: items.length === 1 ? "Sperre erfasst." : `${items.length} Sperren erfasst.` });
-      setDescription("");
+      setMessage({ type: "success", text: edit ? "Sperre gespeichert." : items.length === 1 ? "Sperre erfasst." : `${items.length} Sperren erfasst.` });
+      if (!edit) setDescription("");
     }
     router.refresh();
+    if (res.success) onDone?.();
   };
 
   return (
@@ -77,37 +98,46 @@ export function CreateCourtBlockForm({ clubSlug, courts }: CreateCourtBlockFormP
         </div>
       )}
 
-      <label className="block">
-        <span className={label}>Platz</span>
-        <select id="blockCourt" value={courtId} onChange={(e) => setCourtId(e.target.value)} className={input}>
-          <option value="ALL">Alle Plätze</option>
-          {courts.map((court) => (
-            <option key={court.id} value={court.id}>
-              {court.name}
-            </option>
-          ))}
-        </select>
-      </label>
+      <fieldset>
+        <legend className={label}>{edit ? "Platz" : `Plätze (${courtIds.length})`}</legend>
+        <div className="mt-1.5 flex flex-wrap gap-2">
+          {!edit && (
+            <button type="button" aria-pressed={all} onClick={() => setCourtIds(all ? [] : courts.map((c) => c.id))} className={chip(all)}>
+              Alle
+            </button>
+          )}
+          {courts.map((court) => {
+            const on = courtIds.includes(court.id);
+            return (
+              <button key={court.id} type="button" aria-pressed={on} onClick={() => toggleCourt(court.id)} className={chip(on)}>
+                {court.name}
+              </button>
+            );
+          })}
+        </div>
+      </fieldset>
 
       <div className="grid grid-cols-2 gap-3">
-        <label className="block">
-          <span className={label}>Von Datum</span>
+        <label className={cn("block", edit && "col-span-2")}>
+          <span className={label}>{edit ? "Datum" : "Von Datum"}</span>
           <input
             id="blockDate"
             type="date"
             value={dateStr}
             onChange={(e) => {
               setDateStr(e.target.value);
-              if (endDateStr < e.target.value) setEndDateStr(e.target.value);
+              if (edit || endDateStr < e.target.value) setEndDateStr(e.target.value);
             }}
             className={input}
             required
           />
         </label>
-        <label className="block">
-          <span className={label}>Bis Datum</span>
-          <input id="blockEndDate" type="date" value={endDateStr} min={dateStr} onChange={(e) => setEndDateStr(e.target.value)} className={input} required />
-        </label>
+        {!edit && (
+          <label className="block">
+            <span className={label}>Bis Datum</span>
+            <input id="blockEndDate" type="date" value={endDateStr} min={dateStr} onChange={(e) => setEndDateStr(e.target.value)} className={input} required />
+          </label>
+        )}
         <label className="block">
           <span className={label}>Von Uhrzeit</span>
           <input id="blockStart" type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className={input} required />
@@ -148,7 +178,7 @@ export function CreateCourtBlockForm({ clubSlug, courts }: CreateCourtBlockFormP
         className="mt-1 flex h-[54px] w-full items-center justify-center gap-2.5 rounded-[17px] bg-clay text-[17px] font-bold text-white active:scale-[.97] disabled:opacity-70"
       >
         {loading && <Spinner />}
-        Platzsperre aktivieren
+        {edit ? "Änderungen speichern" : "Platzsperre aktivieren"}
       </button>
     </form>
   );

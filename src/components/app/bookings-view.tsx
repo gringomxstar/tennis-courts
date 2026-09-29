@@ -1,5 +1,6 @@
 "use client";
 
+import { deadlineText } from "@/lib/booking-rules";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -22,14 +23,14 @@ export function BookingsView({
   userId,
   bookings,
   courts,
-  cancelDeadlineHours = 24,
+  cancelDeadlineMinutes = 24 * 60,
 }: {
   slug: string;
   userId?: string;
   bookings: Booking[];
   courts: Court[];
   /** Same rule as cancelDeadlineError in actions/booking.ts — don't offer a button that can only fail. */
-  cancelDeadlineHours?: number;
+  cancelDeadlineMinutes?: number;
 }) {
   const router = useRouter();
   const nowMs = useNow();
@@ -132,9 +133,9 @@ export function BookingsView({
                     CHF {b.totalCost} {b.paymentMethod === "ON_SITE" ? "vor Ort zu bezahlen" : "auf Rechnung"}
                   </div>
                 )}
-                {up && start.getTime() - nowMs < cancelDeadlineHours * 3_600_000 ? (
+                {up && start.getTime() - nowMs < cancelDeadlineMinutes * 60_000 ? (
                   <div className="mt-[14px] text-[14px] text-muted-foreground">
-                    Stornieren nur bis {cancelDeadlineHours} Std. vor Spielbeginn. Bei Fragen: Club kontaktieren.
+                    Stornieren nur bis {deadlineText(cancelDeadlineMinutes)} vor Spielbeginn. Bei Fragen: Club kontaktieren.
                   </div>
                 ) : up ? (
                   <button

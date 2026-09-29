@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 import { LimitRole, PriceRule, SportType, TenantSettings } from "@/types";
-import { LIMIT_ROLES, SPORTS } from "@/lib/booking-rules";
+import { LIMIT_ROLES, SPORTS, cancelDeadlineMinutes } from "@/lib/booking-rules";
 import { WD } from "@/lib/courts";
 import { DINER_DEFAULT } from "@/lib/pricing";
 import { purgeDemoDataAction, updateClubSettingsAction } from "@/app/actions/club-settings";
@@ -78,8 +79,9 @@ export function ClubSettingsForm({
   const [slotDurationMinutes, setSlotDurationMinutes] = useState<number>(
     initialSettings?.slotDurationMinutes ?? 60
   );
-  const [cancellationDeadlineHours, setCancellationDeadlineHours] =
-    useState<number>(initialSettings?.cancellationDeadlineHours ?? 24);
+  const initialDeadline = cancelDeadlineMinutes(initialSettings);
+  const [deadlineUnit, setDeadlineUnit] = useState<"min" | "h">(initialDeadline % 60 === 0 && initialDeadline > 0 ? "h" : "min");
+  const [deadlineValue, setDeadlineValue] = useState<number>(initialDeadline % 60 === 0 && initialDeadline > 0 ? initialDeadline / 60 : initialDeadline);
   const [allowGuestBookings, setAllowGuestBookings] = useState<boolean>(
     initialSettings?.allowGuestBookings ?? true
   );
@@ -151,7 +153,7 @@ export function ClubSettingsForm({
         openingHour: Number(openingHour),
         closingHour: Number(closingHour),
         slotDurationMinutes: Number(slotDurationMinutes),
-        cancellationDeadlineHours: Number(cancellationDeadlineHours),
+        cancellationDeadlineMinutes: Math.round(Number(deadlineValue) * (deadlineUnit === "h" ? 60 : 1)),
         allowGuestBookings,
         demoMode,
         allowConsecutiveSlotsForDoubles,
@@ -177,6 +179,7 @@ export function ClubSettingsForm({
         defaultHourlyRatePadel: Number(defaultHourlyRatePadel),
       });
 
+      toast(res.success ? "Einstellungen gespeichert" : res.error || "Speichern fehlgeschlagen.");
       if (res.success) {
         setFeedback({
           type: "success",
@@ -200,9 +203,9 @@ export function ClubSettingsForm({
 
   return (
     <section className="rounded-[26px] border border-border bg-card p-5">
-      <h2 className="text-[22px] font-bold tracking-[-.02em]">Club-Regeln &amp; Tarife</h2>
+      <h2 className="text-[22px] font-bold tracking-[-.02em]">Buchungsregeln &amp; Preise</h2>
       <p className="mt-1 text-[15px] leading-[1.4] text-muted-foreground">
-        Betriebszeiten, TC Marly Fairplay-Regeln, Doppel-Verlängerung und Gebühren.
+        Öffnungszeiten, Storno-Frist, Fairplay-Regeln, Doppel und Gebühren.
       </p>
 
       <form onSubmit={handleSubmit} className="mt-5 flex flex-col gap-5">
@@ -255,15 +258,23 @@ export function ClubSettingsForm({
             <span className={label}>Storno-Frist</span>
             <span className="flex items-center gap-2.5">
               <input
-                id="cancellationDeadlineHours"
+                id="cancellationDeadline"
                 type="number"
                 min={0}
-                max={72}
-                value={cancellationDeadlineHours}
-                onChange={(e) => setCancellationDeadlineHours(Number(e.target.value))}
-                className={input}
+                max={deadlineUnit === "h" ? 336 : 20160}
+                value={deadlineValue}
+                onChange={(e) => setDeadlineValue(Number(e.target.value))}
+                className={`${input} flex-1`}
               />
-              <span className={`${unit} mt-1.5`}>Std.</span>
+              <select
+                aria-label="Einheit Storno-Frist"
+                value={deadlineUnit}
+                onChange={(e) => setDeadlineUnit(e.target.value as "min" | "h")}
+                className="mt-1.5 h-[50px] w-[92px] shrink-0 rounded-[15px] border border-border bg-inset px-3 text-[16px] text-foreground outline-none focus-visible:border-clay"
+              >
+                <option value="min">Min.</option>
+                <option value="h">Std.</option>
+              </select>
             </span>
           </label>
         </div>
@@ -502,17 +513,25 @@ export function ClubSettingsForm({
           title="Demo-Modus"
           sub="Rollen-Umschalter für Tests. Vor dem Livegang ausschalten."
         />
-        <PurgeDemo clubSlug={clubSlug} />
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="flex h-[54px] w-full items-center justify-center gap-2.5 rounded-[17px] bg-clay text-[17px] font-bold text-white active:scale-[.97] disabled:opacity-70"
-        >
-          {loading && <Spinner />}
-          {loading ? "Wird gespeichert…" : "Einstellungen speichern"}
-        </button>
+        {/* stays in view above the floating tab bar while scrolling through the long form */}
+        <div className="sticky bottom-[calc(max(10px,env(safe-area-inset-bottom))+84px)] z-10 lg:bottom-4">
+          <button
+            type="submit"
+            disabled={loading}
+            className="flex h-[54px] w-full items-center justify-center gap-2.5 rounded-[17px] bg-clay text-[17px] font-bold text-white shadow-[0_10px_30px_-8px_rgba(0,0,0,.35)] active:scale-[.97] disabled:opacity-70"
+          >
+            {loading && <Spinner />}
+            {loading ? "Wird gespeichert…" : "Einstellungen speichern"}
+          </button>
+        </div>
       </form>
+
+      {/* destructive, so apart from Save */}
+      <div className="mt-8 border-t border-border pt-5">
+        <div className="pb-2 text-[13px] font-bold uppercase tracking-[.06em] text-muted-foreground">Demo</div>
+        <PurgeDemo clubSlug={clubSlug} />
+      </div>
     </section>
   );
 }

@@ -165,3 +165,14 @@ export function ballMachineConflict<T extends { startsAt: string; endsAt: string
 /** Latest allowed start for a booking made now (late booking into a running slot). */
 export const lateBookingCutoff = (settings: TenantSettings | null | undefined, now = Date.now()) =>
   now - (settings?.lateBookingMinutes ?? 15) * 60_000;
+
+/** Storno deadline in minutes before start (minutes setting, else the legacy hours, default 24 h). */
+export function cancelDeadlineMinutes(settings: Pick<TenantSettings, "cancellationDeadlineMinutes" | "cancellationDeadlineHours"> | null | undefined): number {
+  return settings?.cancellationDeadlineMinutes ?? (settings?.cancellationDeadlineHours ?? 24) * 60;
+}
+
+/** 1 → "1 Minute", 30 → "30 Minuten", 120 → "2 Stunden", 90 → "90 Minuten". */
+export function deadlineText(min: number): string {
+  if (min >= 60 && min % 60 === 0) return min === 60 ? "1 Stunde" : `${min / 60} Stunden`;
+  return min === 1 ? "1 Minute" : `${min} Minuten`;
+}

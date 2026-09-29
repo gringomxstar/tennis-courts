@@ -30,6 +30,7 @@ export default async function ReservePage({
       wallet={d.wallet}
       favoriteUserIds={d.favoriteUserIds}
       guestRate={d.guestRate}
+      needPartner={d.needPartner}
       planSports={d.planSports}
     />
   );

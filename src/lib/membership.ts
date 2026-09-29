@@ -31,7 +31,7 @@ export function parsePartner(raw: unknown, buyerEmail: string): Partner | string
  * With an Abo still running (renewal before 31 March) the new one starts when it ends.
  * `ref` (Stripe session/payment id) makes webhook retries and the renewal cron idempotent.
  */
-export async function grantMembership(tenantId: string, userId: string, planId: string, ref?: string) {
+export async function grantMembership(tenantId: string, userId: string, planId: string, ref?: string, pricePaid?: number) {
   if (ref && (await prisma.membership.findUnique({ where: { stripeSubscriptionId: ref } }))) return;
   const pending = await prisma.membership.findFirst({ where: { userId, tenantId, membershipPlanId: planId, status: "PENDING" } });
   const running = await prisma.membership.findFirst({
@@ -39,7 +39,16 @@ export async function grantMembership(tenantId: string, userId: string, planId: 
     orderBy: { endsAt: "desc" },
   });
   const startsAt = running?.endsAt ? new Date(running.endsAt.getTime() + 1000) : new Date();
-  const data = { status: "ACTIVE" as const, startsAt, endsAt: seasonEnd(startsAt), stripeSubscriptionId: ref ?? null };
+  // price snapshot for the stats; the plan price may change later
+  const price = pricePaid ?? Number((await prisma.membershipPlan.findUnique({ where: { id: planId }, select: { price: true } }))?.price ?? 0);
+  const data = {
+    status: "ACTIVE" as const,
+    startsAt,
+    endsAt: seasonEnd(startsAt),
+    stripeSubscriptionId: ref ?? null,
+    pricePaid: price,
+    paidAt: new Date(),
+  };
   if (pending) await prisma.membership.update({ where: { id: pending.id }, data });
   else await prisma.membership.create({ data: { userId, tenantId, membershipPlanId: planId, ...data } });
   await prisma.tenantUser.upsert({
@@ -55,7 +64,8 @@ export async function grantPartnerMembership(tenantId: string, planId: string, p
   const user =
     (await prisma.user.findUnique({ where: { email: p.email } })) ??
     (await prisma.user.create({ data: { email: p.email, firstName: p.firstName, lastName: p.lastName, passwordHash: null } }));
-  await grantMembership(tenantId, user.id, planId, ref && `${ref}:partner`);
+  // the buyer's membership carries the Paar-Abo price
+  await grantMembership(tenantId, user.id, planId, ref && `${ref}:partner`, 0);
   if (!user.passwordHash) {
     const tenant = await prisma.tenant.findUnique({ where: { id: tenantId }, select: { slug: true, name: true } });
     if (tenant) await sendPasswordLink(user.email, user.firstName, tenant.name, passwordLink(tenant.slug, user.id, null), "invite");

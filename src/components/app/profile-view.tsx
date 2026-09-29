@@ -123,7 +123,7 @@ export function ProfileView({
       <div className="flex items-center gap-3.5 px-5 pt-[66px] lg:pt-12">
         <div
           aria-hidden
-          className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-[linear-gradient(135deg,#e25b36,#b33816)] text-[22px] font-bold text-white"
+          className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-[linear-gradient(135deg,var(--tennis-clay),var(--tennis-clay-hover))] text-[22px] font-bold text-white"
         >
           {me.ini}
         </div>
@@ -141,6 +141,25 @@ export function ProfileView({
           value={admin ? "admin" : "member"}
           onChange={(v) => router.push(v === "admin" ? `/c/${slug}/admin` : `/c/${slug}/profile`)}
         />
+      )}
+
+      {admin && (
+        <nav aria-label="Club verwalten" className={`${card} mx-5 mt-4 overflow-hidden lg:max-w-md`}>
+          {[
+            ["settings", "Club-Einstellungen", "Öffnungszeiten, Storno, Preise, Regeln"],
+            ["settings#branding", "Clubfarbe & Logo", "Farbe und Logo des Clubs"],
+            ["settings#plaetze", "Plätze", "Anlegen, bearbeiten, sperren"],
+            ["settings#tarife", "Abos & Tarife", "Mitgliedschaften und Preise"],
+          ].map(([href, title, sub]) => (
+            <Link key={href} href={`/c/${slug}/admin/${href}`} className="flex items-center gap-3 border-t border-border px-[18px] py-3.5 first:border-t-0">
+              <span className="flex-1">
+                <span className="block text-[16px] font-bold">{title}</span>
+                <span className="block text-[13px] text-muted-foreground">{sub}</span>
+              </span>
+              <svg aria-hidden width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="text-muted-foreground"><path d="m9 18 6-6-6-6" /></svg>
+            </Link>
+          ))}
+        </nav>
       )}
 
       {!user && (

@@ -44,6 +44,8 @@ export interface TenantSettings {
   closingHour: number;
   slotDurationMinutes: number;
   cancellationDeadlineHours: number;
+  /** Storno deadline in minutes before the start; wins over cancellationDeadlineHours. */
+  cancellationDeadlineMinutes?: number;
   allowGuestBookings?: boolean;
   // Epic: credits, doubles, marly, equipment, multi-sport
   allowConsecutiveSlotsForDoubles?: boolean;
@@ -68,6 +70,8 @@ export interface TenantSettings {
   dinerTennis?: { enabled: boolean; weekdays: number[]; fromHour: number; toHour: number };
   /** Role switcher with the fixed demo personas (src/lib/demo.ts); off = demo logins refused. */
   demoMode?: boolean;
+  /** Club accent color (#rrggbb), replaces the default clay orange. */
+  brandColor?: string;
 }
 
 export type LimitRole = "MEMBER" | "COACH" | "GUEST";

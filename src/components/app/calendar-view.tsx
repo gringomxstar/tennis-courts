@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { BookingSheet } from "@/components/app/booking-sheet";
 import { Dot } from "@/components/app/avatar";
-import { Segmented } from "@/components/app/segmented";
 import { useSheetSlot } from "@/components/app/use-sheet-slot";
 import { useNow } from "@/components/app/use-now";
 import { addDays, atHour, bookingAt, courtColor, courtLabel, shortName, slotState, startOfToday, surfaceKind, WD, type SlotState, type SurfaceKind } from "@/lib/courts";
@@ -13,7 +12,8 @@ import type { Person } from "@/lib/partners";
 import type { BlockReason, Booking, Court, CourtBlock, Tenant, SportType } from "@/types";
 import { cn } from "@/lib/utils";
 
-const WINS = { morn: [7, 8, 9, 10, 11], day: [12, 13, 14, 15, 16], eve: [17, 18, 19, 20, 21] } as const;
+/** Hour chips are 72px + 6px gap; rows open scrolled to this hour. */
+const CHIP = 78;
 const REASON: Record<BlockReason, string> = {
   RAIN: "Regen", MAINTENANCE: "Wartung", TOURNAMENT: "Turnier", SNOW: "Schnee", TRAINING: "Training",
   EVENT: "Anlass", PRIVATE: "Privat", OTHER: "Gesperrt",
@@ -30,6 +30,7 @@ export function CalendarView({
   wallet,
   windowDays,
   guestRate,
+  needPartner = false,
   planSports,
 }: {
   tenant: Tenant;
@@ -42,6 +43,7 @@ export function CalendarView({
   /** Booking window of the user's plan; the strip never shows more than 7 days. */
   windowDays: number | null;
   guestRate: boolean;
+  needPartner?: boolean;
   planSports: SportType[] | null;
 }) {
   const router = useRouter();
@@ -51,7 +53,6 @@ export function CalendarView({
   const [view, setView] = useState<"list" | "grid">("list");
   const [day, setDay] = useState(0);
   const [filter, setFilter] = useState<"all" | SurfaceKind>("all");
-  const [win, setWin] = useState<keyof typeof WINS>("eve");
   const open = tenant.settingsJson?.openingHour ?? 7;
   const close = tenant.settingsJson?.closingHour ?? 22;
   const weekHours = Array.from({ length: close - open }, (_, i) => open + i);
@@ -101,13 +102,15 @@ export function CalendarView({
   );
 
   const now = new Date(nowMs);
+  // today: start at the current hour; later days: evenings, when most people play
+  const startHour = day === 0 ? now.getHours() : 17;
   const shown = courts.filter((c) => filter === "all" || surfaceKind(c) === filter);
 
   return (
     <>
       <div className="flex items-center justify-between gap-3 px-5 pt-[60px] lg:pt-12">
         <h1 className="text-[30px] font-bold tracking-[-.035em]">Kalender</h1>
-        <Segmented size="sm" className="w-[180px]" label="Ansicht" value={view} onChange={setView} options={[["list", "Liste"], ["grid", "Raster"]] as const} />
+        <ViewSwitch grid={view === "grid"} onChange={(g) => setView(g ? "grid" : "list")} />
       </div>
 
       {ready && view === "list" && (
@@ -133,7 +136,6 @@ export function CalendarView({
               );
             })}
           </div>
-          <Segmented className="mx-5 mt-3.5 lg:ml-0 lg:w-[340px] lg:flex-none" label="Tageszeit" value={win} onChange={setWin} options={[["morn", "Vormittag"], ["day", "Tag"], ["eve", "Abend"]] as const} />
           </div>
           <div className="flex flex-col gap-3 px-5 pt-4 lg:grid lg:grid-cols-2 2xl:grid-cols-3">
             {shown.map((c) => {
@@ -149,8 +151,8 @@ export function CalendarView({
                       <svg role="img" aria-label="Flutlicht" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z" /></svg>
                     )}
                   </div>
-                  <div className="flex gap-1.5">
-                    {WINS[win].filter((h) => h >= open && h < close).map((h) => {
+                  <div ref={(el) => { if (el && el.dataset.day !== String(day)) { el.dataset.day = String(day); el.scrollLeft = Math.max(0, startHour - open) * CHIP; } }} className="no-scrollbar -mx-3.5 flex gap-1.5 overflow-x-auto px-3.5">
+                    {weekHours.map((h) => {
                       const { start, state } = cell(c, h);
                       const inert = state === "taken" || state === "past";
                       return (
@@ -161,7 +163,7 @@ export function CalendarView({
                           onClick={() => tap(c, start, state)}
                           aria-label={`${l.name}, ${h}:00, ${STATE_LABEL[state]}`}
                           className={cn(
-                            "flex h-[58px] flex-1 items-center justify-center rounded-[15px] border text-[18px] font-bold tracking-[-.01em] transition-transform duration-300 ease-spring",
+                            "flex h-[58px] w-[72px] flex-none items-center justify-center rounded-[15px] border text-[18px] font-bold tracking-[-.01em] transition-transform duration-300 ease-spring",
                             state === "free" && "border-free-border bg-seg-on text-foreground active:scale-[.92]",
                             state === "mine" && "border-clay bg-clay text-white active:scale-[.92]",
                             state === "blocked" && "border-transparent bg-inset text-muted-foreground opacity-55",
@@ -230,8 +232,8 @@ export function CalendarView({
                           <span className="line-clamp-2">{text}</span>
                         </button>
                         {isNow && (
-                          <div aria-hidden className="absolute inset-x-0 z-[2] h-0.5 bg-[#e25b36]" style={{ top: `${(now.getMinutes() / 60) * 100}%` }}>
-                            <div className="absolute -left-1 -top-[3px] h-2 w-2 rounded-full bg-[#e25b36]" />
+                          <div aria-hidden className="absolute inset-x-0 z-[2] h-0.5 bg-clay" style={{ top: `${(now.getMinutes() / 60) * 100}%` }}>
+                            <div className="absolute -left-1 -top-[3px] h-2 w-2 rounded-full bg-clay" />
                           </div>
                         )}
                       </div>
@@ -244,7 +246,31 @@ export function CalendarView({
         </>
       )}
 
-      <BookingSheet slug={tenant.slug} settings={tenant.settingsJson} slot={sheet.slot} onClose={sheet.close} pool={partners} isAnon={!userId} guestRate={guestRate} planSports={planSports} wallet={wallet} />
+      <BookingSheet slug={tenant.slug} settings={tenant.settingsJson} slot={sheet.slot} onClose={sheet.close} pool={partners} isAnon={!userId} guestRate={guestRate} needPartner={needPartner} planSports={planSports} wallet={wallet} />
     </>
+  );
+}
+
+/** Liste/Raster slider: labels on both sides, a brand-colored knob that slides. */
+function ViewSwitch({ grid, onChange }: { grid: boolean; onChange: (grid: boolean) => void }) {
+  const side = (on: boolean) => cn("text-[15px] font-semibold transition-colors duration-300", on ? "text-foreground" : "text-muted-foreground");
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={grid}
+      aria-label="Rasteransicht"
+      onClick={() => onChange(!grid)}
+      className="flex items-center gap-2.5"
+    >
+      <span className={side(!grid)}>Liste</span>
+      <span aria-hidden className="relative block h-8 w-[56px] rounded-full bg-inset shadow-[inset_0_0_0_1px_var(--border)]">
+        <span
+          className="absolute top-[3px] h-[26px] w-[26px] rounded-full bg-clay shadow-[0_2px_6px_rgba(0,0,0,.25)] transition-[left] duration-[350ms] ease-spring"
+          style={{ left: grid ? 27 : 3 }}
+        />
+      </span>
+      <span className={side(grid)}>Raster</span>
+    </button>
   );
 }

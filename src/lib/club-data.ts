@@ -75,5 +75,7 @@ export async function loadClubData(slug: string, days = 8) {
     guestRate: paysGuestRate(Boolean(user), member?.role, Boolean(member?.plan)),
     /** Sports the active Abo covers (price preview); null = no Abo. */
     planSports: member?.plan?.sports ?? null,
+    /** Members must name at least one co-player or guest; admins, coaches and anonymous guests don't. */
+    needPartner: Boolean(user) && !ctx.isTenantAdmin && member?.role !== "COACH",
   };
 }
