@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Avatar, Spinner } from "@/components/app/avatar";
 import { Sheet } from "@/components/app/sheet";
-import { AdminGrantCreditsButton } from "@/components/admin/admin-grant-credits-button";
 import { sendPaymentReminderAction } from "@/actions/admin-billing";
 import {
   importMembersAction, markMembershipPaidAction, removeMemberAction, renewMembershipAction, saveMemberAction, sendRenewalRemindersAction, type MemberInput,
@@ -39,6 +38,8 @@ export interface MemberRow {
   renewedUntil: string;
   /** renewal is an open invoice */
   renewalOpen: boolean;
+  /** manual money decisions about this member, newest first (audit log) */
+  history: { at: string; text: string; by: string }[];
 }
 
 export interface PlanOption {
@@ -385,6 +386,8 @@ export function ImportMembers({ slug }: { slug: string }) {
     if (invite) parts.push(`${res.invited} eingeladen`);
     if (res.inviteFailed) parts.push(`${res.inviteFailed} Mails fehlgeschlagen`);
     if (res.invitesSkipped) parts.push(`${res.invitesSkipped} Einladungen übersprungen (Tageslimit)`);
+    if (res.abos) parts.push(`${res.abos} Abos freigeschaltet`);
+    if (res.aboErrors.length) parts.push(`${res.aboErrors.length} Abos nicht gefunden: ${res.aboErrors.slice(0, 3).join(", ")}`);
     const msg = parts.join(" · ");
     setSummary(msg);
     toast(`Import fertig: ${msg}`);
@@ -399,7 +402,7 @@ export function ImportMembers({ slug }: { slug: string }) {
       <Sheet open={open} onOpenChange={setOpen} title="Mitglieder importieren">
         <div className="text-[28px] font-bold tracking-[-.03em]">Mitglieder importieren</div>
         <div className="mt-1 text-[14px] text-muted-foreground">
-          Aus Excel kopieren und einfügen oder CSV wählen. Spalten: Vorname, Nachname, E-Mail, Telefon, optional Geburtsdatum, Geschlecht
+          Aus Excel kopieren und einfügen oder CSV wählen. Spalten: Vorname, Nachname, E-Mail, Telefon, optional Geburtsdatum, Geschlecht, Abo (Name wie unter Abos & Tarife → gilt als bezahlt)
         </div>
         <div className="mt-1 text-[13px] text-muted-foreground">
           <b className="font-bold text-foreground">Fairgate:</b> Kontakte filtern (z.B. Mitglieder) → Export → CSV. Die Fairgate-Spalten werden automatisch erkannt.
@@ -440,6 +443,7 @@ export function ImportMembers({ slug }: { slug: string }) {
                     </span>
                     <span className="min-w-0 truncate text-muted-foreground">{r.email}</span>
                     {r.birthDate && <span className="shrink-0 text-muted-foreground">{r.birthDate.slice(0, 4)}</span>}
+                    {r.plan && <span className="shrink-0 font-semibold">{r.plan}</span>}
                   </li>
                 ))}
                 {rows.length > 5 && <li className="text-[13px] text-muted-foreground">und {rows.length - 5} weitere</li>}
@@ -685,10 +689,17 @@ function MemberSheet({ slug, plans, member, onClose }: { slug: string; plans: Pl
               <span className="text-[15px] font-bold">Einladungs-Mail senden</span>
             </label>
           )}
-          {!isNew && f.id && (
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-[14px] text-muted-foreground">Gutschrift (z.B. Witterungsausfall)</span>
-              <AdminGrantCreditsButton clubSlug={slug} userId={f.id} userName={`${f.firstName} ${f.lastName}`} />
+          {current && current.history.length > 0 && (
+            <div>
+              <span className={fieldLabel}>Verlauf (manuell)</span>
+              <ul className="mt-1.5 flex flex-col gap-1 rounded-[16px] border border-border bg-card px-4 py-3">
+                {current.history.map((h) => (
+                  <li key={h.at + h.text} className="text-[13px] leading-snug">
+                    <span className="text-muted-foreground">{date(h.at)} · {h.by}: </span>
+                    {h.text}
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
           <button

@@ -8,7 +8,7 @@ import { Spinner } from "@/components/app/avatar";
 import { SwitchKnob } from "@/components/app/switch";
 import { createBookingAction, createCoachSeriesAction } from "@/app/actions/booking";
 import { setFavoritesAction } from "@/app/actions/profile";
-import { computeBookingCost, isDinerSlot, needsFloodlight, payButtonLabel, payOptions } from "@/lib/pricing";
+import { computeBookingCost, isDinerSlot, needsFloodlight, payButtonLabel, payOptions, roundRappen } from "@/lib/pricing";
 import { courtColor, courtLabel, hh, initials, longDate, slotState } from "@/lib/courts";
 import type { Person } from "@/lib/partners";
 import type { Booking, Court, CourtBlock, PaymentMethod, Tenant, SportType } from "@/types";
@@ -67,7 +67,6 @@ export function ReserveView({
   const [paying, setPaying] = useState(false);
   const [guests, setGuests] = useState<{ name: string; email: string }[]>([]);
   const [guestForm, setGuestForm] = useState<{ name: string; email: string } | null>(null);
-  const [split, setSplit] = useState(false);
   const [method, setMethod] = useState<PaymentMethod | null>(null);
   // Trainer series: repeat weekly until this date (YYYY-MM-DD), null = single booking
   const [until, setUntil] = useState<string | null>(null);
@@ -118,22 +117,16 @@ export function ReserveView({
   };
 
   const light = needsFloodlight(court, startDate, dur * 60);
-  const cost = computeBookingCost({
-    settings: tenant.settingsJson,
-    court,
-    isGuest: guestRate,
-    planSports,
-    durationMinutes: dur * 60,
-    guestCount: guests.length,
-    hasBallMachine: ball,
-    hasLighting: light,
-    start: startDate,
-  });
+  const onCourt = [planSports, ...players.map((id) => byId.get(id)?.sports ?? null), ...guests.map(() => null)];
+  const costFor = (p: typeof onCourt) =>
+    computeBookingCost({ settings: tenant.settingsJson, court, players: p, durationMinutes: dur * 60, hasBallMachine: ball, hasLighting: light, start: startDate });
+  const cost = costFor(onCourt);
+  // what one more guest adds (the shares change for everyone)
+  const plusGuest = roundRappen(costFor([...onCourt, null]).total - cost.total);
   // Diner Tennis: computeBookingCost already takes one guest off
   const diner = Boolean(planSports) && !guestRate && isDinerSlot(tenant.settingsJson, startDate);
   const opts = payOptions(tenant.settingsJson, { isAnon: false, wallet, total: cost.total });
   const pay = method && opts.some(([m]) => m === method) ? method : opts[0][0];
-  const canSplit = cost.total > 0 && players.length > 0 && pay === "WALLET";
   const color = courtColor(court);
   const l = courtLabel(court);
   const q = search.toLowerCase();
@@ -171,7 +164,7 @@ export function ReserveView({
         ...guests.map((g) => ({ type: "GUEST" as const, guestName: g.name, guestEmail: g.email || undefined })),
       ],
       hasBallMachine: ball,
-      ...(cost.total > 0 ? { paymentMethod: pay, splitCosts: canSplit && split } : {}),
+      ...(cost.total > 0 ? { paymentMethod: pay } : {}),
     }).catch(() => ({ success: false as const, error: "Verbindung fehlgeschlagen. Bitte erneut versuchen." }));
     if (res.success && "checkoutUrl" in res && res.checkoutUrl) {
       window.location.assign(res.checkoutUrl);
@@ -361,7 +354,7 @@ export function ReserveView({
               className="mt-2.5 flex w-full items-center justify-between rounded-[18px] bg-inset px-4 py-3.5 text-[16px] font-semibold text-foreground"
             >
               <span>Gast hinzufügen</span>
-              <span>{guestRate || (diner && guests.length === 0) ? "Gratis" : `CHF ${tenant.settingsJson?.guestFee ?? 15}`}</span>
+              <span>{plusGuest > 0 ? `+ CHF ${plusGuest.toFixed(2)}` : "Gratis"}</span>
             </button>
           )}
           {diner && (
@@ -413,17 +406,6 @@ export function ReserveView({
           </div>
           {until === null && cost.total > 0 && opts.length > 1 && (
             <Segmented className="mb-2.5 lg:w-full lg:max-w-md" label="Zahlungsart" value={pay} onChange={setMethod} options={opts} />
-          )}
-          {until === null && canSplit && (
-            <button type="button" aria-pressed={split} onClick={() => setSplit(!split)} className="mb-2.5 flex w-full items-center gap-3 rounded-[16px] bg-inset px-4 py-3 text-left lg:max-w-md">
-              <span className="flex-1">
-                <span className="block text-[15px] font-semibold">Kosten teilen</span>
-                <span className="block text-[13px] text-muted-foreground">
-                  CHF {Math.round((cost.total / (players.length + 1)) * 100) / 100} pro Mitglied vom Guthaben
-                </span>
-              </span>
-              <SwitchKnob on={split} />
-            </button>
           )}
           <button
             type="button"

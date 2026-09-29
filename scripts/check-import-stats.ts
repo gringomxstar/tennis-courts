@@ -25,3 +25,12 @@ assert.equal(cancelDeadlineMinutes({ cancellationDeadlineHours: 24, cancellation
 assert.equal(cancelDeadlineMinutes(null), 1440);
 assert.equal(deadlineText(1), "1 Minute"); assert.equal(deadlineText(120), "2 Stunden"); assert.equal(deadlineText(90), "90 Minuten");
 console.log("deadline ok");
+
+// "Abo" column → plan name (granted as paid on import)
+{
+  const { rows } = parseMembers("Vorname;Name;E-Mail;Abo\nAnna;Muster;anna@example.ch;Erwachsene · Tennis\nBeat;Keller;beat@example.ch;");
+  assert.equal(rows[0].plan, "Erwachsene · Tennis");
+  assert.equal(rows[1].plan, undefined);
+  assert.equal(parseMembers("Vorname,Nachname,E-Mail,Abonnement\nA,B,a@b.ch,Junioren").rows[0].plan, "Junioren");
+  console.log("import plan ok");
+}

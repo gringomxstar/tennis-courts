@@ -6,6 +6,8 @@ export interface ImportRow {
   /** yyyy-mm-dd */
   birthDate?: string;
   gender?: "M" | "F" | "X";
+  /** Abo name as in the club's plans; granted as paid (bank, Fairgate) */
+  plan?: string;
 }
 
 export interface ImportError {
@@ -13,7 +15,7 @@ export interface ImportError {
   reason: string;
 }
 
-type Col = "firstName" | "lastName" | "name" | "email" | "phone" | "birthDate" | "gender";
+type Col = "firstName" | "lastName" | "name" | "email" | "phone" | "birthDate" | "gender" | "plan";
 
 const HEADERS: Record<string, Col> = {
   vorname: "firstName",
@@ -41,12 +43,17 @@ const HEADERS: Record<string, Col> = {
   geschlecht: "gender",
   gender: "gender",
   anrede: "gender",
+  abo: "plan",
+  abonnement: "plan",
+  tarif: "plan",
+  plan: "plan",
+  mitgliedschaft: "plan",
 };
 
 /** Exact alias first, then loose matches like "E-Mail (primär)" or "Telefon (Mobile)". */
 function headerCol(cell: string): Col | undefined {
   const k = cell.toLowerCase().replace(/[^a-z]/g, "");
-  return HEADERS[k] ?? (k.includes("mail") ? "email" : /telefon|mobil|natel/.test(k) ? "phone" : undefined);
+  return HEADERS[k] ?? (k.includes("mail") ? "email" : /telefon|mobil|natel/.test(k) ? "phone" : /^abo|tarif|mitgliedschaft/.test(k) ? "plan" : undefined);
 }
 
 /** 31.12.1990, 31.12.90, 1990-12-31 → "1990-12-31"; anything else undefined. */
@@ -142,6 +149,7 @@ export function parseMembers(text: string): { rows: ImportRow[]; errors: ImportE
       ...(v.phone ? { phone: v.phone.slice(0, 30) } : {}),
       ...(v.birthDate && parseDate(v.birthDate) ? { birthDate: parseDate(v.birthDate) } : {}),
       ...(v.gender && parseGender(v.gender) ? { gender: parseGender(v.gender) } : {}),
+      ...(v.plan ? { plan: v.plan.slice(0, 100) } : {}),
     });
   });
 
