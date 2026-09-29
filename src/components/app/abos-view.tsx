@@ -445,7 +445,7 @@ export function AbosView({
 
       {sp && sp.price > 0 && (
         <div
-          className={`sticky bottom-[calc(106px+env(safe-area-inset-bottom))] z-20 mx-3 mt-6 flex flex-col gap-3 rounded-[26px] border border-border bg-glass p-3 shadow-elevation backdrop-blur-[24px] backdrop-saturate-[1.6] lg:bottom-6 lg:mx-0 ${footerOnDesktop ? "lg:flex-row lg:items-end" : "lg:hidden"}`}
+          className={`sticky bottom-[calc(max(10px,env(safe-area-inset-bottom))+76px)] z-20 mx-3 mt-6 flex flex-col gap-3 rounded-[26px] border border-border bg-glass p-3 shadow-elevation backdrop-blur-[24px] backdrop-saturate-[1.6] lg:bottom-6 lg:mx-0 ${footerOnDesktop ? "lg:flex-row lg:items-end" : "lg:hidden"}`}
         >
           {loggedIn && personsOf(sp) === 2 && <div className="px-1 pt-1 lg:flex-1">{partnerForm("bg-card")}</div>}
           <div className="lg:w-[420px]">
