@@ -89,7 +89,7 @@ export function CalendarView({
   };
 
   const dayButtons = (compact: boolean) => (
-    <div className={cn("flex px-5", compact ? "gap-1.5 pt-2.5" : "gap-2 pt-4")}>
+    <div className={cn("flex px-5", compact ? "gap-1.5 pt-2.5 lg:w-[560px] lg:flex-none" : "gap-2 pt-4")}>
       {days.map((d, i) => {
         const on = i === day;
         return (
@@ -220,9 +220,12 @@ export function CalendarView({
 
       {ready && view === "grid" && (
         <>
-          {dayButtons(true)}
-          {legend}
-          <div ref={(el) => { if (el && el.dataset.day !== String(day)) { el.dataset.day = String(day); el.scrollTop = Math.max(0, startHour - open - 1) * 62; } }} className="mt-2.5 flex h-[650px] overflow-auto border-t border-border lg:mx-5 lg:h-[calc(100dvh-220px)]">
+          <div className="lg:flex lg:items-center lg:justify-between lg:pr-5 lg:[&>div:last-child]:pt-2.5">
+            {dayButtons(true)}
+            {legend}
+          </div>
+          {/* data-wide lets the club layout drop its max width for this view */}
+          <div data-wide ref={(el) => { if (el && el.dataset.day !== String(day)) { el.dataset.day = String(day); el.scrollTop = Math.max(0, startHour - open - 1) * 62; } }} className="mt-2.5 flex h-[650px] overflow-auto border-t border-border lg:mx-5 lg:h-[calc(100dvh-190px)]">
             <div className="sticky left-0 z-[4] h-max w-[56px] flex-none bg-background">
               <div className="sticky top-0 z-[5] h-[62px] bg-background" />
               {weekHours.map((h) => (
@@ -250,7 +253,7 @@ export function CalendarView({
                     const text =
                       state === "mine" ? (b && shortName(b)) || "Du" : state === "taken" ? (b && shortName(b)) || "Belegt" : state === "blocked" ? blockLabel(c, start) : "";
                     return (
-                      <div key={h} className="relative box-border h-[62px] border-t border-border px-1 py-[3px]">
+                      <div key={h} className={cn("relative box-border h-[62px] border-t border-border px-1 py-[3px]", state === "past" && "lg:bg-inset/60")}>
                         <button
                           type="button"
                           disabled={inert}
@@ -259,14 +262,16 @@ export function CalendarView({
                           style={state === "taken" ? { ...tint(bookingColor(b, tenant.settingsJson), 18), boxShadow: `inset 3px 0 0 ${bookingColor(b, tenant.settingsJson)}` } : undefined}
                           className={cn(
                             "box-border flex h-full w-full items-center rounded-[12px] px-2.5 text-left text-[16px] font-bold leading-tight transition-transform duration-[250ms] ease-spring",
-                            state === "free" && "bg-free-tint text-clay-text active:scale-[.94]",
+                            // desktop: empty cells stay calm, hover shows what a click books
+                            state === "free" && "group bg-free-tint text-clay-text active:scale-[.94] lg:bg-transparent lg:hover:bg-free-tint",
                             state === "mine" && "bg-clay text-white active:scale-[.94]",
                             state === "blocked" && "cursor-default bg-acc text-muted-foreground",
                             state === "taken" && "cursor-default",
-                            state === "past" && "cursor-default bg-inset opacity-35"
+                            state === "past" && "cursor-default bg-inset opacity-35 lg:hidden"
                           )}
                         >
                           <span className="line-clamp-2">{text}</span>
+                          {state === "free" && <span className="hidden text-[14px] lg:group-hover:inline">+ {h}:00</span>}
                         </button>
                         {isNow && (
                           <div aria-hidden className="absolute inset-x-0 z-[2] h-0.5 bg-clay" style={{ top: `${(now.getMinutes() / 60) * 100}%` }}>
