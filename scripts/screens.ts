@@ -22,7 +22,7 @@ const roles: Record<string, { creds?: string; routes: string[] }> = {
   member: { creds: process.env.SHOT_MEMBER, routes: [c, `${c}/calendar`, `${c}/bookings`, `${c}/profile`, `${c}/abos`] },
   admin: {
     creds: process.env.SHOT_ADMIN,
-    routes: [`${c}/admin`, `${c}/admin/calendar`, `${c}/admin/blocks`, `${c}/admin/members`, `${c}/admin/settings`, `${c}/admin/stats`, `${c}/admin/profile`],
+    routes: [`${c}/admin`, `${c}/admin/today`, `${c}/admin/blocks`, `${c}/admin/members`, `${c}/admin/settings`, `${c}/admin/stats`],
   },
 };
 const sizes = [
