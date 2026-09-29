@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Avatar, Chevron } from "@/components/app/avatar";
 import { useNow } from "@/components/app/use-now";
-import { ModeSwitch } from "@/components/app/mode-switch";
 import { cancelBookingAction, markBookingPaidOfflineAction } from "@/app/actions/booking";
 import { addDays, atHour, courtLabel, hhmm, initials, longDate, slotState } from "@/lib/courts";
 import type { Booking, Court, CourtBlock, TenantSettings } from "@/types";
@@ -101,8 +100,8 @@ export function AdminToday({
     <>
       <div className="px-5 pt-[66px] lg:pt-12">
         <div className="flex items-center justify-between gap-3">
+          <Link href={`/c/${slug}/admin`} className="lg:hidden inline-flex items-center gap-1 text-[15px] font-semibold text-clay-text"><svg aria-hidden width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>Verwaltung</Link>
           <h1 className="text-[34px] font-bold tracking-[-.035em]">Heute</h1>
-          <ModeSwitch slug={slug} admin />
         </div>
         <div className="mt-0.5 text-[15px] text-muted-foreground">Belegung · {day ? longDate(day) : " "}</div>
       </div>

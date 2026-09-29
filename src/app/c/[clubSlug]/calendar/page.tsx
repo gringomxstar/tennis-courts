@@ -1,9 +1,11 @@
 import { loadClubData } from "@/lib/club-data";
+import { getTenantContext } from "@/lib/tenant";
 import { CalendarView } from "@/components/app/calendar-view";
 
 export default async function CalendarPage({ params }: { params: Promise<{ clubSlug: string }> }) {
   const { clubSlug } = await params;
-  const d = await loadClubData(clubSlug, 8, { members: true });
+  const { isTenantAdmin } = await getTenantContext(clubSlug);
+  const d = await loadClubData(clubSlug, 8, { admin: isTenantAdmin, members: true });
   return (
     <CalendarView
       tenant={d.tenant}
@@ -13,10 +15,11 @@ export default async function CalendarPage({ params }: { params: Promise<{ clubS
       userId={d.user?.id}
       partners={d.partners}
       wallet={d.wallet}
-      guestRate={d.guestRate}
+      guestRate={!isTenantAdmin && d.guestRate}
       needPartner={d.needPartner}
       planSports={d.planSports}
-      windowDays={d.windowDays}
+      windowDays={isTenantAdmin ? null : d.windowDays}
+      admin={isTenantAdmin}
     />
   );
 }

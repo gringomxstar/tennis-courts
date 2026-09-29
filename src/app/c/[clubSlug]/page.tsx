@@ -44,7 +44,6 @@ export default async function ClubHomePage({ params }: { params: Promise<{ clubS
       wallet={d.wallet}
       guestRate={d.guestRate}
       needPartner={d.needPartner}
-      canAdmin={d.ctx.isTenantAdmin}
       planSports={d.planSports}
       minPlanPrice={plans.length ? Math.min(...plans.map((p) => p.price)) : null}
       aboCta={plans.length ? aboCta : null}

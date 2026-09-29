@@ -1,6 +1,5 @@
 "use client";
 
-import { ModeSwitch } from "@/components/app/mode-switch";
 
 import { useMemo } from "react";
 import Link from "next/link";
@@ -39,7 +38,6 @@ export function HomeView({
   wallet,
   guestRate,
   needPartner = false,
-  canAdmin = false,
   planSports,
   minPlanPrice,
   aboCta,
@@ -55,7 +53,6 @@ export function HomeView({
   wallet: number;
   guestRate: boolean;
   needPartner?: boolean;
-  canAdmin?: boolean;
   planSports: SportType[] | null;
   minPlanPrice: number | null;
   /** Logged-in Abo prompt: no Abo yet, or the Abo ends within 30 days without renewal. */
@@ -127,7 +124,6 @@ export function HomeView({
       <div className="px-5 pt-[66px] lg:pt-12">
         <div className="flex items-start justify-between gap-3">
           <div className="whitespace-nowrap text-[15px] font-medium text-muted-foreground">{ready ? longDate(new Date()) : " "}</div>
-          {canAdmin && <ModeSwitch slug={tenant.slug} admin={false} />}
           {/* eslint-disable-next-line @next/next/no-img-element -- data URL */}
           {tenant.logoUrl && <img src={tenant.logoUrl} alt={tenant.name} className="-mt-3 h-12 w-12 shrink-0 object-contain lg:hidden" />}
         </div>

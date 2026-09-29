@@ -1,57 +1,34 @@
-import { after } from "next/server";
+import Link from "next/link";
 import { requireTenantAdmin } from "@/lib/tenant";
-import { getBlocksInRange, getBookingsInRange, getCourtsByTenantId } from "@/lib/data";
-import { syncPendingBookingPayments } from "@/lib/booking-payment";
-import { AdminToday } from "@/components/app/admin-today";
 import { prisma } from "@/lib/prisma";
 
-/** now-1d .. now+2d as ISO, wide enough for any client timezone's "today". */
-function range() {
-  const now = Date.now();
-  return [new Date(now - 86_400_000).toISOString(), new Date(now + 2 * 86_400_000).toISOString()];
-}
-
-export default async function AdminTodayPage({ params }: { params: Promise<{ clubSlug: string }> }) {
+export default async function AdminHubPage({ params }: { params: Promise<{ clubSlug: string }> }) {
   const { clubSlug } = await params;
   const { tenant } = await requireTenantAdmin(clubSlug);
-  after(() => syncPendingBookingPayments(tenant.id));
-
-  // server passes a wide ISO range; the client picks "today" in its local time
-  const [from, to] = range();
-  const [courts, bookings, blocks, unpaid] = await Promise.all([
-    getCourtsByTenantId(tenant.id),
-    getBookingsInRange(tenant.id, from, to),
-    getBlocksInRange(tenant.id, from, to),
-    process.env.DATABASE_URL
-      ? prisma.booking.findMany({
-          where: {
-            tenantId: tenant.id,
-            paymentMethod: { in: ["ON_SITE", "INVOICE"] },
-            paymentStatus: "UNPAID",
-            status: { in: ["CONFIRMED", "COMPLETED"] },
-          },
-          include: { organizer: true, court: true },
-          orderBy: { startsAt: "asc" },
-          take: 50,
-        })
-      : [],
-  ]);
-
+  const n = process.env.DATABASE_URL ? await prisma.tenantUser.count({ where: { tenantId: tenant.id } }) : 0;
+  const rows = [
+    ["today", "Heute", "Belegung und Sperren heute"],
+    ["members", "Mitglieder", `${n} Mitglieder`],
+    ["blocks", "Sperren", "Plätze sperren, geplante Sperren"],
+    ["stats", "Statistik", "Auslastung, Umsatz, CSV-Export"],
+    ["settings", "Einstellungen", "Öffnungszeiten, Storno, Preise, Plätze, Abos, Farbe & Logo"],
+  ];
   return (
-    <AdminToday
-      slug={tenant.slug}
-      settings={tenant.settingsJson}
-      courts={courts.filter((c) => c.status === "ACTIVE")}
-      bookings={bookings}
-      blocks={blocks}
-      openPayments={unpaid.map((b) => ({
-        id: b.id,
-        name: `${b.organizer.firstName} ${b.organizer.lastName}`.trim(),
-        court: b.court.name,
-        startsAt: b.startsAt.toISOString(),
-        amount: Number(b.totalCost),
-        method: b.paymentMethod === "INVOICE" ? "Rechnung" : "Vor Ort",
-      }))}
-    />
+    <>
+      <div className="px-5 pt-[66px] lg:pt-12">
+        <h1 className="text-[26px] font-bold tracking-[-.03em]">Verwaltung</h1>
+      </div>
+      <nav aria-label="Verwaltung" className="mx-5 mt-4 overflow-hidden rounded-[22px] border border-border bg-card lg:max-w-md">
+        {rows.map(([href, title, sub]) => (
+          <Link key={href} href={`/c/${tenant.slug}/admin/${href}`} className="flex items-center gap-3 border-t border-border px-[18px] py-3.5 first:border-t-0">
+            <span className="flex-1">
+              <span className="block text-[16px] font-bold">{title}</span>
+              <span className="block text-[13px] text-muted-foreground">{sub}</span>
+            </span>
+            <svg aria-hidden width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="text-muted-foreground"><path d="m9 18 6-6-6-6" /></svg>
+          </Link>
+        ))}
+      </nav>
+    </>
   );
 }
