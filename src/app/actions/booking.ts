@@ -15,7 +15,7 @@ import { getStripe } from "@/lib/stripe";
 import { revalidatePath } from "next/cache";
 import { computeBookingCost, needsFloodlight, paysGuestRate } from "@/lib/pricing";
 import { BlockReason, BookingParticipant, PaymentMethod, TenantSettings } from "@/types";
-import { sendBookingCancellation, sendBookingConfirmation } from "@/lib/mail";
+import { sendBookingCancellation, sendBookingConfirmation, sendMail } from "@/lib/mail";
 import { ballMachineConflict, cancelDeadlineMinutes, checkBookingRules, deadlineText, lateBookingCutoff, weeklyStarts } from "@/lib/booking-rules";
 import { randomUUID } from "node:crypto";
 import { InsufficientFundsError, creditWallet, debitWallets, refundBookingWallets } from "@/lib/wallet";
@@ -585,7 +585,7 @@ function cancelDeadlineError(startsAt: Date, settings: TenantSettings | null | u
 
 /** Cancel once, refund wallets and online payments, send the mail. */
 async function cancelAndRefund(
-  b: { id: string; status: string; paymentStatus: string; stripeSessionId: string | null },
+  b: { id: string; tenantId: string; status: string; stripeSessionId: string | null },
   cancelledById: string | null
 ) {
   const walletRefund = await prisma.$transaction(async (tx) => {
@@ -599,18 +599,30 @@ async function cancelAndRefund(
   if (walletRefund === null) return { success: false as const, error: "Diese Buchung ist bereits storniert." };
 
   let refund = walletRefund;
+  let refundFailed = false;
   if (b.stripeSessionId) {
-    if (b.paymentStatus === "PAID") {
-      refund += await refundStripeBooking(b.stripeSessionId).catch((e) => {
-        console.error(`Stripe-Rückerstattung für Buchung ${b.id} fehlgeschlagen:`, e);
-        return 0;
-      });
-    } else if (b.status === "PENDING") {
-      // close the open checkout so it can't be paid for a cancelled booking
-      await getStripe().checkout.sessions.expire(b.stripeSessionId).catch(() => {});
-    }
+    // ask Stripe, not the row read before the cancel: the payment may have landed in between
+    const online = await refundStripeBooking(b.stripeSessionId).catch(async (e) => {
+      console.error(`Stripe-Rückerstattung für Buchung ${b.id} fehlgeschlagen:`, e);
+      refundFailed = true;
+      await prisma.auditLog
+        .create({ data: { tenantId: b.tenantId, action: "REFUND_FAILED", entityType: "Booking", entityId: b.id } })
+        .catch(() => {});
+      const club = await prisma.tenant.findUnique({ where: { id: b.tenantId }, select: { email: true, name: true } }).catch(() => null);
+      if (club?.email) {
+        await sendMail(club.email, `Rückerstattung fehlgeschlagen: Buchung ${b.id}`, `Die Buchung ${b.id} wurde storniert, die Stripe-Rückerstattung ist fehlgeschlagen.\nBitte im Stripe-Dashboard manuell erstatten.\n\nFehler: ${String(e)}`);
+      }
+      return 0;
+    });
+    refund += online;
+    // still unpaid: close the open checkout so it can't be paid for a cancelled booking
+    if (!online && !refundFailed) await getStripe().checkout.sessions.expire(b.stripeSessionId).catch(() => {});
   }
-  if (b.status !== "PENDING") await sendBookingCancellation(b.id, refund);
+  refund = Math.round(refund * 100) / 100;
+  if (b.status !== "PENDING" || refund > 0) await sendBookingCancellation(b.id, refund);
+  if (refundFailed) {
+    return { success: false as const, error: "Storniert, aber die Online-Rückerstattung ist fehlgeschlagen. Bitte melde dich beim Club, er erstattet den Betrag manuell." };
+  }
   return { success: true as const, refundAmount: refund };
 }
 

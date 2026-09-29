@@ -32,8 +32,11 @@ export async function POST(req: Request) {
   try {
     switch (event.type) {
       // 1. Sofortzahlung (Twint, Kreditkarte, Apple Pay)
-      case "checkout.session.completed": {
+      case "checkout.session.completed":
+      // delayed methods complete "unpaid" first and send this once the money is there
+      case "checkout.session.async_payment_succeeded": {
         const session = event.data.object as Stripe.Checkout.Session;
+        if (session.payment_status !== "paid" && session.payment_status !== "no_payment_required") break;
         if (session.metadata?.purpose === "wallet_topup") {
           await creditTopUpSession(session.id);
         } else if (session.metadata?.bookingId) {
