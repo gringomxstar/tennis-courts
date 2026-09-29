@@ -1,9 +1,11 @@
-import type { Booking, UserSummary } from "@/types";
+import type { Booking, SportType, UserSummary } from "@/types";
 
 export interface Person {
   id: string;
   name: string;
   plan?: string;
+  /** sports the running Abo covers (price preview); null = no Abo */
+  sports?: SportType[] | null;
 }
 
 /** Most frequent co-players from the user's bookings, topped up with other club members. */
@@ -23,4 +25,5 @@ export function frequentPartners(bookings: Booking[], userId: string, members: U
 export const toPerson = (m: UserSummary): Person => ({
   id: m.id,
   name: `${m.firstName} ${m.lastName}`.trim(),
+  sports: m.planSports ?? null,
 });

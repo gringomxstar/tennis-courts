@@ -45,7 +45,6 @@ export function AbosView({
   initialPlan,
   guestRate,
   guestRatePadel,
-  guestFee,
   invoice,
   seasonYear,
   dinerLabel,
@@ -58,7 +57,6 @@ export function AbosView({
   initialPlan?: string;
   guestRate: number;
   guestRatePadel: number;
-  guestFee: number;
   invoice: boolean;
   /** Year of the next 31 March (season end), computed on the server. */
   seasonYear: number;
@@ -435,7 +433,7 @@ export function AbosView({
                 </>
               ) : (
                 <>
-                  <b className="mb-0.5 block text-[15px] text-foreground">Gäste willkommen</b>Nichtmitglieder spielen mit dir für CHF {fmt(guestFee)} pro Person.
+                  <b className="mb-0.5 block text-[15px] text-foreground">Gäste willkommen</b>Nichtmitglieder zahlen nur ihren Anteil am Platz, zu zweit CHF {fmt(guestRate / 2)}.
                 </>
               )}
             </div>

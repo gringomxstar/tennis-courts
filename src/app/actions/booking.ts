@@ -9,16 +9,18 @@ import {
   getBlocksInRange,
   getMemberContext,
   getUserBookings,
+  activePlanSports,
 } from "@/lib/data";
 import { prisma } from "@/lib/prisma";
 import { getStripe } from "@/lib/stripe";
 import { revalidatePath } from "next/cache";
-import { computeBookingCost, needsFloodlight, paysGuestRate } from "@/lib/pricing";
-import { BlockReason, BookingParticipant, PaymentMethod, TenantSettings } from "@/types";
+import { computeBookingCost, needsFloodlight } from "@/lib/pricing";
+import { BlockReason, BookingParticipant, PaymentMethod, SportType, TenantSettings } from "@/types";
 import { sendBookingCancellation, sendBookingConfirmation, sendMail } from "@/lib/mail";
 import { ballMachineConflict, cancelDeadlineMinutes, checkBookingRules, deadlineText, lateBookingCutoff, weeklyStarts } from "@/lib/booking-rules";
 import { randomUUID } from "node:crypto";
-import { InsufficientFundsError, creditWallet, debitWallets, refundBookingWallets } from "@/lib/wallet";
+import { logMoney } from "@/lib/audit";
+import { InsufficientFundsError, debitWallets, refundBookingWallets } from "@/lib/wallet";
 import { refundStripeBooking } from "@/lib/booking-payment";
 import { bookingLink, verifyBookingToken } from "@/lib/booking-link";
 
@@ -48,7 +50,6 @@ export interface CreateBookingInput {
   /** Members: WALLET (default, falls back to ONLINE when the balance is short), ONLINE, ON_SITE, INVOICE. */
   paymentMethod?: PaymentMethod;
   /** Split the price evenly across the organizer and all member participants' wallets. */
-  splitCosts?: boolean;
 }
 
 const HOUR = 3_600_000;
@@ -251,7 +252,6 @@ export async function createBookingAction(input: CreateBookingInput) {
   }
 
   // Club rules, role/sport limits and membership-plan rules (against the real bookings)
-  const guestRate = paysGuestRate(!isGuest, member?.role, Boolean(member?.plan));
   if (member && !isClubAdmin) {
     const mine = await getUserBookings(organizerId, tenant.id);
     const sportOf = new Map(courts.map((c) => [c.id, c.sportType]));
@@ -281,13 +281,13 @@ export async function createBookingAction(input: CreateBookingInput) {
 
   // never trust the browser for the floodlight fee
   const hasLighting = needsFloodlight(court, startDate, input.durationMinutes);
+  // everyone on the court: an Abo covers its holder's share, the booker pays the rest
+  const aboOf = hasDb && memberIds.length ? await activePlanSports(tenant.id, memberIds) : new Map<string, SportType[]>();
   const { total: totalCost } = computeBookingCost({
     settings,
     court,
-    isGuest: guestRate,
-    planSports: member?.plan?.sports ?? null,
+    players: [member?.plan?.sports ?? null, ...memberIds.map((id) => aboOf.get(id) ?? null), ...Array<null>(guestCount).fill(null)],
     durationMinutes: input.durationMinutes,
-    guestCount,
     hasBallMachine: Boolean(input.hasBallMachine),
     hasLighting,
     start: startDate,
@@ -391,13 +391,8 @@ export async function createBookingAction(input: CreateBookingInput) {
   let created: { id: string };
   try {
     if (method === "WALLET") {
-      const payers = input.splitCosts ? [organizerId, ...memberIds] : [organizerId];
-      const share = Math.floor((totalCost / payers.length) * 100) / 100;
-      const charges = payers.map((userId, i) => ({
-        userId,
-        // organizer carries the rounding remainder
-        amount: i === 0 ? Math.round((totalCost - share * (payers.length - 1)) * 100) / 100 : share,
-      }));
+      // only the booker pays; co-players are never charged
+      const charges = [{ userId: organizerId, amount: totalCost }];
       try {
         created = await prisma.$transaction(async (tx) => {
           const b = await tx.booking.create({ data: bookingData("WALLET") });
@@ -406,10 +401,6 @@ export async function createBookingAction(input: CreateBookingInput) {
         });
       } catch (e) {
         if (!(e instanceof InsufficientFundsError)) throw e;
-        if (input.splitCosts) {
-          const who = e.userId === organizerId ? "Dein Guthaben reicht" : "Das Guthaben eines Mitspielers reicht";
-          return { success: false, error: `${who} für die Kostenteilung nicht aus.` };
-        }
         method = "ONLINE"; // not enough credit: pay the booking online instead
         created = await prisma.booking.create({ data: bookingData(method) });
       }
@@ -516,10 +507,9 @@ export async function createCoachSeriesAction(input: {
     const { total } = computeBookingCost({
       settings: tenant.settingsJson,
       court,
-      isGuest: false,
-      planSports: member?.plan?.sports ?? null,
+      // everybody needs an Abo, trainers too; an admin can mark the invoice paid or waived (logged)
+      players: [member?.plan?.sports ?? null],
       durationMinutes: minutes,
-      guestCount: 0,
       hasBallMachine: false,
       hasLighting: light,
       start: s,
@@ -680,15 +670,22 @@ export async function cancelBookingWithTokenAction(bookingId: string, token: str
   return res;
 }
 
-export async function markBookingPaidOfflineAction(clubSlug: string, bookingId: string) {
+/** Admin: an open on-site/invoice booking is paid (cash, transfer) or waived; both are logged at the member. */
+export async function markBookingPaidOfflineAction(clubSlug: string, bookingId: string, waive = false) {
   const session = await auth();
   if (!isClubAdminFor(session?.user, clubSlug)) return { success: false, error: "Keine Berechtigung." };
   const tenant = await getTenantBySlug(clubSlug);
   if (!tenant) return { success: false, error: "Club nicht gefunden." };
-  const r = await prisma.booking.updateMany({
-    where: { id: bookingId, tenantId: tenant.id, paymentMethod: { in: ["ON_SITE", "INVOICE"] }, paymentStatus: "UNPAID" },
-    data: { paymentStatus: "PAID" },
-  });
+  const where = { id: bookingId, tenantId: tenant.id, paymentMethod: { in: ["ON_SITE" as const, "INVOICE" as const] }, paymentStatus: "UNPAID" as const };
+  const b = await prisma.booking.findFirst({ where, include: { court: true } });
+  const r = await prisma.booking.updateMany({ where, data: { paymentStatus: waive ? "WAIVED" : "PAID" } });
+  if (b && r.count) {
+    const when = b.startsAt.toLocaleString("de-CH", { timeZone: "Europe/Zurich", dateStyle: "short", timeStyle: "short" });
+    await logMoney({
+      tenantId: tenant.id, actorId: session?.user?.id, action: waive ? "BOOKING_WAIVED" : "BOOKING_PAID_MANUAL", entityType: "Booking", entityId: b.id, userId: b.organizerId,
+      text: `${b.court.name} ${when}: CHF ${Number(b.totalCost).toFixed(2)} ${waive ? "erlassen" : "als bezahlt markiert"}`,
+    });
+  }
   revalidatePath(`/c/${clubSlug}`, "layout");
   return r.count ? { success: true } : { success: false, error: "Buchung nicht gefunden oder bereits bezahlt." };
 }
@@ -723,41 +720,6 @@ export async function topUpWalletAction(input: { clubSlug: string; amount: numbe
     console.error("Top-up checkout failed:", e);
     return { success: false, error: "Zahlung konnte nicht gestartet werden." };
   }
-}
-
-export async function grantAdminCreditsAction(input: {
-  clubSlug: string;
-  userId: string;
-  amount: number;
-  reason: string;
-}) {
-  const session = await auth();
-  if (!isClubAdminFor(session?.user, input.clubSlug)) {
-    return { success: false, error: "Nur Club-Administratoren können Credits gutschreiben." };
-  }
-  const tenant = await getTenantBySlug(input.clubSlug);
-  if (!tenant) {
-    return { success: false, error: "Club nicht gefunden." };
-  }
-  if (!(input.amount > 0 && input.amount <= 500)) {
-    return { success: false, error: "Ungültiger Betrag." };
-  }
-
-  let newBalance: number;
-  if (process.env.DATABASE_URL) {
-    const member = await prisma.tenantUser.findUnique({
-      where: { tenantId_userId: { tenantId: tenant.id, userId: input.userId } },
-    });
-    if (!member) return { success: false, error: "Mitglied nicht gefunden." };
-    newBalance = await prisma.$transaction((tx) =>
-      creditWallet(tx, tenant.id, input.userId, input.amount, "ADMIN_GRANT", `Admin-Gutschrift: ${input.reason} (+${input.amount} CHF)`)
-    );
-  } else {
-    newBalance = mockDb.grantAdminCredits(tenant.id, input.userId, input.amount, input.reason).balance;
-  }
-
-  revalidatePath(`/c/${input.clubSlug}`, "layout");
-  return { success: true, newBalance };
 }
 
 export async function createCourtBlockAction(input: {

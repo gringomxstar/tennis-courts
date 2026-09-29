@@ -8,7 +8,7 @@ import { Sheet } from "@/components/app/sheet";
 import { Dot, Spinner } from "@/components/app/avatar";
 import { Segmented } from "@/components/app/segmented";
 import { createBookingAction } from "@/app/actions/booking";
-import { computeBookingCost, isDinerSlot, needsFloodlight, payButtonLabel, payOptions } from "@/lib/pricing";
+import { computeBookingCost, isDinerSlot, needsFloodlight, payButtonLabel, payOptions, roundRappen } from "@/lib/pricing";
 import { courtColor, courtLabel, hh, initials, longDate } from "@/lib/courts";
 import type { Person } from "@/lib/partners";
 import type { Court, PaymentMethod, TenantSettings, SportType } from "@/types";
@@ -66,19 +66,12 @@ export function BookingSheet({
 
   const s = shown;
   const light = s ? needsFloodlight(s.court, s.start, 60) : false;
-  const cost = s
-    ? computeBookingCost({
-        settings,
-        court: s.court,
-        isGuest: guestRate,
-        planSports,
-        durationMinutes: 60,
-        guestCount: coGuest !== null ? 1 : 0,
-        hasBallMachine: false,
-        hasLighting: light,
-        start: s.start,
-      })
-    : null;
+  const onCourt = [planSports, ...players.map((id) => pool.find((p) => p.id === id)?.sports ?? null)];
+  const costFor = (guests: number) =>
+    s ? computeBookingCost({ settings, court: s.court, players: [...onCourt, ...Array<null>(guests).fill(null)], durationMinutes: 60, hasBallMachine: false, hasLighting: light, start: s.start }) : null;
+  const cost = costFor(coGuest !== null ? 1 : 0);
+  // the guest's effect on the price: the shares change for everyone
+  const guestAdds = roundRappen((costFor(1)?.total ?? 0) - (costFor(0)?.total ?? 0));
   const color = s ? courtColor(s.court) : "var(--tennis-clay)";
   const label = s ? courtLabel(s.court) : { name: "", sub: "" };
   const base = cost ? cost.total - cost.lighting : 0;
@@ -216,7 +209,7 @@ export function BookingSheet({
                     onChange={(e) => setCoGuest(e.target.value)}
                   />
                   <span className="shrink-0 text-[14px] font-semibold text-muted-foreground">
-                    {cost && cost.guests > 0 ? `+ CHF ${cost.guests}` : "gratis"}
+                    {guestAdds > 0 ? `+ CHF ${guestAdds.toFixed(2)}` : "gratis"}
                   </span>
                 </div>
               )}
@@ -244,7 +237,7 @@ export function BookingSheet({
               </div>
             )}
             <div className="flex justify-between text-[16px] font-semibold">
-              <span>{guestRate ? "Platz (Gasttarif)" : coGuest !== null ? "Platz + Gast" : "Platz"}</span>
+              <span>{cost && cost.payers > 0 && onCourt.length + (coGuest !== null ? 1 : 0) > 1 ? `Platz (${cost.payers} × CHF ${cost.share.toFixed(2)})` : "Platz"}</span>
               <span>{base > 0 ? `CHF ${base}` : "im Abo inklusive"}</span>
             </div>
           </div>

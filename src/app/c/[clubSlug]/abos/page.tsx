@@ -53,7 +53,6 @@ export default async function AbosPage({
       initialPlan={plan}
       guestRate={s?.defaultHourlyRateTennis ?? 30}
       guestRatePadel={s?.defaultHourlyRatePadel ?? 40}
-      guestFee={s?.guestFee ?? 15}
       invoice={Boolean(s?.payByInvoice && s.invoiceIban)}
       seasonYear={seasonEnd(now).getUTCFullYear()}
       dinerLabel={diner.enabled ? playWindowLabel(diner) : null}

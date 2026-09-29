@@ -2,15 +2,16 @@ import { prisma } from "@/lib/prisma";
 import { passwordLink } from "@/lib/booking-link";
 import { sendPasswordLink } from "@/lib/mail";
 
+const zurichYear = new Intl.DateTimeFormat("en", { timeZone: "Europe/Zurich", year: "numeric" });
+
 /**
- * Abos run for the season, 1 April – 31 March (club time). A purchase always ends at the next
- * 31 March 23:59:59 Zurich; renewing an active Abo appends the following season.
+ * Abos run for the season, 1 April – 31 March (club time). A purchase ends on 31 March 23:59:59 Zurich
+ * of the following year: from 1 January on it counts for the coming season (club rule, no Abo for just
+ * a few weeks); renewing an active Abo appends the following season.
  */
 export function seasonEnd(from: Date = new Date()): Date {
   // 1 April is always summer time (DST starts on the last Sunday of March): 31.3. 23:59:59 = 21:59:59 UTC
-  const y = from.getUTCFullYear();
-  const end = new Date(Date.UTC(y, 2, 31, 21, 59, 59));
-  return from.getTime() <= end.getTime() ? end : new Date(Date.UTC(y + 1, 2, 31, 21, 59, 59));
+  return new Date(Date.UTC(Number(zurichYear.format(from)) + 1, 2, 31, 21, 59, 59));
 }
 
 export type Partner = { firstName: string; lastName: string; email: string };
@@ -45,13 +46,16 @@ export async function grantMembership(tenantId: string, userId: string, planId: 
   });
   if (replace && running) await prisma.membership.update({ where: { id: running.id }, data: { status: "EXPIRED", endsAt: now } });
   const startsAt = !replace && running?.endsAt ? new Date(running.endsAt.getTime() + 1000) : now;
-  // price snapshot for the stats; the plan price may change later
-  const price = pricePaid ?? Number((await prisma.membershipPlan.findUnique({ where: { id: planId }, select: { price: true } }))?.price ?? 0);
+  // price snapshot for the stats (an open invoice keeps its own, e.g. 0 for a Paar-Abo partner); the plan price may change later
+  const price =
+    pricePaid ??
+    (pending?.pricePaid != null ? Number(pending.pricePaid) : Number((await prisma.membershipPlan.findUnique({ where: { id: planId }, select: { price: true } }))?.price ?? 0));
   const data = {
     status: "ACTIVE" as const,
     startsAt,
     endsAt: seasonEnd(startsAt),
-    stripeSubscriptionId: ref ?? null,
+    // an open invoice keeps its reference (links a Paar-Abo buyer and partner: ref / ref:partner)
+    stripeSubscriptionId: ref ?? pending?.stripeSubscriptionId ?? null,
     pricePaid: price,
     paidAt: new Date(),
   };

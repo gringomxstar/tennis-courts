@@ -88,11 +88,11 @@ export function AdminToday({
     });
   }
 
-  function markPaid(id: string) {
+  function markPaid(id: string, waive = false) {
     startTransition(async () => {
       hide(id);
-      const res = await markBookingPaidOfflineAction(slug, id);
-      toast(res.success ? "Als bezahlt markiert" : (res.error ?? "Fehlgeschlagen"));
+      const res = await markBookingPaidOfflineAction(slug, id, waive);
+      toast(res.success ? (waive ? "Erlassen (im Verlauf des Mitglieds vermerkt)" : "Als bezahlt markiert") : (res.error ?? "Fehlgeschlagen"));
       router.refresh();
     });
   }
@@ -190,6 +190,14 @@ export function AdminToday({
                       {now ? `${longDate(new Date(p.startsAt))}, ${hhmm(new Date(p.startsAt))}` : ""} · CHF {Number(p.amount).toFixed(2)} · {p.method}
                     </div>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => markPaid(p.id, true)}
+                    aria-label={`Zahlung von ${p.name} erlassen`}
+                    className="rounded-[12px] border border-border px-3.5 py-[9px] text-[14px] font-bold"
+                  >
+                    Erlassen
+                  </button>
                   <button
                     type="button"
                     onClick={() => markPaid(p.id)}

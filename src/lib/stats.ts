@@ -70,7 +70,7 @@ export async function loadStats(tenantId: string, year: number, openHour: number
       where: { tenantId, startsAt: { gte: from, lt: to } },
       select: {
         id: true, courtId: true, organizerId: true, startsAt: true, endsAt: true, status: true, bookingType: true,
-        paymentStatus: true, paymentMethod: true, totalCost: true, hasLighting: true, cancelledAt: true,
+        paymentStatus: true, paymentMethod: true, totalCost: true, hasLighting: true, cancelledAt: true, createdAt: true, updatedAt: true,
         organizer: { select: { firstName: true, lastName: true, email: true, birthDate: true } },
         court: { select: { name: true, sportType: true } },
         participants: { select: { userId: true, role: true, guestName: true, user: { select: { birthDate: true } } } },
@@ -103,6 +103,11 @@ export async function loadStats(tenantId: string, year: number, openHour: number
   const yb = bookings.filter((b) => inYear(b.startsAt));
   const played = (y: number) => bookings.filter((b) => PLAYED.has(b.status) && inYear(b.startsAt, y));
   const playedY = played(year);
+  // Kasse = cash principle (OR 957 Abs. 2, small clubs): revenue counts when the money comes in, not when the game is played.
+  // Wallet/online are paid at booking; on-site/invoice when the admin marks them paid (last update).
+  // ponytail: no Booking.paidAt column; add one if a paid booking can be edited later and the date matters
+  const paidOn = (b: (typeof bookings)[number]) => (b.paymentMethod === "WALLET" || b.paymentMethod === "ONLINE" ? b.createdAt : b.updatedAt);
+  const paidIn = (y: number) => bookings.filter((b) => b.paymentStatus === "PAID" && b.status !== "CANCELLED" && Number(b.totalCost) > 0 && inYear(paidOn(b), y));
   const roleOf = new Map(tenantUsers.map((t) => [t.user.id, t.role]));
 
   // ---- 1. Kasse ----------------------------------------------------------
@@ -114,13 +119,14 @@ export async function loadStats(tenantId: string, year: number, openHour: number
   }));
   const byType: Record<string, number> = {};
   let open = 0, waived = 0;
+  for (const b of paidIn(year)) {
+    const amt = Number(b.totalCost);
+    if (b.paymentMethod) months[local(paidOn(b)).m - 1].byMethod[b.paymentMethod] += amt;
+    byType[b.bookingType] = (byType[b.bookingType] ?? 0) + amt;
+  }
   for (const b of playedY) {
     const amt = Number(b.totalCost);
-    if (!amt) continue;
-    if (b.paymentStatus === "PAID" && b.paymentMethod) {
-      months[local(b.startsAt).m - 1].byMethod[b.paymentMethod] += amt;
-      byType[b.bookingType] = (byType[b.bookingType] ?? 0) + amt;
-    } else if (b.paymentStatus === "UNPAID") open += amt;
+    if (b.paymentStatus === "UNPAID") open += amt;
     else if (b.paymentStatus === "WAIVED") waived += amt;
   }
   // memberships without the price snapshot (before it existed) fall back to the plan price
@@ -211,7 +217,7 @@ export async function loadStats(tenantId: string, year: number, openHour: number
       bookings: p.length,
       hours: r2(p.reduce((s, b) => s + hours(b), 0)),
       guests: p.reduce((s, b) => s + b.participants.filter((x) => x.role === "GUEST").length + (b.bookingType === "GUEST" ? 1 : 0), 0),
-      bookingRevenue: r2(p.filter((b) => b.paymentStatus === "PAID").reduce((s, b) => s + Number(b.totalCost), 0)),
+      bookingRevenue: r2(paidIn(y).reduce((s, b) => s + Number(b.totalCost), 0)),
       aboRevenue: r2(paidMemberships.filter((m) => inYear(aboDate(m), y)).reduce((s, m) => s + aboAmount(m), 0)),
     };
   };

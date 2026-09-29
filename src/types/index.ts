@@ -188,6 +188,8 @@ export interface UserSummary {
   phone?: string | null;
   role: TenantRole;
   isPlatformAdmin?: boolean;
+  /** sports the running Abo covers; null = no Abo */
+  planSports?: SportType[] | null;
 }
 
 export interface MembershipPlan {

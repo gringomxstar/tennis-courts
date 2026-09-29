@@ -126,9 +126,6 @@ export function ClubSettingsForm({
   const [floodlightFee, setFloodlightFee] = useState<number>(
     initialSettings?.floodlightFee ?? 0
   );
-  const [guestFee, setGuestFee] = useState<number>(
-    initialSettings?.guestFee ?? 15
-  );
   const [defaultHourlyRateTennis, setDefaultHourlyRateTennis] = useState<number>(
     initialSettings?.defaultHourlyRateTennis ?? 30
   );
@@ -177,7 +174,6 @@ export function ClubSettingsForm({
         dinerTennis: diner,
         ballMachineFee: Number(ballMachineFee),
         floodlightFee: Number(floodlightFee),
-        guestFee: Number(guestFee),
         defaultHourlyRateTennis: Number(defaultHourlyRateTennis),
         defaultHourlyRateHalle: Number(defaultHourlyRateHalle),
         defaultHourlyRatePadel: Number(defaultHourlyRatePadel),
@@ -451,7 +447,6 @@ export function ClubSettingsForm({
           <div className="mt-3 grid grid-cols-2 gap-4 sm:grid-cols-3">
             {(
               [
-                ["guestFee", "Gast / Spieler", guestFee, setGuestFee],
                 ["ballMachineFee", "Ballmaschine", ballMachineFee, setBallMachineFee],
                 ["floodlightFee", "Flutlicht", floodlightFee, setFloodlightFee],
                 ["rateTennis", "Sand (Gast)", defaultHourlyRateTennis, setDefaultHourlyRateTennis],

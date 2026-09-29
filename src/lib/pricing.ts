@@ -12,11 +12,9 @@ export function needsFloodlight(court: Pick<Court, "hasLighting">, start: Date, 
 export interface BookingCostInput {
   settings: TenantSettings | null | undefined;
   court: Pick<Court, "sportType" | "isIndoor" | "hourlyRate">;
-  isGuest: boolean;
-  /** Sports of the member's active Abo; null = no Abo (plain MEMBER: outdoor tennis free, padel paid). */
-  planSports?: SportType[] | null;
+  /** Everyone on the court, booker first: the sports their running Abo covers (null = no Abo, e.g. a guest). */
+  players: (SportType[] | null | undefined)[];
   durationMinutes: number;
-  guestCount: number;
   hasBallMachine: boolean;
   hasLighting: boolean;
   /** Needed for price rules (time of day, weekday, lead time). */
@@ -25,8 +23,12 @@ export interface BookingCostInput {
 }
 
 export interface BookingCost {
+  /** what the booker pays for the court: the shares of all players without an Abo */
   court: number;
-  guests: number;
+  /** one player's share of the court */
+  share: number;
+  /** players whose share is paid */
+  payers: number;
   ballMachine: number;
   lighting: number;
   total: number;
@@ -52,10 +54,6 @@ export function matchingPriceRules(rules: PriceRule[] | undefined, start: Date, 
   );
 }
 
-/** Anonymous visitors, GUEST accounts and logged-in people without a role in this club pay the guest rate unless they have an Abo. */
-export const paysGuestRate = (loggedIn: boolean, role: string | null | undefined, hasPlan: boolean) =>
-  !loggedIn || ((!role || role === "GUEST") && !hasPlan);
-
 export const DINER_DEFAULT = { enabled: false, weekdays: [1, 2, 3, 4, 5], fromHour: 11, toHour: 13 };
 
 /** Diner Tennis applies to this start (club time)? Only the start counts: 12:00–13:30 is still lunch. */
@@ -67,31 +65,39 @@ export function isDinerSlot(settings: TenantSettings | null | undefined, start: 
   return d.weekdays.includes(WEEKDAY[p.weekday]) && h >= d.fromHour && h < d.toHour;
 }
 
-/** Single source of truth for booking prices (server action + client preview). */
+/** Swiss cash rounding to 5 Rappen. */
+export const roundRappen = (x: number) => Math.round(x * 20) / 20;
+
+/**
+ * Single source of truth for booking prices (server action + client preview).
+ * The court price is split by the players; a running Abo covers its holder's share (outdoor, for its
+ * sports); the booker alone pays the remaining shares. Ball machine and floodlight go to the booker.
+ */
 export function computeBookingCost(i: BookingCostInput): BookingCost {
   const s = i.settings ?? undefined;
   const hours = i.durationMinutes / 60;
-  let court = 0;
-  const covered = !i.isGuest && Boolean(i.planSports?.includes(i.court.sportType));
-  if (i.court.sportType === "PADEL") {
-    if (!covered) court = (s?.defaultHourlyRatePadel ?? i.court.hourlyRate ?? 40) * hours;
-  } else if (i.court.isIndoor) {
-    court = (s?.defaultHourlyRateHalle ?? i.court.hourlyRate ?? 45) * hours;
-  } else if (i.isGuest || (i.planSports && !covered)) {
-    // a padel-only Abo doesn't include tennis
-    court = (s?.defaultHourlyRateTennis ?? i.court.hourlyRate ?? 30) * hours;
-  }
-  if (court > 0 && i.start) {
+  const rate =
+    i.court.sportType === "PADEL"
+      ? (s?.defaultHourlyRatePadel ?? i.court.hourlyRate ?? 40)
+      : i.court.isIndoor
+        ? (s?.defaultHourlyRateHalle ?? i.court.hourlyRate ?? 45)
+        : (s?.defaultHourlyRateTennis ?? i.court.hourlyRate ?? 30);
+  let full = rate * hours;
+  if (i.start) {
     const pct = matchingPriceRules(s?.priceRules, i.start, i.now).reduce((n, r) => n + r.percent, 0);
-    court = Math.max(0, Math.round(court * (1 + pct / 100) * 100) / 100);
+    full = Math.max(0, full * (1 + pct / 100));
   }
-  // Diner Tennis: one guest free for members with an Abo
-  const freeGuests = i.planSports && !i.isGuest && isDinerSlot(s, i.start) ? 1 : 0;
-  // the guest fee is for members bringing a non-member; a guest-rate booking already pays the full court
-  const guests = i.isGuest ? 0 : Math.max(0, i.guestCount - freeGuests) * (s?.guestFee ?? 15);
+  const players = i.players.length ? i.players : [null];
+  // the hall is never part of an Abo
+  const covered = (p: SportType[] | null | undefined) => !i.court.isIndoor && Boolean(p?.includes(i.court.sportType));
+  let payers = players.filter((p) => !covered(p)).length;
+  // Diner Tennis: an Abo holder brings one player free
+  if (covered(players[0]) && payers > 0 && isDinerSlot(s, i.start)) payers--;
+  const share = full / players.length;
+  const court = roundRappen(share * payers);
   const ballMachine = i.hasBallMachine ? (s?.ballMachineFee ?? 10) * hours : 0;
   const lighting = i.hasLighting ? (s?.floodlightFee ?? 0) : 0;
-  return { court, guests, ballMachine, lighting, total: court + guests + ballMachine + lighting };
+  return { court, share: roundRappen(share), payers, ballMachine, lighting, total: roundRappen(court + ballMachine + lighting) };
 }
 
 /** Payment choices shown before booking; the first one is the default. */

@@ -296,13 +296,26 @@ export async function getCourtBlocks(
   return mockDb.getCourtBlocks(tenantId, dateStr);
 }
 
+/** userId → sports of the Abo running today (a renewed next season doesn't count yet). */
+export async function activePlanSports(tenantId: string, userIds?: string[]): Promise<Map<string, SportType[]>> {
+  const now = new Date();
+  const rows = await prisma.membership.findMany({
+    where: {
+      tenantId, status: "ACTIVE", startsAt: { lte: now }, OR: [{ endsAt: null }, { endsAt: { gt: now } }],
+      ...(userIds ? { userId: { in: userIds } } : {}),
+    },
+    include: { plan: true },
+  });
+  return new Map(rows.map((m) => [m.userId, planFromDb(m.plan).sports ?? ["TENNIS"]]));
+}
+
 export async function getTenantMembers(tenantId: string): Promise<UserSummary[]> {
   if (hasDbConfigured) {
     try {
-      const tenantUsers = await prisma.tenantUser.findMany({
-        where: { tenantId },
-        include: { user: true },
-      });
+      const [tenantUsers, sports] = await Promise.all([
+        prisma.tenantUser.findMany({ where: { tenantId }, include: { user: true } }),
+        activePlanSports(tenantId),
+      ]);
       if (tenantUsers.length > 0) {
         return tenantUsers.map((tu) => ({
           id: tu.user.id,
@@ -311,6 +324,7 @@ export async function getTenantMembers(tenantId: string): Promise<UserSummary[]>
           lastName: tu.user.lastName,
           phone: tu.user.phone,
           role: tu.role as TenantRole,
+          planSports: sports.get(tu.user.id) ?? null,
         }));
       }
     } catch (e) {

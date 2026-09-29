@@ -18,6 +18,7 @@ export default async function AdminMembersPage({ params }: { params: Promise<{ c
   }>();
   const profile = new Map<string, { birthDate: string; gender: string }>();
   const renewal = new Map<string, { endsAt: Date | null; status: string }>();
+  const history = new Map<string, { at: string; text: string; by: string }[]>();
   if (process.env.DATABASE_URL) {
     const now = new Date();
     const memberships = await prisma.membership.findMany({
@@ -42,6 +43,23 @@ export default async function AdminMembersPage({ params }: { params: Promise<{ c
       if (cur?.endsAt && (m.status === "ACTIVE" || m.status === "PENDING") && m.startsAt >= cur.endsAt) {
         renewal.set(m.userId, { endsAt: m.endsAt, status: m.status });
       }
+    }
+  }
+
+  if (process.env.DATABASE_URL) {
+    // manual money decisions (logMoney): paid by hand, waived, Abo assigned/imported/renewed/ended
+    const logs = await prisma.auditLog.findMany({
+      where: { tenantId: tenant.id, action: { in: ["BOOKING_PAID_MANUAL", "BOOKING_WAIVED", "ABO_PAID_MANUAL", "ABO_INVOICE", "ABO_IMPORTED", "ABO_ENDED"] } },
+      include: { actor: { select: { firstName: true, lastName: true } } },
+      orderBy: { createdAt: "desc" },
+      take: 2000,
+    });
+    for (const l of logs) {
+      const meta = l.metadataJson as { userId?: string; text?: string } | null;
+      if (!meta?.userId || !meta.text) continue;
+      const list = history.get(meta.userId) ?? [];
+      if (list.length < 20) list.push({ at: l.createdAt.toISOString(), text: meta.text, by: l.actor ? `${l.actor.firstName} ${l.actor.lastName}`.trim() : "System" });
+      history.set(meta.userId, list);
     }
   }
 
@@ -77,6 +95,7 @@ export default async function AdminMembersPage({ params }: { params: Promise<{ c
         pricePaid: ms?.pricePaid ?? null,
         renewedUntil: renewal.get(m.id)?.endsAt?.toISOString() ?? "",
         renewalOpen: renewal.get(m.id)?.status === "PENDING",
+        history: history.get(m.id) ?? [],
       };
     });
 

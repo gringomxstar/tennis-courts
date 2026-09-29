@@ -10,7 +10,6 @@ import {
 } from "@/lib/data";
 import { syncPendingBookingPayments } from "@/lib/booking-payment";
 import { frequentPartners, toPerson } from "@/lib/partners";
-import { paysGuestRate } from "@/lib/pricing";
 import type { Booking } from "@/types";
 
 /** What the browser may see of other people's bookings: never emails, names only for club members. */
@@ -72,8 +71,8 @@ export async function loadClubData(slug: string, days = 8, opts: { admin?: boole
     /** Days ahead the user may book (membership plan), null = club default. */
     windowDays: member?.plan?.bookingWindowDays ?? null,
     favoriteUserIds: member?.favoriteUserIds ?? [],
-    /** Price preview: anonymous visitors and GUEST accounts without Abo pay the guest rate. */
-    guestRate: paysGuestRate(Boolean(user), member?.role, Boolean(member?.plan)),
+    /** No running Abo: the booker's own share is paid (everybody needs an Abo, no role exceptions). */
+    guestRate: !member?.plan,
     /** Sports the active Abo covers (price preview); null = no Abo. */
     planSports: member?.plan?.sports ?? null,
     /** Members must name at least one co-player or guest; admins, coaches and anonymous guests don't. */

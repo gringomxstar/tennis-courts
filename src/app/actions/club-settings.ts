@@ -19,6 +19,8 @@ import { passwordLink } from "@/lib/booking-link";
 import { sendPasswordLink, sendRenewalReminder } from "@/lib/mail";
 import { grantMembership, isPartnerRow, seasonEnd } from "@/lib/membership";
 import { isValidIban } from "@/lib/iban";
+import { logMoney } from "@/lib/audit";
+import { randomUUID } from "node:crypto";
 import { parseDate } from "@/lib/member-import";
 
 function cleanSlotLimits(v: TenantSettings["slotLimits"]): TenantSettings["slotLimits"] {
@@ -194,7 +196,6 @@ export async function updateClubSettingsAction(
     ballMachineAvailable: settings.ballMachineAvailable ?? true,
     ballMachineFee: Number(settings.ballMachineFee ?? 10),
     floodlightFee: Number(settings.floodlightFee ?? 0),
-    guestFee: Number(settings.guestFee ?? 15),
     defaultHourlyRateTennis: Number(settings.defaultHourlyRateTennis ?? 30),
     defaultHourlyRateHalle: Number(settings.defaultHourlyRateHalle ?? 45),
     defaultHourlyRatePadel: Number(settings.defaultHourlyRatePadel ?? 40),
@@ -460,6 +461,32 @@ export async function importMembersAction(clubSlug: string, text: string, sendIn
   const updated = [...missing, ...guests].filter((u) => known.has(u.email)).length;
   const unchanged = rows.length - created - updated;
 
+  // "Abo" column: paid outside the app (bank, Fairgate) → ACTIVE for the season, logged at the member
+  let abos = 0;
+  const aboErrors: string[] = [];
+  const withPlan = rows.filter((r) => r.plan);
+  if (withPlan.length) {
+    const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9äöü]/g, "");
+    const plans = await prisma.membershipPlan.findMany({ where: { tenantId: tenant.id, status: "ACTIVE" }, select: { id: true, name: true } });
+    const byName = new Map(plans.map((p) => [norm(p.name), p]));
+    const idOf = new Map(users.map((u) => [u.email, u.id]));
+    const now = new Date();
+    for (const r of withPlan) {
+      const plan = byName.get(norm(r.plan!));
+      const userId = idOf.get(r.email);
+      if (!plan || !userId) {
+        aboErrors.push(`${r.email}: Abo «${r.plan}» unbekannt`);
+        continue;
+      }
+      // re-import or an Abo bought in the app: never stack a second season
+      const running = await prisma.membership.findFirst({ where: { tenantId: tenant.id, userId, status: "ACTIVE", startsAt: { lte: now }, endsAt: { gt: now } } });
+      if (running) continue;
+      await grantMembership(tenant.id, userId, plan.id);
+      await logMoney({ tenantId: tenant.id, actorId: authCheck.session?.user.id, action: "ABO_IMPORTED", entityType: "Membership", entityId: userId, userId, text: `Abo «${plan.name}» per Import freigeschaltet (bezahlt ausserhalb der App)` });
+      abos++;
+    }
+  }
+
   let invited = 0;
   let inviteFailed = 0;
   let invitesSkipped = 0;
@@ -478,7 +505,7 @@ export async function importMembersAction(clubSlug: string, text: string, sendIn
     }
   }
 
-  const result = { created, updated, unchanged, invited, inviteFailed, invitesSkipped, errors };
+  const result = { created, updated, unchanged, invited, inviteFailed, invitesSkipped, abos, aboErrors, errors };
   await prisma.auditLog
     .create({
       data: {
@@ -687,19 +714,25 @@ export async function saveMemberAction(clubSlug: string, m: MemberInput) {
     }
   }
 
+  const log = (action: string, text: string) =>
+    logMoney({ tenantId: tenant.id, actorId: selfId, action, entityType: "Membership", entityId: userId, userId, text });
   if (m.planId === "__end") {
     // paid Abos end as EXPIRED (their revenue stays in the stats), open invoices are cancelled
     await prisma.membership.updateMany({ where: { tenantId: tenant.id, userId, status: "ACTIVE" }, data: { status: "EXPIRED", endsAt: new Date() } });
     await prisma.membership.updateMany({ where: { tenantId: tenant.id, userId, status: "PENDING" }, data: { status: "CANCELLED", endsAt: new Date() } });
+    await log("ABO_ENDED", "Abo beendet");
   } else if (m.planId) {
-    const plan = await prisma.membershipPlan.findFirst({ where: { id: m.planId, tenantId: tenant.id }, select: { id: true } });
+    const plan = await prisma.membershipPlan.findFirst({ where: { id: m.planId, tenantId: tenant.id }, select: { id: true, name: true } });
     if (!plan) return { success: false as const, error: "Abo nicht gefunden." };
     // "Wechseln zu": the new plan replaces the running one today
-    if (m.paid) await grantMembership(tenant.id, userId, plan.id, undefined, undefined, true);
-    else if (!(await prisma.membership.findFirst({ where: { tenantId: tenant.id, userId, membershipPlanId: plan.id, status: "PENDING" } }))) {
+    if (m.paid) {
+      await grantMembership(tenant.id, userId, plan.id, undefined, undefined, true);
+      await log("ABO_PAID_MANUAL", `Abo «${plan.name}» zugewiesen, bezahlt (bar/Überweisung)`);
+    } else if (!(await prisma.membership.findFirst({ where: { tenantId: tenant.id, userId, membershipPlanId: plan.id, status: "PENDING" } }))) {
       await prisma.membership.create({
         data: { tenantId: tenant.id, userId, membershipPlanId: plan.id, status: "PENDING", startsAt: new Date(), endsAt: seasonEnd() },
       });
+      await log("ABO_INVOICE", `Abo «${plan.name}» zugewiesen, Rechnung offen`);
     }
   }
 
@@ -711,9 +744,16 @@ export async function saveMemberAction(clubSlug: string, m: MemberInput) {
 export async function markMembershipPaidAction(clubSlug: string, userId: string) {
   const authCheck = await verifyClubAdmin(clubSlug);
   if (!authCheck.authorized || !authCheck.tenant) return { success: false as const, error: authCheck.error };
-  const pending = await prisma.membership.findFirst({ where: { tenantId: authCheck.tenant.id, userId, status: "PENDING" }, orderBy: { createdAt: "desc" } });
+  const tenantId = authCheck.tenant.id;
+  const pending = await prisma.membership.findFirst({ where: { tenantId, userId, status: "PENDING" }, orderBy: { createdAt: "desc" }, include: { plan: true } });
   if (!pending) return { success: false as const, error: "Kein offenes Abo gefunden." };
-  await grantMembership(authCheck.tenant.id, userId, pending.membershipPlanId);
+  await grantMembership(tenantId, userId, pending.membershipPlanId);
+  await logMoney({ tenantId, actorId: authCheck.session?.user.id, action: "ABO_PAID_MANUAL", entityType: "Membership", entityId: pending.id, userId, text: `Abo «${pending.plan.name}» als bezahlt markiert` });
+  // Paar-Abo renewed on invoice: the partner's season comes with the buyer's payment
+  const partner = pending.stripeSubscriptionId
+    ? await prisma.membership.findFirst({ where: { stripeSubscriptionId: `${pending.stripeSubscriptionId}:partner`, status: "PENDING" } })
+    : null;
+  if (partner) await grantMembership(tenantId, partner.userId, partner.membershipPlanId);
   revalidatePath(`/c/${clubSlug}/admin`, "layout");
   return { success: true as const };
 }
@@ -732,11 +772,29 @@ export async function renewMembershipAction(clubSlug: string, userId: string, pa
   if (isPartnerRow(current)) return { success: false as const, error: "Paar-Abo: bitte beim Käufer verlängern, nicht beim Partner." };
   const next = await prisma.membership.count({ where: { tenantId, userId, status: { in: ["ACTIVE", "PENDING"] }, startsAt: { gte: current.endsAt } } });
   if (next) return { success: false as const, error: "Ist bereits für die nächste Saison verlängert." };
-  if (paid) await grantMembership(tenantId, userId, current.membershipPlanId);
-  else {
-    const startsAt = new Date(current.endsAt.getTime() + 1000);
-    await prisma.membership.create({ data: { tenantId, userId, membershipPlanId: current.membershipPlanId, status: "PENDING", startsAt, endsAt: seasonEnd(startsAt) } });
+  // Paar-Abo: the partner (linked by ref / ref:partner) is renewed with the buyer, price 0
+  const oldPartner = current.stripeSubscriptionId
+    ? await prisma.membership.findUnique({ where: { stripeSubscriptionId: `${current.stripeSubscriptionId}:partner` } })
+    : null;
+  const ref = `admin-renew:${randomUUID()}`;
+  const startsAt = new Date(current.endsAt.getTime() + 1000);
+  const planId = current.membershipPlanId;
+  if (paid) {
+    await grantMembership(tenantId, userId, planId, ref);
+    if (oldPartner) await grantMembership(tenantId, oldPartner.userId, planId, `${ref}:partner`, 0);
+  } else {
+    await prisma.membership.create({ data: { tenantId, userId, membershipPlanId: planId, status: "PENDING", startsAt, endsAt: seasonEnd(startsAt), stripeSubscriptionId: ref } });
+    if (oldPartner) {
+      const ps = oldPartner.endsAt && oldPartner.endsAt > new Date() ? new Date(oldPartner.endsAt.getTime() + 1000) : new Date();
+      await prisma.membership.create({
+        data: { tenantId, userId: oldPartner.userId, membershipPlanId: planId, status: "PENDING", startsAt: ps, endsAt: seasonEnd(ps), stripeSubscriptionId: `${ref}:partner`, pricePaid: 0 },
+      });
+    }
   }
+  await logMoney({
+    tenantId, actorId: authCheck.session?.user.id, action: paid ? "ABO_PAID_MANUAL" : "ABO_INVOICE", entityType: "Membership", entityId: current.id, userId,
+    text: `Abo «${current.plan.name}» verlängert${oldPartner ? " (mit Partner)" : ""}, ${paid ? "bezahlt" : "Rechnung offen"}`,
+  });
   revalidatePath(`/c/${clubSlug}/admin`, "layout");
   return { success: true as const };
 }
