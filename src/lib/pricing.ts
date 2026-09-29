@@ -85,7 +85,8 @@ export function computeBookingCost(i: BookingCostInput): BookingCost {
   }
   // Diner Tennis: one guest free for members with an Abo
   const freeGuests = i.planSports && !i.isGuest && isDinerSlot(s, i.start) ? 1 : 0;
-  const guests = Math.max(0, i.guestCount - freeGuests) * (s?.guestFee ?? 15);
+  // the guest fee is for members bringing a non-member; a guest-rate booking already pays the full court
+  const guests = i.isGuest ? 0 : Math.max(0, i.guestCount - freeGuests) * (s?.guestFee ?? 15);
   const ballMachine = i.hasBallMachine ? (s?.ballMachineFee ?? 10) * hours : 0;
   const lighting = i.hasLighting ? (s?.floodlightFee ?? 0) : 0;
   return { court, guests, ballMachine, lighting, total: court + guests + ballMachine + lighting };

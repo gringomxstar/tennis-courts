@@ -29,6 +29,9 @@ jobs:
       - name: TypeScript type check
         run: npx tsc --noEmit
 
+      - name: Logic checks (pricing, booking rules, season, tokens, import)
+        run: npm test
+
       - name: Next.js build
         run: npm run build
         env:

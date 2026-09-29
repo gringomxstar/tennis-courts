@@ -245,7 +245,7 @@ export function BookingSheet({
               </div>
             )}
             <div className="flex justify-between text-[16px] font-semibold">
-              <span>{isAnon ? "Platz + Gastgebühr" : coGuest !== null ? "Platz + Gast" : "Platz"}</span>
+              <span>{guestRate ? "Platz (Gasttarif)" : coGuest !== null ? "Platz + Gast" : "Platz"}</span>
               <span>{base > 0 ? `CHF ${base}` : "im Abo inklusive"}</span>
             </div>
           </div>

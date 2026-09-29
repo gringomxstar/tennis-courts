@@ -12,7 +12,9 @@ assert.equal(computeBookingCost({ ...base, court: outdoor, isGuest: false, guest
 assert.equal(computeBookingCost({ ...base, court: outdoor, isGuest: false, hasBallMachine: true, durationMinutes: 120 }).total, 20);
 assert.equal(computeBookingCost({ ...base, court: outdoor, isGuest: false, hasLighting: true }).total, 0); // floodlight free by default
 assert.equal(computeBookingCost({ ...base, settings: { floodlightFee: 5 } as never, court: outdoor, isGuest: false, hasLighting: true }).total, 5);
-assert.equal(computeBookingCost({ ...base, court: outdoor, isGuest: true, settings: { guestFee: 20, defaultHourlyRateTennis: 25 } as never, guestCount: 1 }).total, 45);
+// guest rate: full court, no guest fee on top for the co-players (the court price is per court, not per person)
+assert.equal(computeBookingCost({ ...base, court: outdoor, isGuest: true, settings: { guestFee: 20, defaultHourlyRateTennis: 25 } as never, guestCount: 1 }).total, 25);
+assert.equal(computeBookingCost({ ...base, court: outdoor, isGuest: true, guestCount: 3 }).total, 30);
 assert.equal(needsFloodlight({ hasLighting: true }, 19), true);
 assert.equal(needsFloodlight({ hasLighting: true }, 18), false);
 assert.equal(needsFloodlight({ hasLighting: false }, 20), false);

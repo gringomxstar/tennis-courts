@@ -362,7 +362,7 @@ export function ReserveView({
               className="mt-2.5 flex w-full items-center justify-between rounded-[18px] bg-inset px-4 py-3.5 text-[16px] font-semibold text-foreground"
             >
               <span>Gast hinzufügen</span>
-              <span>{diner && guests.length === 0 ? "Gratis" : `CHF ${tenant.settingsJson?.guestFee ?? 15}`}</span>
+              <span>{guestRate || (diner && guests.length === 0) ? "Gratis" : `CHF ${tenant.settingsJson?.guestFee ?? 15}`}</span>
             </button>
           )}
           {diner && (
