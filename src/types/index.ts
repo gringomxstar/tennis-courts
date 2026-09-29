@@ -64,6 +64,8 @@ export interface TenantSettings {
   payOnSite?: boolean;
   payByInvoice?: boolean;
   priceRules?: PriceRule[];
+  /** Role switcher with the fixed demo personas (src/lib/demo.ts); off = demo logins refused. */
+  demoMode?: boolean;
 }
 
 export type LimitRole = "MEMBER" | "COACH" | "GUEST";

@@ -29,6 +29,7 @@ export function BookingSheet({
   onClose,
   pool,
   isAnon,
+  guestRate = isAnon,
   wallet = 0,
 }: {
   slug: string;
@@ -37,6 +38,8 @@ export function BookingSheet({
   onClose: () => void;
   pool: Person[];
   isAnon: boolean;
+  /** Logged-in GUEST accounts without Abo also pay the guest court rate. */
+  guestRate?: boolean;
   wallet?: number;
 }) {
   const router = useRouter();
@@ -59,7 +62,7 @@ export function BookingSheet({
     ? computeBookingCost({
         settings,
         court: s.court,
-        isGuest: isAnon,
+        isGuest: guestRate,
         durationMinutes: 60,
         guestCount: 0,
         hasBallMachine: false,
@@ -189,6 +192,11 @@ export function BookingSheet({
               <span>{base > 0 ? `CHF ${base}` : "im Abo inklusive"}</span>
             </div>
           </div>
+          {isAnon && (
+            <Link href={`/c/${slug}/abos`} className="mt-2 block text-center text-[13px] text-muted-foreground">
+              Mit Abo: Sandplätze ohne Platzgebühr – <span className="font-semibold text-clay-text">Abos ansehen</span>
+            </Link>
+          )}
 
           {total > 0 && opts.length > 1 && (
             <Segmented className="mt-3" label="Zahlungsart" value={pay} onChange={setMethod} options={opts} />

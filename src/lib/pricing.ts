@@ -48,6 +48,10 @@ export function matchingPriceRules(rules: PriceRule[] | undefined, start: Date, 
   );
 }
 
+/** Anonymous visitors and logged-in GUEST accounts without an Abo pay the guest court rate. */
+export const paysGuestRate = (loggedIn: boolean, role: string | null | undefined, hasPlan: boolean) =>
+  !loggedIn || (role === "GUEST" && !hasPlan);
+
 /** Single source of truth for booking prices (server action + client preview). */
 export function computeBookingCost(i: BookingCostInput): BookingCost {
   const s = i.settings ?? undefined;

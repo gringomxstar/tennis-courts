@@ -11,10 +11,11 @@ const P = {
   user: "M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z",
   shield: "M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z",
   ban: "M4.9 4.9l14.2 14.2M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z",
+  ticket: "M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2zM13 5v2M13 17v2M13 11v2",
   users: "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75",
 };
 
-export function TabBar({ slug, clubName }: { slug: string; clubName: string }) {
+export function TabBar({ slug, clubName, anon = false }: { slug: string; clubName: string; anon?: boolean }) {
   const path = usePathname();
   const base = `/c/${slug}`;
   const admin = path.startsWith(`${base}/admin`);
@@ -25,12 +26,19 @@ export function TabBar({ slug, clubName }: { slug: string; clubName: string }) {
         [`${base}/admin/members`, "Mitglieder", P.users],
         [`${base}/admin/profile`, "Profil", P.user],
       ]
-    : [
-        [base, "Start", P.home],
-        [`${base}/calendar`, "Kalender", P.cal],
-        [`${base}/bookings`, "Buchungen", P.book],
-        [`${base}/profile`, "Profil", P.user],
-      ];
+    : anon
+      ? [
+          [base, "Start", P.home],
+          [`${base}/calendar`, "Kalender", P.cal],
+          [`${base}/abos`, "Abos", P.ticket],
+          [`${base}/profile`, "Anmelden", P.user],
+        ]
+      : [
+          [base, "Start", P.home],
+          [`${base}/calendar`, "Kalender", P.cal],
+          [`${base}/bookings`, "Buchungen", P.book],
+          [`${base}/profile`, "Profil", P.user],
+        ];
   // longest matching prefix wins, so /admin doesn't swallow /admin/blocks
   const active = tabs
     .map(([href]) => href)

@@ -124,6 +124,8 @@ async function handlePaymentSuccess(stripeCustomerId: string, metadata?: Record<
           tenantId,
           membershipPlanId: metadata.planId,
           startsAt: new Date(),
+          // plans are sold per year ("CHF … / Jahr")
+          endsAt: new Date(Date.now() + 365 * 86_400_000),
           status: "ACTIVE"
         }
       });

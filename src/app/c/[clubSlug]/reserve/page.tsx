@@ -29,6 +29,7 @@ export default async function ReservePage({
       userId={d.user.id}
       wallet={d.wallet}
       favoriteUserIds={d.favoriteUserIds}
+      guestRate={d.guestRate}
     />
   );
 }

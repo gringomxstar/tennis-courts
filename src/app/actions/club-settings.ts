@@ -13,6 +13,10 @@ import {
 import { PriceRule, TenantRole, TenantSettings } from "@/types";
 import { prisma } from "@/lib/prisma";
 import { LIMIT_ROLES, SPORTS } from "@/lib/booking-rules";
+import { ensureDemoAccounts, purgeDemoData } from "@/lib/demo";
+import { parseMembers } from "@/lib/member-import";
+import { passwordLink } from "@/lib/booking-link";
+import { sendPasswordLink } from "@/lib/mail";
 
 function cleanSlotLimits(v: TenantSettings["slotLimits"]): TenantSettings["slotLimits"] {
   const out: NonNullable<TenantSettings["slotLimits"]> = {};
@@ -137,7 +141,19 @@ export async function updateClubSettingsAction(
     return { success: false, error: "Buchen nach Spielbeginn: 0 bis 120 Minuten." };
   }
 
+  // Demo mode on: create/repair the personas first, so the role switcher works right away (idempotent)
+  const demoMode = Boolean(settings.demoMode);
+  if (demoMode && process.env.DATABASE_URL) {
+    try {
+      await ensureDemoAccounts(authCheck.tenant.id);
+    } catch (e) {
+      console.error("ensureDemoAccounts failed:", e);
+      return { success: false, error: "Demo-Konten konnten nicht angelegt werden." };
+    }
+  }
+
   const updated = await updateTenantSettings(clubSlug, {
+    demoMode,
     slotLimits: cleanSlotLimits(settings.slotLimits),
     lateBookingMinutes: late,
     payOnSite: Boolean(settings.payOnSite),
@@ -292,4 +308,104 @@ export async function setMemberRoleAction(clubSlug: string, userId: string, role
   if (!r.count) return { success: false, error: "Mitglied nicht gefunden." };
   revalidatePath(`/c/${clubSlug}/admin`, "layout");
   return { success: true };
+}
+
+const MAX_IMPORT = 2000;
+const MAX_INVITES = 250; // Brevo free tier: 300 mails/day
+
+export async function importMembersAction(clubSlug: string, text: string, sendInvites: boolean) {
+  const authCheck = await verifyClubAdmin(clubSlug);
+  if (!authCheck.authorized || !authCheck.tenant) {
+    return { success: false as const, error: authCheck.error };
+  }
+  if (!process.env.DATABASE_URL) {
+    return { success: false as const, error: "Der Import braucht eine Datenbank." };
+  }
+  if (typeof text !== "string" || text.length > 2_000_000) {
+    return { success: false as const, error: "Die Datei ist zu gross." };
+  }
+  const { rows, errors } = parseMembers(text);
+  if (!rows.length) return { success: false as const, error: "Keine gültigen Zeilen gefunden." };
+  if (rows.length > MAX_IMPORT) {
+    return { success: false as const, error: `Maximal ${MAX_IMPORT} Mitglieder pro Import.` };
+  }
+
+  const tenant = authCheck.tenant;
+  const emails = rows.map((r) => r.email);
+  const known = new Set(
+    (await prisma.user.findMany({ where: { email: { in: emails } }, select: { email: true } })).map((u) => u.email)
+  );
+  // New accounts get no password; existing users keep their name and password.
+  const fresh = rows.filter((r) => !known.has(r.email));
+  const created = (
+    await prisma.user.createMany({
+      data: fresh.map((r) => ({ email: r.email, firstName: r.firstName, lastName: r.lastName, phone: r.phone ?? null })),
+      skipDuplicates: true,
+    })
+  ).count;
+
+  const users = await prisma.user.findMany({
+    where: { email: { in: emails } },
+    select: { id: true, email: true, firstName: true, passwordHash: true, tenantUsers: { where: { tenantId: tenant.id }, select: { role: true } } },
+  });
+  const missing = users.filter((u) => !u.tenantUsers.length);
+  const guests = users.filter((u) => u.tenantUsers[0]?.role === "GUEST");
+  await prisma.$transaction([
+    prisma.tenantUser.createMany({
+      data: missing.map((u) => ({ tenantId: tenant.id, userId: u.id, role: "MEMBER" as const })),
+      skipDuplicates: true,
+    }),
+    // GUEST -> MEMBER only; other roles are never touched.
+    prisma.tenantUser.updateMany({
+      where: { tenantId: tenant.id, userId: { in: guests.map((u) => u.id) }, role: "GUEST" },
+      data: { role: "MEMBER" },
+    }),
+  ]);
+  const updated = [...missing, ...guests].filter((u) => known.has(u.email)).length;
+  const unchanged = rows.length - created - updated;
+
+  let invited = 0;
+  let inviteFailed = 0;
+  let invitesSkipped = 0;
+  if (sendInvites) {
+    const targets = users.filter((u) => !u.passwordHash);
+    invitesSkipped = Math.max(0, targets.length - MAX_INVITES);
+    const batch = targets.slice(0, MAX_INVITES);
+    for (let i = 0; i < batch.length; i += 10) {
+      const sent = await Promise.all(
+        batch.slice(i, i + 10).map((u) =>
+          sendPasswordLink(u.email, u.firstName, tenant.name, passwordLink(tenant.slug, u.id, null), "invite").catch(() => false)
+        )
+      );
+      invited += sent.filter(Boolean).length;
+      inviteFailed += sent.filter((ok) => !ok).length;
+    }
+  }
+
+  const result = { created, updated, unchanged, invited, inviteFailed, invitesSkipped, errors };
+  await prisma.auditLog
+    .create({
+      data: {
+        tenantId: tenant.id,
+        actorId: authCheck.session?.user.id ?? null,
+        action: "MEMBERS_IMPORTED",
+        entityType: "Tenant",
+        entityId: tenant.id,
+        metadataJson: { ...result, rows: rows.length, errors: errors.length },
+      },
+    })
+    .catch((e) => console.error("[importMembersAction] audit log failed", e));
+
+  revalidatePath(`/c/${clubSlug}/admin`, "layout");
+  return { success: true as const, ...result };
+}
+
+/** Admin → Einstellungen: remove all demo bookings/blocks/wallet history of this club (see purgeDemoData). */
+export async function purgeDemoDataAction(clubSlug: string) {
+  const authCheck = await verifyClubAdmin(clubSlug);
+  if (!authCheck.authorized || !authCheck.tenant) return { success: false as const, error: authCheck.error };
+  if (!process.env.DATABASE_URL) return { success: false as const, error: "Datenbank nicht verbunden." };
+  const r = await purgeDemoData(authCheck.tenant.id);
+  revalidatePath(`/c/${clubSlug}`, "layout");
+  return { success: true as const, ...r };
 }

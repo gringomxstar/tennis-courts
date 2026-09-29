@@ -99,9 +99,28 @@ export async function sendPaymentReminder(to: string, firstName: string, clubNam
       `Hallo ${firstName}`,
       "",
       `für deine Mitgliedschaft beim ${clubName} ist noch keine Zahlung eingegangen.`,
-      `Du kannst sie hier abschliessen: ${appUrl()}/c/${clubSlug}/profile?abo=1`,
+      `Du kannst sie hier abschliessen: ${appUrl()}/c/${clubSlug}/abos`,
       "",
       "Falls du bereits bezahlt hast, betrachte diese Mail als gegenstandslos.",
+    ].join("\n")
+  );
+}
+
+/** Invite (member import) or activation/reset link; url comes from passwordLink(). */
+export async function sendPasswordLink(to: string, firstName: string, clubName: string, url: string, kind: "invite" | "reset") {
+  const invite = kind === "invite";
+  return sendMail(
+    to,
+    invite ? `Dein Zugang beim ${clubName}` : `Passwort setzen: ${clubName}`,
+    [
+      `Hallo ${firstName}`,
+      "",
+      invite
+        ? `der ${clubName} bucht Plätze jetzt online. Setz hier dein Passwort, dann kannst du sofort reservieren:`
+        : "hier kannst du dein Passwort setzen:",
+      url,
+      "",
+      invite ? "Der Link ist 14 Tage gültig." : "Der Link ist 14 Tage gültig. Falls du das nicht warst, ignoriere diese Mail.",
     ].join("\n")
   );
 }

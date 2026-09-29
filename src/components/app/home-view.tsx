@@ -35,6 +35,8 @@ export function HomeView({
   firstName,
   partners,
   wallet,
+  guestRate,
+  minPlanPrice,
 }: {
   tenant: Tenant;
   courts: Court[];
@@ -45,6 +47,8 @@ export function HomeView({
   firstName?: string;
   partners: Person[];
   wallet: number;
+  guestRate: boolean;
+  minPlanPrice: number | null;
 }) {
   const sheet = useSheetSlot();
   // local-time rendering only on the client, so server/client never disagree about "now"
@@ -66,7 +70,9 @@ export function HomeView({
     );
     const quick: { court: Court; start: Date }[] = [];
     for (let d = 0; d < 3 && quick.length < 6; d++) {
-      for (let h = 17; h <= Math.min(21, close - 1) && quick.length < 6; h++) {
+      // today: from the next full hour ("Jetzt frei"); later days: evenings, when most people play
+      const from = d === 0 ? Math.max(open, new Date(now).getHours() + 1) : Math.max(open, 17);
+      for (let h = from; h <= close - 1 && quick.length < 6; h++) {
         const start = atHour(addDays(startOfToday(), d), h);
         const c = ordered.find((c) => slotState(c.id, start, 60, bookings, blocks, userId, now) === "free");
         if (c) quick.push({ court: c, start });
@@ -85,7 +91,7 @@ export function HomeView({
       if (slotState(court.id, start, 60, bookings, blocks, userId, now) === "free") rebook = { court, start };
     }
     return { upcoming, quick, last, rebook };
-  }, [ready, now, myBookings, courts, bookings, blocks, userId, byId, close]);
+  }, [ready, now, myBookings, courts, bookings, blocks, userId, byId, open, close]);
 
   const hour = new Date(now).getHours();
   const greet = hour < 11 ? "Guten Morgen," : hour < 18 ? "Guten Tag," : "Guten Abend,";
@@ -165,7 +171,35 @@ export function HomeView({
         </div>
       )}
 
-      {ready && !next && (
+      {!userId && (
+        <div className="mx-5 mt-[22px] rounded-[30px] border border-border bg-card p-[22px]">
+          <a
+            href="#frei"
+            onClick={(e) => {
+              e.preventDefault();
+              const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+              document.getElementById("frei")?.scrollIntoView({ behavior: reduce ? "auto" : "smooth" });
+            }}
+            className="flex h-[54px] w-full items-center justify-center rounded-[17px] bg-clay text-[17px] font-bold text-white active:scale-[.97]"
+          >
+            Als Gast buchen
+          </a>
+          <div className="mt-2 text-center text-[14px] text-muted-foreground">Ohne Konto. Bezahlen mit Twint oder Karte.</div>
+          <Link
+            href={`/c/${tenant.slug}/profile`}
+            className="mt-[14px] flex h-[54px] w-full items-center justify-center rounded-[17px] bg-inset text-[17px] font-bold active:scale-[.97]"
+          >
+            Mitglied? Anmelden
+          </Link>
+          {minPlanPrice !== null && (
+            <Link href={`/c/${tenant.slug}/abos`} className="mt-3 block text-center text-[15px] font-semibold text-clay-text">
+              Abos ab CHF {Number.isInteger(minPlanPrice) ? minPlanPrice : minPlanPrice.toFixed(2)}/Jahr
+            </Link>
+          )}
+        </div>
+      )}
+
+      {userId && ready && !next && (
         <div className="mx-5 mt-[22px] rounded-[30px] border border-border bg-card p-[22px]">
           <div className="text-[22px] font-bold tracking-[-.02em]">Noch kein Spiel geplant.</div>
           <div className="mt-1 text-[15px] text-muted-foreground">Wähle unten einen freien Platz. Ein Tap genügt.</div>
@@ -176,7 +210,7 @@ export function HomeView({
 
       <div>
       <div className="flex items-baseline justify-between px-5 pb-3 pt-[30px] lg:pt-12">
-        <h2 className="text-[22px] font-bold tracking-[-.02em]">Jetzt frei</h2>
+        <h2 id="frei" className="scroll-mt-[76px] text-[22px] font-bold tracking-[-.02em]">Jetzt frei</h2>
         <Link href={`/c/${tenant.slug}/calendar`} className="text-[15px] font-semibold text-clay-text">
           Alle Plätze
         </Link>
@@ -238,7 +272,7 @@ export function HomeView({
         · {open}–{close} Uhr
       </div>
 
-      <BookingSheet slug={tenant.slug} settings={settings} slot={sheet.slot} onClose={sheet.close} pool={partners} isAnon={!userId} wallet={wallet} />
+      <BookingSheet slug={tenant.slug} settings={settings} slot={sheet.slot} onClose={sheet.close} pool={partners} isAnon={!userId} guestRate={guestRate} wallet={wallet} />
     </>
   );
 }

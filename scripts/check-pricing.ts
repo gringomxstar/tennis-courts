@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { computeBookingCost, needsFloodlight } from "../src/lib/pricing";
+import { computeBookingCost, needsFloodlight, paysGuestRate } from "../src/lib/pricing";
 
 const outdoor = { sportType: "TENNIS" as const, isIndoor: false, hourlyRate: 30 };
 const padel = { sportType: "PADEL" as const, isIndoor: false, hourlyRate: 40 };
@@ -15,6 +15,11 @@ assert.equal(computeBookingCost({ ...base, court: outdoor, isGuest: true, settin
 assert.equal(needsFloodlight({ hasLighting: true }, 19), true);
 assert.equal(needsFloodlight({ hasLighting: true }, 18), false);
 assert.equal(needsFloodlight({ hasLighting: false }, 20), false);
+assert.equal(paysGuestRate(false, null, false), true);
+assert.equal(paysGuestRate(true, "GUEST", false), true); // registered/claimed account without Abo
+assert.equal(paysGuestRate(true, "GUEST", true), false);
+assert.equal(paysGuestRate(true, "MEMBER", false), false);
+assert.equal(paysGuestRate(true, "COACH", false), false);
 console.log("pricing ok");
 
 // price rules: -20% before 12:00, +10% last minute (< 2h)

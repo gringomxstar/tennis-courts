@@ -13,7 +13,7 @@ import {
 import { prisma } from "@/lib/prisma";
 import { getStripe } from "@/lib/stripe";
 import { revalidatePath } from "next/cache";
-import { computeBookingCost } from "@/lib/pricing";
+import { computeBookingCost, paysGuestRate } from "@/lib/pricing";
 import { BookingType, BlockReason, BookingParticipant, PaymentMethod, TenantSettings } from "@/types";
 import { sendBookingCancellation, sendBookingConfirmation } from "@/lib/mail";
 import { ballMachineConflict, checkBookingRules, lateBookingCutoff } from "@/lib/booking-rules";
@@ -135,12 +135,12 @@ export async function createBookingAction(input: CreateBookingInput) {
       return { success: false, error: "Für Buchungen in diesem Club ist eine Anmeldung erforderlich." };
     }
     const guestFirstName = input.guestFirstName?.trim();
-    const guestLastName = input.guestLastName?.trim();
+    const guestLastName = input.guestLastName?.trim() ?? "";
     const guestEmail = input.guestEmail?.trim().toLowerCase();
-    if (!guestFirstName || !guestLastName || !guestEmail || !/^\S+@\S+\.\S+$/.test(guestEmail)) {
+    if (!guestFirstName || !guestEmail || !/^\S+@\S+\.\S+$/.test(guestEmail)) {
       return { success: false, error: "Bitte gib deinen Namen und eine gültige E-Mail-Adresse an." };
     }
-    organizerName = `${guestFirstName} ${guestLastName}`;
+    organizerName = `${guestFirstName} ${guestLastName}`.trim();
     organizerEmail = guestEmail;
 
     if (hasDb) {
@@ -247,11 +247,10 @@ export async function createBookingAction(input: CreateBookingInput) {
   }
 
   // Club rules, role/sport limits and membership-plan rules (against the real bookings)
-  if (!isClubAdmin && !isGuest) {
-    const [member, mine] = await Promise.all([
-      getMemberContext(tenant.id, organizerId),
-      getUserBookings(organizerId, tenant.id),
-    ]);
+  const member = isGuest ? null : await getMemberContext(tenant.id, organizerId);
+  const guestRate = paysGuestRate(!isGuest, member?.role, Boolean(member?.plan));
+  if (member && !isClubAdmin) {
+    const mine = await getUserBookings(organizerId, tenant.id);
     const sportOf = new Map(courts.map((c) => [c.id, c.sportType]));
     const sessionRole = session?.user?.tenants?.find((t) => t.slug === input.clubSlug)?.role;
     const error = checkBookingRules({
@@ -276,7 +275,7 @@ export async function createBookingAction(input: CreateBookingInput) {
   const { total: totalCost } = computeBookingCost({
     settings,
     court,
-    isGuest,
+    isGuest: guestRate,
     durationMinutes: input.durationMinutes,
     guestCount,
     hasBallMachine: Boolean(input.hasBallMachine),
@@ -424,7 +423,7 @@ export async function createBookingAction(input: CreateBookingInput) {
         description: `${tenant.name}, ${startDate.toLocaleString("de-CH", { timeZone: "Europe/Zurich" })}`,
         metadata: { bookingId: created.id, tenantId: tenant.id },
         successUrl: isGuest ? `${bookingLink(input.clubSlug, created.id)}&paid=1` : `${appUrl()}/c/${input.clubSlug}/bookings?bookingConfirmed=1`,
-        cancelUrl: `${appUrl()}/c/${input.clubSlug}?bookingCancelled=1`,
+        cancelUrl: `${bookingLink(input.clubSlug, created.id)}&abgebrochen=1`,
       });
       await prisma.booking.update({ where: { id: created.id }, data: { stripeSessionId: checkout.id } });
       return { success: true, totalCost, checkoutUrl: checkout.url };
