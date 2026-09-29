@@ -337,18 +337,6 @@ export function MembershipPlansManager({ clubSlug, initialPlans }: MembershipPla
                 />
               </label>
               <label className="block">
-                <span className={label}>Pro Tag</span>
-                <input
-                  id="dailyBookingLimit"
-                  type="number"
-                  min={1}
-                  max={5}
-                  value={dailyBookingLimit}
-                  onChange={(e) => setDailyBookingLimit(Number(e.target.value))}
-                  className={input}
-                />
-              </label>
-              <label className="block">
                 <span className={label}>Gäste/Woche</span>
                 <input
                   id="guestsPerWeek"
@@ -553,7 +541,7 @@ export function MembershipPlansManager({ clubSlug, initialPlans }: MembershipPla
                           </div>
                           {plan.description && <p className="mt-0.5 text-[14px] text-muted-foreground">{plan.description}</p>}
                           <p className="mt-1 text-[13px] text-muted-foreground">
-                            Vorlauf {plan.bookingWindowDays} Tage · Max. aktiv {plan.simultaneousBookingLimit} · {plan.dailyBookingLimit}/Tag ·{" "}
+                            Vorlauf {plan.bookingWindowDays} Tage · Max. aktiv {plan.simultaneousBookingLimit} ·{" "}
                             {plan.allowedDurations.join("/")} Min.
                             {plan.guestsPerWeek != null ? ` · ${plan.guestsPerWeek} Gäste/Woche` : ""}
                           </p>

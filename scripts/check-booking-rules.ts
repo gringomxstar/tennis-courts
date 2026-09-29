@@ -53,8 +53,9 @@ const bm = [{ id: "a", status: "CONFIRMED", hasBallMachine: true, startsAt: at(1
 assert.ok(ballMachineConflict(bm, at(10.5), at(11.5)));
 assert.equal(ballMachineConflict(bm, at(11), at(12)), undefined);
 assert.equal(ballMachineConflict(bm, at(10), at(11), "a"), undefined);
-assert.match(checkBookingRules({ ...p, plan: { ...plan, dailyBookingLimit: 1 }, mine: [own(4)] })!, /1 Buchung pro Tag/);
-assert.equal(checkBookingRules({ ...p, plan: { ...plan, dailyBookingLimit: 1 }, mine: [own(30)] }), null);
+// no per-day limit: only active bookings count, played ones free a slot the same day
+assert.equal(checkBookingRules({ ...base, mine: [own(-3), own(-1), own(5)] }), null);
+assert.match(checkBookingRules({ ...base, mine: [own(-3), own(3), own(5)] })!, /Maximal 2/);
 console.log("booking rules ok");
 
 // coaches: no marly fallback limit, own Abo ignored
