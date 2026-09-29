@@ -7,7 +7,7 @@ import { Avatar, Spinner } from "@/components/app/avatar";
 import { Sheet } from "@/components/app/sheet";
 import { AdminGrantCreditsButton } from "@/components/admin/admin-grant-credits-button";
 import { markInvoiceAsPaidManually, sendPaymentReminderAction } from "@/actions/admin-billing";
-import { importMembersAction, setMemberRoleAction } from "@/app/actions/club-settings";
+import { importMembersAction, markMembershipPaidAction, removeMemberAction, saveMemberAction, setMemberRoleAction, type MemberInput } from "@/app/actions/club-settings";
 import { parseMembers } from "@/lib/member-import";
 import type { TenantRole } from "@/types";
 import { initials } from "@/lib/courts";
@@ -22,6 +22,17 @@ export interface MemberRow {
   state: "paid" | "invoice" | "remind";
   stripeCustomerId: string | null;
   role: TenantRole;
+  phone: string;
+  birthDate: string;
+  gender: string;
+  /** current ACTIVE/PENDING plan */
+  planId: string;
+}
+
+export interface PlanOption {
+  id: string;
+  name: string;
+  price: number;
 }
 
 const ROLES: [TenantRole, string][] = [
@@ -33,7 +44,8 @@ const ROLES: [TenantRole, string][] = [
 
 const pill = "rounded-full px-3.5 py-2 text-[13px] font-bold";
 
-export function AdminMembers({ slug, tenantId, members }: { slug: string; tenantId: string; members: MemberRow[] }) {
+export function AdminMembers({ slug, tenantId, members, plans }: { slug: string; tenantId: string; members: MemberRow[]; plans: PlanOption[] }) {
+  const [editing, setEditing] = useState<MemberRow | "new" | null>(null);
   const router = useRouter();
   const [reminded, setReminded] = useState<string[]>([]);
   const [paid, setPaid] = useState<string[]>([]);
@@ -43,9 +55,12 @@ export function AdminMembers({ slug, tenantId, members }: { slug: string; tenant
   const shown = needle ? members.filter((m) => `${m.name} ${m.email}`.toLowerCase().includes(needle)) : members;
 
   async function markPaid(m: MemberRow) {
-    if (!m.stripeCustomerId || busy) return;
+    if (busy) return;
     setBusy(m.id);
-    const res = await markInvoiceAsPaidManually(tenantId, m.id, m.stripeCustomerId);
+    // Stripe invoices go through Stripe; Abos assigned by hand are paid cash / by transfer
+    const res = m.stripeCustomerId
+      ? await markInvoiceAsPaidManually(tenantId, m.id, m.stripeCustomerId)
+      : await markMembershipPaidAction(slug, m.id);
     setBusy(null);
     if (!res.success) {
       toast.error(res.error || "Rechnung konnte nicht als bezahlt markiert werden.");
@@ -76,16 +91,20 @@ export function AdminMembers({ slug, tenantId, members }: { slug: string; tenant
 
   return (
     <>
-      <div className="px-5 pt-4">
+      <div className="flex gap-2.5 px-5 pt-4">
         <input
           type="search"
           aria-label="Mitglieder suchen"
           placeholder={`Suchen in ${members.length} Mitgliedern`}
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          className="h-[50px] w-full rounded-[15px] border border-border bg-inset px-4 text-[16px] text-foreground outline-none placeholder:text-muted-foreground focus-visible:border-clay lg:max-w-[480px]"
+          className="h-[50px] min-w-0 flex-1 rounded-[15px] border border-border bg-inset px-4 text-[16px] text-foreground outline-none placeholder:text-muted-foreground focus-visible:border-clay lg:max-w-[480px]"
         />
+        <button type="button" onClick={() => setEditing("new")} className="h-[50px] shrink-0 rounded-[15px] bg-clay px-4 text-[15px] font-bold text-white">
+          + Mitglied
+        </button>
       </div>
+      <MemberSheet slug={slug} plans={plans} member={editing} onClose={() => setEditing(null)} />
       <div className="flex flex-col gap-2.5 px-5 pt-3 lg:grid lg:grid-cols-2">
       {needle && !shown.length && <div className="py-6 text-center text-[15px] text-muted-foreground">Niemand gefunden</div>}
       {shown.map((m) => {
@@ -95,9 +114,11 @@ export function AdminMembers({ slug, tenantId, members }: { slug: string; tenant
           <div key={m.id} className="flex items-center gap-3 rounded-[20px] border border-border bg-card px-4 py-3.5">
             <Avatar ini={initials(m.name)} />
             <div className="min-w-0 flex-1">
-              <div className="text-[16px] font-bold">{m.name}</div>
-              <div className="truncate text-[13px] text-muted-foreground">{m.email}</div>
-              <div className="text-[14px] text-muted-foreground">{m.plan}</div>
+              <button type="button" onClick={() => setEditing(m)} aria-label={`${m.name} bearbeiten`} className="block w-full min-w-0 text-left">
+                <div className="text-[16px] font-bold underline-offset-2 hover:underline">{m.name}</div>
+                <div className="truncate text-[13px] text-muted-foreground">{m.email}</div>
+                <div className="text-[14px] text-muted-foreground">{m.plan}</div>
+              </button>
               <div className="mt-1.5 flex flex-wrap items-center gap-2">
               {m.role !== "PLATFORM_ADMIN" && (
                 <select
@@ -161,7 +182,14 @@ export function ImportMembers({ slug }: { slug: string }) {
 
   async function pickFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (file) setText(await file.text());
+    if (!file) return;
+    // Excel/Fairgate CSVs are often Windows-1252, not UTF-8
+    const buf = await file.arrayBuffer();
+    try {
+      setText(new TextDecoder("utf-8", { fatal: true }).decode(buf));
+    } catch {
+      setText(new TextDecoder("windows-1252").decode(buf));
+    }
     e.target.value = "";
   }
 
@@ -193,7 +221,10 @@ export function ImportMembers({ slug }: { slug: string }) {
       <Sheet open={open} onOpenChange={setOpen} title="Mitglieder importieren">
         <div className="text-[28px] font-bold tracking-[-.03em]">Mitglieder importieren</div>
         <div className="mt-1 text-[14px] text-muted-foreground">
-          Aus Excel kopieren und einfügen oder CSV wählen. Spalten: Vorname, Nachname, E-Mail, Telefon
+          Aus Excel kopieren und einfügen oder CSV wählen. Spalten: Vorname, Nachname, E-Mail, Telefon, optional Geburtsdatum, Geschlecht
+        </div>
+        <div className="mt-1 text-[13px] text-muted-foreground">
+          <b className="font-bold text-foreground">Fairgate:</b> Kontakte filtern (z.B. Mitglieder) → Export → CSV. Die Fairgate-Spalten werden automatisch erkannt.
         </div>
         <textarea
           aria-label="Mitgliederliste"
@@ -230,6 +261,7 @@ export function ImportMembers({ slug }: { slug: string }) {
                       {r.firstName} {r.lastName}
                     </span>
                     <span className="min-w-0 truncate text-muted-foreground">{r.email}</span>
+                    {r.birthDate && <span className="shrink-0 text-muted-foreground">{r.birthDate.slice(0, 4)}</span>}
                   </li>
                 ))}
                 {rows.length > 5 && <li className="text-[13px] text-muted-foreground">und {rows.length - 5} weitere</li>}
@@ -243,7 +275,7 @@ export function ImportMembers({ slug }: { slug: string }) {
             type="checkbox"
             checked={invite}
             onChange={(e) => setInvite(e.target.checked)}
-            className="mt-0.5 h-5 w-5 shrink-0 accent-[#e25b36]"
+            className="mt-0.5 h-5 w-5 shrink-0 accent-clay"
           />
           <span>
             <span className="block text-[15px] font-bold">Einladungs-Mail senden</span>
@@ -269,5 +301,137 @@ export function ImportMembers({ slug }: { slug: string }) {
         )}
       </Sheet>
     </>
+  );
+}
+
+const field = "mt-1.5 h-[50px] w-full min-w-0 rounded-[15px] border border-border bg-inset px-4 text-[16px] text-foreground outline-none focus-visible:border-clay";
+const fieldLabel = "block text-[13px] font-bold uppercase tracking-[.06em] text-muted-foreground";
+
+/** Add or edit one member: profile, role, Abo, remove from club. */
+function MemberSheet({ slug, plans, member, onClose }: { slug: string; plans: PlanOption[]; member: MemberRow | "new" | null; onClose: () => void }) {
+  const router = useRouter();
+  const [f, setF] = useState<MemberInput | null>(null);
+  const [shown, setShown] = useState<MemberRow | "new" | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [armed, setArmed] = useState(false);
+  if (member && member !== shown) {
+    setShown(member);
+    setArmed(false);
+    const [first, ...rest] = member === "new" ? [""] : member.name.split(" ");
+    setF(
+      member === "new"
+        ? { firstName: "", lastName: "", email: "", phone: "", birthDate: "", gender: "", role: "MEMBER", planId: "", paid: true, invite: true }
+        : { id: member.id, firstName: first, lastName: rest.join(" "), email: member.email, phone: member.phone, birthDate: member.birthDate, gender: member.gender as MemberInput["gender"], role: member.role, planId: "", paid: true }
+    );
+  }
+  if (!member && shown) setShown(null);
+  const set = (patch: Partial<MemberInput>) => setF((x) => (x ? { ...x, ...patch } : x));
+  const isNew = !f?.id;
+  const current = shown && shown !== "new" ? shown : null;
+
+  async function save() {
+    if (!f || busy) return;
+    setBusy(true);
+    const res = await saveMemberAction(slug, f).catch(() => null);
+    setBusy(false);
+    if (!res?.success) return void toast.error(res?.error ?? "Speichern fehlgeschlagen.");
+    toast(isNew ? "Mitglied angelegt" : "Gespeichert");
+    onClose();
+    router.refresh();
+  }
+
+  async function remove() {
+    if (!f?.id || busy) return;
+    if (!armed) return setArmed(true);
+    setBusy(true);
+    const res = await removeMemberAction(slug, f.id).catch(() => null);
+    setBusy(false);
+    if (!res?.success) return void toast.error(res?.error ?? "Entfernen fehlgeschlagen.");
+    toast("Aus dem Club entfernt");
+    onClose();
+    router.refresh();
+  }
+
+  return (
+    <Sheet open={Boolean(member)} onOpenChange={(o) => !o && onClose()} title={isNew ? "Mitglied hinzufügen" : "Mitglied bearbeiten"}>
+      {f && (
+        <div className="flex flex-col gap-3.5">
+          <div className="text-[28px] font-bold tracking-[-.03em]">{isNew ? "Mitglied hinzufügen" : "Mitglied bearbeiten"}</div>
+          <div className="grid grid-cols-2 gap-2.5">
+            <label className="block">
+              <span className={fieldLabel}>Vorname</span>
+              <input value={f.firstName} onChange={(e) => set({ firstName: e.target.value })} autoComplete="off" className={field} />
+            </label>
+            <label className="block">
+              <span className={fieldLabel}>Nachname</span>
+              <input value={f.lastName} onChange={(e) => set({ lastName: e.target.value })} autoComplete="off" className={field} />
+            </label>
+          </div>
+          <label className="block">
+            <span className={fieldLabel}>E-Mail</span>
+            <input type="email" value={f.email} onChange={(e) => set({ email: e.target.value })} autoComplete="off" className={field} />
+          </label>
+          <label className="block">
+            <span className={fieldLabel}>Telefon</span>
+            <input type="tel" value={f.phone} onChange={(e) => set({ phone: e.target.value })} autoComplete="off" className={field} />
+          </label>
+          <div className="grid grid-cols-2 gap-2.5">
+            <label className="block">
+              <span className={fieldLabel}>Geburtsdatum</span>
+              <input type="date" value={f.birthDate} onChange={(e) => set({ birthDate: e.target.value })} className={field} />
+            </label>
+            <label className="block">
+              <span className={fieldLabel}>Geschlecht</span>
+              <select value={f.gender} onChange={(e) => set({ gender: e.target.value as MemberInput["gender"] })} className={field}>
+                <option value="">–</option>
+                <option value="F">weiblich</option>
+                <option value="M">männlich</option>
+                <option value="X">divers</option>
+              </select>
+            </label>
+          </div>
+          <label className="block">
+            <span className={fieldLabel}>Rolle</span>
+            <select value={f.role} onChange={(e) => set({ role: e.target.value as TenantRole })} className={field}>
+              {ROLES.map(([r, l]) => <option key={r} value={r}>{l}</option>)}
+            </select>
+          </label>
+          <label className="block">
+            <span className={fieldLabel}>Abo {current?.planId ? `(aktuell: ${current.plan})` : ""}</span>
+            <select value={f.planId} onChange={(e) => set({ planId: e.target.value })} className={field}>
+              <option value="">{current?.planId ? "unverändert" : "kein Abo"}</option>
+              {plans.map((p) => <option key={p.id} value={p.id}>{p.name} · CHF {p.price}</option>)}
+              {current?.planId && <option value="__end">Abo beenden</option>}
+            </select>
+          </label>
+          {f.planId && f.planId !== "__end" && (
+            <label className="flex cursor-pointer items-center gap-3">
+              <input type="checkbox" checked={Boolean(f.paid)} onChange={(e) => set({ paid: e.target.checked })} className="h-5 w-5 accent-clay" />
+              <span className="text-[15px] font-bold">Bereits bezahlt (bar / Überweisung)</span>
+            </label>
+          )}
+          {isNew && (
+            <label className="flex cursor-pointer items-center gap-3">
+              <input type="checkbox" checked={Boolean(f.invite)} onChange={(e) => set({ invite: e.target.checked })} className="h-5 w-5 accent-clay" />
+              <span className="text-[15px] font-bold">Einladungs-Mail senden</span>
+            </label>
+          )}
+          <button
+            type="button"
+            onClick={save}
+            disabled={busy}
+            className="mt-1 flex h-[58px] w-full items-center justify-center gap-2.5 rounded-[20px] bg-clay text-[18px] font-bold text-white active:scale-[.97] disabled:opacity-60"
+          >
+            {busy && <Spinner />}
+            {isNew ? "Hinzufügen" : "Speichern"}
+          </button>
+          {!isNew && (
+            <button type="button" onClick={remove} onBlur={() => setArmed(false)} disabled={busy} className="h-[50px] rounded-[17px] bg-inset text-[16px] font-bold text-clay-text">
+              {armed ? "Wirklich aus dem Club entfernen?" : "Aus dem Club entfernen"}
+            </button>
+          )}
+        </div>
+      )}
+    </Sheet>
   );
 }

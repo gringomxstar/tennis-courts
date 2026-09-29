@@ -18,7 +18,7 @@
   --acc: #e8ebf1;
   --glass: rgba(255, 255, 255, 0.8);
   --sheet: #f6f7fa;
-  --clay-text: #c84b2b;
+  --clay-text: color-mix(in srgb, var(--tennis-clay) 85%, black);
   --elevation: 0 16px 40px rgba(15, 23, 42, 0.16);
   --top-mask: linear-gradient(#fbfbfd 55%, rgba(251, 251, 253, 0));
   --seg-on: #ffffff;
@@ -28,11 +28,12 @@
   --bar-blocked: #cbd5e1;
   --paid-bg: #d1fae5;
   --paid-fg: #065f46;
-  --free-tint: rgba(226, 91, 54, 0.08);
-  --free-border: rgba(226, 91, 54, 0.55);
+  --free-tint: color-mix(in srgb, var(--tennis-clay) 8%, transparent);
+  --free-border: color-mix(in srgb, var(--tennis-clay) 55%, transparent);
 
+  /* club brand color; the layout overrides it from settingsJson.brandColor */
   --tennis-clay: #e25b36;
-  --tennis-clay-hover: #c84b2b;
+  --tennis-clay-hover: color-mix(in srgb, var(--tennis-clay) 85%, black);
   --floodlight: #f59e0b;
   --surface-clay: #e25b36;
   --surface-hard: #64748b;
@@ -68,7 +69,7 @@
   --acc: #1c2536;
   --glass: rgba(20, 26, 38, 0.78);
   --sheet: #0f1521;
-  --clay-text: #f06a45;
+  --clay-text: color-mix(in srgb, var(--tennis-clay) 85%, white);
   --elevation: 0 16px 40px rgba(0, 0, 0, 0.55);
   --top-mask: linear-gradient(#0b0f17 55%, rgba(11, 15, 23, 0));
   --seg-on: #1c2536;
@@ -78,9 +79,9 @@
   --bar-blocked: #334155;
   --paid-bg: rgba(16, 185, 129, 0.16);
   --paid-fg: #6ee7b7;
-  --free-tint: rgba(226, 91, 54, 0.1);
-  --free-border: rgba(226, 91, 54, 0.5);
-  --tennis-clay-hover: #f06a45;
+  --free-tint: color-mix(in srgb, var(--tennis-clay) 10%, transparent);
+  --free-border: color-mix(in srgb, var(--tennis-clay) 50%, transparent);
+  --tennis-clay-hover: color-mix(in srgb, var(--tennis-clay) 85%, white);
 
   --muted-foreground: #9ca3af;
   --destructive: oklch(0.704 0.191 22.216);

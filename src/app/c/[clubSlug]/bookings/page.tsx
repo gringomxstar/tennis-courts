@@ -1,3 +1,4 @@
+import { cancelDeadlineMinutes } from "@/lib/booking-rules";
 import { getTenantContext } from "@/lib/tenant";
 import { syncPendingBookingPayments } from "@/lib/booking-payment";
 import { getCourtsByTenantId, getUserBookings } from "@/lib/data";
@@ -13,5 +14,5 @@ export default async function BookingsPage({ params }: { params: Promise<{ clubS
     getCourtsByTenantId(tenant.id),
   ]);
 
-  return <BookingsView slug={tenant.slug} userId={user?.id} bookings={bookings} courts={courts} cancelDeadlineHours={tenant.settingsJson?.cancellationDeadlineHours ?? 24} />;
+  return <BookingsView slug={tenant.slug} userId={user?.id} bookings={bookings} courts={courts} cancelDeadlineMinutes={cancelDeadlineMinutes(tenant.settingsJson)} />;
 }

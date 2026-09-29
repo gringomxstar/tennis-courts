@@ -1,4 +1,6 @@
 import { notFound } from "next/navigation";
+import { cancelDeadlineMinutes } from "@/lib/booking-rules";
+import type { TenantSettings } from "@/types";
 import { prisma } from "@/lib/prisma";
 import { claimableByBooking, verifyBookingToken } from "@/lib/booking-link";
 import { abandonCheckout, syncPendingBookingPayments } from "@/lib/booking-payment";
@@ -27,7 +29,7 @@ export default async function GuestBookingPage({
     orderBy: { price: "asc" },
     select: { price: true },
   });
-  const deadline = (b.tenant.settingsJson as { cancellationDeadlineHours?: number } | null)?.cancellationDeadlineHours ?? 24;
+  const deadline = cancelDeadlineMinutes(b.tenant.settingsJson as TenantSettings | null);
 
   return (
     <GuestBookingCard
@@ -44,7 +46,7 @@ export default async function GuestBookingPage({
         paymentStatus: b.paymentStatus,
         paymentMethod: b.paymentMethod,
         total: Number(b.totalCost),
-        cancellableUntil: new Date(b.startsAt.getTime() - deadline * 3_600_000).toISOString(),
+        cancellableUntil: new Date(b.startsAt.getTime() - deadline * 60_000).toISOString(),
       }}
       supportEmail={b.tenant.email}
       slug={clubSlug}

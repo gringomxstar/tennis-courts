@@ -16,7 +16,7 @@ import { revalidatePath } from "next/cache";
 import { computeBookingCost, paysGuestRate } from "@/lib/pricing";
 import { BookingType, BlockReason, BookingParticipant, PaymentMethod, TenantSettings } from "@/types";
 import { sendBookingCancellation, sendBookingConfirmation } from "@/lib/mail";
-import { ballMachineConflict, checkBookingRules, lateBookingCutoff } from "@/lib/booking-rules";
+import { ballMachineConflict, cancelDeadlineMinutes, checkBookingRules, deadlineText, lateBookingCutoff } from "@/lib/booking-rules";
 import { InsufficientFundsError, creditWallet, debitWallets, refundBookingWallets } from "@/lib/wallet";
 import { refundStripeBooking } from "@/lib/booking-payment";
 import { bookingLink, verifyBookingToken } from "@/lib/booking-link";
@@ -270,6 +270,10 @@ export async function createBookingAction(input: CreateBookingInput) {
       })),
     });
     if (error) return { success: false, error };
+    // coaches book training slots alone; everyone else names who they play with
+    if (member.role !== "COACH" && rawParticipants.length === 0) {
+      return { success: false, error: "Bitte wähle mindestens einen Mitspieler oder Gast." };
+    }
   }
 
   const { total: totalCost } = computeBookingCost({
@@ -450,8 +454,8 @@ export async function createBookingAction(input: CreateBookingInput) {
 function cancelDeadlineError(startsAt: Date, settings: TenantSettings | null | undefined) {
   const t = startsAt.getTime();
   if (Date.now() >= t) return "Vergangene oder laufende Spiele können nicht storniert werden.";
-  const deadline = settings?.cancellationDeadlineHours ?? 24;
-  if ((t - Date.now()) / HOUR < deadline) return `Stornierungen sind nur bis ${deadline} Stunden vor Spielbeginn möglich.`;
+  const deadline = cancelDeadlineMinutes(settings);
+  if (t - Date.now() < deadline * 60_000) return `Stornierungen sind nur bis ${deadlineText(deadline)} vor Spielbeginn möglich.`;
   return null;
 }
 
@@ -724,6 +728,41 @@ export async function deleteCourtBlockAction(input: { clubSlug: string; blockId:
   const mockBlock = mockDb.courtBlocks.find((b) => b.id === input.blockId);
   if (mockBlock?.tenantId === tenant.id) mockDb.deleteCourtBlock(input.blockId);
 
+  revalidatePath(`/c/${input.clubSlug}`, "layout");
+  return { success: true };
+}
+
+export async function updateCourtBlockAction(input: {
+  clubSlug: string;
+  blockId: string;
+  courtId: string;
+  startsAt: string;
+  endsAt: string;
+  reason: BlockReason;
+  description?: string;
+}) {
+  const session = await auth();
+  if (!session?.user) return { success: false, error: "Nicht angemeldet." };
+  const isClubAdmin =
+    Boolean(session.user.isPlatformAdmin || session.user.role === "PLATFORM_ADMIN") ||
+    session.user.tenants?.some((t) => t.slug === input.clubSlug && t.role === "CLUB_ADMIN");
+  if (!isClubAdmin) return { success: false, error: "Keine Berechtigung in diesem Club." };
+  const tenant = await getTenantBySlug(input.clubSlug);
+  if (!tenant) return { success: false, error: "Club nicht gefunden." };
+  const courtIds = new Set((await getCourtsByTenantId(tenant.id)).map((c) => c.id));
+  if (!courtIds.has(input.courtId)) return { success: false, error: "Der ausgewählte Platz gehört nicht zu diesem Club." };
+  const startsAt = new Date(input.startsAt), endsAt = new Date(input.endsAt);
+  if (!(endsAt.getTime() > startsAt.getTime())) return { success: false, error: "Das Ende muss nach dem Beginn liegen." };
+  const data = { courtId: input.courtId, startsAt, endsAt, reason: input.reason, description: input.description?.trim() || null };
+
+  if (process.env.DATABASE_URL) {
+    const r = await prisma.courtBlock.updateMany({ where: { id: input.blockId, tenantId: tenant.id }, data }).catch(() => null);
+    if (!r?.count) return { success: false, error: "Sperre nicht gefunden." };
+  } else {
+    const b = mockDb.courtBlocks.find((x) => x.id === input.blockId && x.tenantId === tenant.id);
+    if (!b) return { success: false, error: "Sperre nicht gefunden." };
+    Object.assign(b, { ...data, startsAt: input.startsAt, endsAt: input.endsAt, description: data.description ?? undefined });
+  }
   revalidatePath(`/c/${input.clubSlug}`, "layout");
   return { success: true };
 }

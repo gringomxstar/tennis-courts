@@ -25,6 +25,8 @@ model User {
   firstName     String
   lastName      String
   phone         String?
+  birthDate     DateTime?   @db.Date
+  gender        String?     // "M" | "F" | "X", from the member import
   locale        String      @default("de")
   timezone      String      @default("Europe/Zurich")
   status        UserStatus  @default(ACTIVE)
@@ -262,6 +264,8 @@ model Membership {
   endsAt           DateTime?
   status           MembershipStatus @default(ACTIVE)
   stripeSubscriptionId String?      @unique
+  pricePaid        Decimal?         @db.Decimal(10, 2) // snapshot at activation; plan.price can change later
+  paidAt           DateTime?
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
 
