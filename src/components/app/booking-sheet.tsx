@@ -6,11 +6,12 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Sheet } from "@/components/app/sheet";
 import { Dot, Spinner } from "@/components/app/avatar";
+import { Segmented } from "@/components/app/segmented";
 import { createBookingAction } from "@/app/actions/booking";
-import { computeBookingCost, needsFloodlight } from "@/lib/pricing";
+import { computeBookingCost, needsFloodlight, payButtonLabel, payOptions } from "@/lib/pricing";
 import { courtColor, courtLabel, hh, initials, longDate } from "@/lib/courts";
 import type { Person } from "@/lib/partners";
-import type { Court, TenantSettings } from "@/types";
+import type { Court, PaymentMethod, TenantSettings } from "@/types";
 import { cn } from "@/lib/utils";
 
 export interface SheetSlot {
@@ -28,6 +29,7 @@ export function BookingSheet({
   onClose,
   pool,
   isAnon,
+  wallet = 0,
 }: {
   slug: string;
   settings: TenantSettings | null | undefined;
@@ -35,17 +37,20 @@ export function BookingSheet({
   onClose: () => void;
   pool: Person[];
   isAnon: boolean;
+  wallet?: number;
 }) {
   const router = useRouter();
   const [players, setPlayers] = useState<string[]>([]);
   const [phase, setPhase] = useState<"form" | "paying" | "done">("form");
   const [guest, setGuest] = useState({ first: "", last: "", email: "" });
+  const [method, setMethod] = useState<PaymentMethod | null>(null);
   // keep the last slot so the closing animation still shows its content
   const [shown, setShown] = useState<SheetSlot | null>(slot);
   if (slot && slot !== shown) {
     setShown(slot);
     setPlayers([]);
     setPhase("form");
+    setMethod(null);
   }
 
   const s = shown;
@@ -59,20 +64,17 @@ export function BookingSheet({
         guestCount: 0,
         hasBallMachine: false,
         hasLighting: light,
+        start: s.start,
       })
     : null;
   const color = s ? courtColor(s.court) : "var(--tennis-clay)";
   const label = s ? courtLabel(s.court) : { name: "", sub: "" };
   const base = cost ? cost.total - cost.lighting : 0;
 
-  const btnLabel =
-    phase === "paying"
-      ? "Twint…"
-      : isAnon && cost && cost.total > 0
-        ? `Mit Twint zahlen · CHF ${cost.total}`
-        : cost && cost.total > 0
-          ? `Buchen · CHF ${cost.total} Guthaben`
-          : "Buchen";
+  const total = cost?.total ?? 0;
+  const opts = payOptions(settings, { isAnon, wallet, total });
+  const pay = method && opts.some(([m]) => m === method) ? method : opts[0][0];
+  const btnLabel = phase === "paying" ? "Einen Moment…" : total > 0 ? payButtonLabel(pay, total) : "Buchen";
 
   async function confirm() {
     if (!s || phase !== "form") return;
@@ -85,6 +87,7 @@ export function BookingSheet({
       matchType: players.length >= 3 ? "DOUBLE" : "SINGLE",
       participants: players.map((userId) => ({ type: "MEMBER" as const, userId })),
       hasLighting: light,
+      ...(total > 0 ? { paymentMethod: pay } : {}),
       ...(isAnon ? { guestFirstName: guest.first, guestLastName: guest.last, guestEmail: guest.email } : {}),
     }).catch(() => ({ success: false as const, error: "Verbindung fehlgeschlagen. Bitte erneut versuchen." }));
     if (!res.success) {
@@ -93,7 +96,11 @@ export function BookingSheet({
       return;
     }
     if ("checkoutUrl" in res && res.checkoutUrl) {
-      window.location.href = res.checkoutUrl;
+      window.location.assign(res.checkoutUrl);
+      return;
+    }
+    if ("manageUrl" in res && res.manageUrl) {
+      window.location.assign(res.manageUrl);
       return;
     }
     setPhase("done");
@@ -182,6 +189,10 @@ export function BookingSheet({
               <span>{base > 0 ? `CHF ${base}` : "im Abo inklusive"}</span>
             </div>
           </div>
+
+          {total > 0 && opts.length > 1 && (
+            <Segmented className="mt-3" label="Zahlungsart" value={pay} onChange={setMethod} options={opts} />
+          )}
 
           <button
             type="button"

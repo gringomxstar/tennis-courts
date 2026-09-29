@@ -34,6 +34,7 @@ export function HomeView({
   userId,
   firstName,
   partners,
+  wallet,
 }: {
   tenant: Tenant;
   courts: Court[];
@@ -43,6 +44,7 @@ export function HomeView({
   userId?: string;
   firstName?: string;
   partners: Person[];
+  wallet: number;
 }) {
   const sheet = useSheetSlot();
   // local-time rendering only on the client, so server/client never disagree about "now"
@@ -236,7 +238,7 @@ export function HomeView({
         · {open}–{close} Uhr
       </div>
 
-      <BookingSheet slug={tenant.slug} settings={settings} slot={sheet.slot} onClose={sheet.close} pool={partners} isAnon={!userId} />
+      <BookingSheet slug={tenant.slug} settings={settings} slot={sheet.slot} onClose={sheet.close} pool={partners} isAnon={!userId} wallet={wallet} />
     </>
   );
 }

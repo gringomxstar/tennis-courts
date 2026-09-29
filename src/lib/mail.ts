@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { bookingLink } from "@/lib/booking-link";
 
 const appUrl = () => process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
@@ -32,28 +33,60 @@ export async function sendMail(to: string, subject: string, text: string): Promi
   }
 }
 
-export async function sendBookingConfirmation(bookingId: string) {
+async function loadBookingForMail(bookingId: string) {
   const b = await prisma.booking
     .findUnique({ where: { id: bookingId }, include: { organizer: true, court: true, tenant: true } })
     .catch(() => null);
-  if (!b) return false;
+  if (!b) return null;
   const when = b.startsAt.toLocaleString("de-CH", {
     timeZone: "Europe/Zurich",
     dateStyle: "full",
     timeStyle: "short",
   });
   const end = b.endsAt.toLocaleTimeString("de-CH", { timeZone: "Europe/Zurich", timeStyle: "short" });
+  return { b, slot: `${b.court.name}, ${when} – ${end}`, when };
+}
+
+const PAY_NOTE: Record<string, string> = {
+  ON_SITE: "Bezahlung: vor Ort im Club",
+  INVOICE: "Bezahlung: auf Rechnung",
+};
+
+export async function sendBookingConfirmation(bookingId: string) {
+  const m = await loadBookingForMail(bookingId);
+  if (!m) return false;
+  const { b } = m;
   return sendMail(
     b.organizer.email,
-    `Buchung bestätigt: ${b.court.name}, ${when}`,
+    `Buchung bestätigt: ${b.court.name}, ${m.when}`,
     [
       `Hallo ${b.organizer.firstName}`,
       "",
       `deine Buchung beim ${b.tenant.name} ist bestätigt:`,
-      `${b.court.name}, ${when} – ${end}`,
+      m.slot,
       b.totalCost ? `Betrag: CHF ${Number(b.totalCost).toFixed(2)}` : "",
+      b.paymentMethod ? (PAY_NOTE[b.paymentMethod] ?? "") : "",
       "",
-      `Deine Buchungen: ${appUrl()}/c/${b.tenant.slug}/bookings`,
+      `Buchung ansehen oder stornieren: ${bookingLink(b.tenant.slug, b.id)}`,
+    ].join("\n")
+  );
+}
+
+export async function sendBookingCancellation(bookingId: string, refund: number) {
+  const m = await loadBookingForMail(bookingId);
+  if (!m) return false;
+  const { b } = m;
+  return sendMail(
+    b.organizer.email,
+    `Buchung storniert: ${b.court.name}, ${m.when}`,
+    [
+      `Hallo ${b.organizer.firstName}`,
+      "",
+      `deine Buchung beim ${b.tenant.name} wurde storniert:`,
+      m.slot,
+      refund > 0 ? `Rückerstattung: CHF ${refund.toFixed(2)}` : "",
+      "",
+      `Neu buchen: ${appUrl()}/c/${b.tenant.slug}/calendar`,
     ].join("\n")
   );
 }

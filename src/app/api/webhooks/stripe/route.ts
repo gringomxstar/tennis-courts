@@ -3,6 +3,7 @@ import Stripe from "stripe";
 import { getStripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
 import { markBookingPaid, releaseUnpaidBooking } from "@/lib/booking-payment";
+import { creditTopUpSession } from "@/lib/wallet";
 
 // This secret is found in the Stripe Dashboard -> Developers -> Webhooks
 const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -31,7 +32,9 @@ export async function POST(req: Request) {
       // 1. Sofortzahlung (Twint, Kreditkarte, Apple Pay)
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
-        if (session.metadata?.bookingId) {
+        if (session.metadata?.purpose === "wallet_topup") {
+          await creditTopUpSession(session.id);
+        } else if (session.metadata?.bookingId) {
           await handleBookingPaymentSuccess(session.metadata.bookingId, session.id);
         } else {
           await handlePaymentSuccess(session.customer as string, session.metadata as Record<string, string>);

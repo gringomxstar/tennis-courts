@@ -1,13 +1,15 @@
 import { getTenantContext, type TenantContext } from "@/lib/tenant";
-import { getMembershipPlansByTenantId, getUserWallet } from "@/lib/data";
+import { getMembershipPlansByTenantId, getUserClubs, getUserWallet } from "@/lib/data";
 import { prisma } from "@/lib/prisma";
 import { ProfileView } from "@/components/app/profile-view";
+import { creditTopUpSession } from "@/lib/wallet";
 
 /** Membership query mirrors the old dashboard, scoped to the tenant. */
 async function loadProfile(ctx: TenantContext) {
   const { tenant, user } = ctx;
-  if (!user) return { wallet: 0, plans: [], membership: null };
-  const [wallet, plans, m] = await Promise.all([
+  const support = { email: tenant.email, phone: tenant.phone };
+  if (!user) return { wallet: 0, plans: [], membership: null, profile: null, support, clubs: [] };
+  const [wallet, plans, m, me, clubs] = await Promise.all([
     getUserWallet(tenant.id, user.id),
     getMembershipPlansByTenantId(tenant.id),
     process.env.DATABASE_URL
@@ -19,8 +21,13 @@ async function loadProfile(ctx: TenantContext) {
           })
           .catch(() => null)
       : null,
+    process.env.DATABASE_URL ? prisma.user.findUnique({ where: { id: user.id } }).catch(() => null) : null,
+    getUserClubs(user.id),
   ]);
   return {
+    support,
+    clubs,
+    profile: me ? { firstName: me.firstName, lastName: me.lastName, phone: me.phone ?? "" } : null,
     wallet: wallet.balance,
     plans,
     membership: m
@@ -45,10 +52,12 @@ export default async function ProfilePage({
   searchParams,
 }: {
   params: Promise<{ clubSlug: string }>;
-  searchParams: Promise<{ abo?: string }>;
+  searchParams: Promise<{ abo?: string; topup?: string }>;
 }) {
-  const [{ clubSlug }, { abo }] = await Promise.all([params, searchParams]);
+  const [{ clubSlug }, { abo, topup }] = await Promise.all([params, searchParams]);
   const ctx = await getTenantContext(clubSlug);
+  // back from Stripe: credit right away instead of waiting for the webhook (idempotent)
+  if (topup && ctx.user) await creditTopUpSession(topup).catch((e) => console.error("Top-up-Abgleich:", e));
   const data = await loadProfile(ctx);
   return (
     <ProfileView

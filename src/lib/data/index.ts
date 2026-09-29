@@ -135,6 +135,8 @@ function mapPrismaBooking(b: PrismaBookingWithRelations): Booking {
     hasBallMachine: Boolean((b as { hasBallMachine?: boolean }).hasBallMachine),
     hasLighting: Boolean((b as { hasLighting?: boolean }).hasLighting),
     totalCost: Number((b as { totalCost?: unknown }).totalCost || 0),
+    paymentStatus: b.paymentStatus,
+    paymentMethod: b.paymentMethod ?? undefined,
     organizer: {
       id: b.organizer.id,
       firstName: b.organizer.firstName,
@@ -359,6 +361,7 @@ export async function getMembershipPlansByTenantId(tenantId: string): Promise<Me
           dailyBookingLimit: p.dailyBookingLimit,
           weeklyBookingLimit: p.weeklyBookingLimit,
           allowedDurations: p.allowedDurations,
+          guestsPerWeek: ((p.rulesJson ?? {}) as { guestsPerWeek?: number | null }).guestsPerWeek ?? null,
         }));
       }
     } catch (e) {
@@ -382,7 +385,7 @@ export async function updateTenantSettings(
         const updated = await prisma.tenant.update({
           where: { slug },
           data: {
-            settingsJson: mergedSettings,
+            settingsJson: mergedSettings as object,
           },
         });
         return {
@@ -424,6 +427,7 @@ export async function createMembershipPlan(
           dailyBookingLimit: plan.dailyBookingLimit,
           weeklyBookingLimit: plan.weeklyBookingLimit,
           allowedDurations: plan.allowedDurations,
+          rulesJson: { guestsPerWeek: plan.guestsPerWeek ?? null },
           status: "ACTIVE",
         },
       });
@@ -439,6 +443,7 @@ export async function createMembershipPlan(
         dailyBookingLimit: dbPlan.dailyBookingLimit,
         weeklyBookingLimit: dbPlan.weeklyBookingLimit,
         allowedDurations: dbPlan.allowedDurations,
+        guestsPerWeek: ((dbPlan.rulesJson ?? {}) as { guestsPerWeek?: number | null }).guestsPerWeek ?? null,
       };
     } catch (e) {
       dbFailed(e);
@@ -468,6 +473,7 @@ export async function updateMembershipPlan(
           ...(plan.dailyBookingLimit !== undefined && { dailyBookingLimit: plan.dailyBookingLimit }),
           ...(plan.weeklyBookingLimit !== undefined && { weeklyBookingLimit: plan.weeklyBookingLimit }),
           ...(plan.allowedDurations && { allowedDurations: plan.allowedDurations }),
+          ...(plan.guestsPerWeek !== undefined && { rulesJson: { guestsPerWeek: plan.guestsPerWeek } }),
         },
       });
       return {
@@ -482,6 +488,7 @@ export async function updateMembershipPlan(
         dailyBookingLimit: dbPlan.dailyBookingLimit,
         weeklyBookingLimit: dbPlan.weeklyBookingLimit,
         allowedDurations: dbPlan.allowedDurations,
+        guestsPerWeek: ((dbPlan.rulesJson ?? {}) as { guestsPerWeek?: number | null }).guestsPerWeek ?? null,
       };
     } catch (e) {
       dbFailed(e);
@@ -543,161 +550,57 @@ export async function getUserWallet(
           })),
         };
       }
+      return { id: "", tenantId, userId, balance: 0, currency: "CHF", transactions: [] };
     } catch (e) {
       dbFailed(e);
     }
   }
-  if (typeof mockDb.getWallet === "function") {
-    return mockDb.getWallet(tenantId, userId);
-  }
+  return mockDb.getWallet(tenantId, userId);
+}
+
+/** The user's role in this club and the plan of their active membership (fresh from the DB, not the JWT). */
+export async function getMemberContext(
+  tenantId: string,
+  userId: string
+): Promise<{ role: TenantRole | null; plan: MembershipPlan | null; favoriteUserIds: string[] }> {
+  if (!hasDbConfigured) return { role: null, plan: null, favoriteUserIds: [] };
+  const [tu, m] = await Promise.all([
+    prisma.tenantUser.findUnique({ where: { tenantId_userId: { tenantId, userId } } }),
+    prisma.membership.findFirst({
+      where: { tenantId, userId, status: "ACTIVE", OR: [{ endsAt: null }, { endsAt: { gt: new Date() } }] },
+      include: { plan: true },
+      orderBy: { startsAt: "desc" },
+    }),
+  ]);
+  const p = m?.plan;
+  const rules = (p?.rulesJson ?? {}) as { guestsPerWeek?: number | null };
   return {
-    id: `wallet-${tenantId}-${userId}`,
-    tenantId,
-    userId,
-    balance: 50,
-    currency: "CHF",
-    transactions: [],
+    role: (tu?.role as TenantRole) ?? null,
+    favoriteUserIds: tu?.favoriteUserIds ?? [],
+    plan: p
+      ? {
+          id: p.id,
+          tenantId: p.tenantId,
+          name: p.name,
+          description: p.description,
+          price: Number(p.price),
+          currency: p.currency,
+          bookingWindowDays: p.bookingWindowDays,
+          simultaneousBookingLimit: p.simultaneousBookingLimit,
+          dailyBookingLimit: p.dailyBookingLimit,
+          weeklyBookingLimit: p.weeklyBookingLimit,
+          allowedDurations: p.allowedDurations,
+          guestsPerWeek: rules.guestsPerWeek ?? null,
+        }
+      : null,
   };
 }
 
-export async function topUpUserWallet(
-  tenantId: string,
-  userId: string,
-  amount: number,
-  description?: string
-): Promise<UserWallet> {
-  const mockRes =
-    typeof mockDb.topUpWallet === "function"
-      ? mockDb.topUpWallet(tenantId, userId, amount, description)
-      : {
-          id: `wallet-${tenantId}-${userId}`,
-          tenantId,
-          userId,
-          balance: 50 + amount,
-          currency: "CHF",
-          transactions: [],
-        };
-  if (hasDbConfigured) {
-    try {
-      const updated = await prisma.userWallet.upsert({
-        where: {
-          tenantId_userId: { tenantId, userId },
-        },
-        create: {
-          tenantId,
-          userId,
-          balance: 50 + amount,
-          currency: "CHF",
-          transactions: {
-            create: {
-              amount,
-              type: "TOP_UP",
-              description: description || `Guthaben aufgeladen (+${amount} CHF)`,
-            },
-          },
-        },
-        update: {
-          balance: { increment: amount },
-          transactions: {
-            create: {
-              amount,
-              type: "TOP_UP",
-              description: description || `Guthaben aufgeladen (+${amount} CHF)`,
-            },
-          },
-        },
-        include: {
-          transactions: {
-            orderBy: { createdAt: "desc" },
-            take: 20,
-          },
-        },
-      });
-      return {
-        id: updated.id,
-        tenantId: updated.tenantId,
-        userId: updated.userId,
-        balance: Number(updated.balance),
-        currency: updated.currency,
-        transactions: updated.transactions.map((tx) => ({
-          id: tx.id,
-          walletId: tx.walletId,
-          amount: Number(tx.amount),
-          type: tx.type,
-          description: tx.description,
-          bookingId: tx.bookingId,
-          createdAt: tx.createdAt.toISOString(),
-        })),
-      };
-    } catch (e) {
-      dbFailed(e);
-    }
-  }
-  return mockRes;
+/** Active clubs the user belongs to (for the club switcher). */
+export async function getUserClubs(userId: string) {
+  if (!process.env.DATABASE_URL) return [];
+  const rows = await prisma.tenantUser
+    .findMany({ where: { userId, tenant: { status: "ACTIVE" } }, include: { tenant: true } })
+    .catch(() => []);
+  return rows.map((r) => ({ slug: r.tenant.slug, name: r.tenant.name }));
 }
-
-export async function grantAdminCredits(
-  tenantId: string,
-  userId: string,
-  amount: number,
-  reason: string
-): Promise<UserWallet> {
-  const mockRes =
-    typeof mockDb.grantAdminCredits === "function"
-      ? mockDb.grantAdminCredits(tenantId, userId, amount, reason)
-      : {
-          id: `wallet-${tenantId}-${userId}`,
-          tenantId,
-          userId,
-          balance: 50 + amount,
-          currency: "CHF",
-          transactions: [],
-        };
-  if (hasDbConfigured) {
-    try {
-      await prisma.userWallet.upsert({
-        where: {
-          tenantId_userId: { tenantId, userId },
-        },
-        create: {
-          tenantId,
-          userId,
-          balance: 50 + amount,
-          transactions: {
-            create: {
-              amount,
-              type: "ADMIN_GRANT",
-              description: `Admin-Gutschrift: ${reason} (+${amount} CHF)`,
-            },
-          },
-        },
-        update: {
-          balance: { increment: amount },
-          transactions: {
-            create: {
-              amount,
-              type: "ADMIN_GRANT",
-              description: `Admin-Gutschrift: ${reason} (+${amount} CHF)`,
-            },
-          },
-        },
-      });
-    } catch (e) {
-      dbFailed(e);
-    }
-  }
-  return mockRes;
-}
-
-export async function checkBallMachineAvailability(
-  tenantId: string,
-  startsAt: string,
-  endsAt: string,
-  excludeBookingId?: string
-): Promise<{ available: boolean; conflictCourtName?: string }> {
-  if (typeof mockDb.isBallMachineAvailable === "function") {
-    return mockDb.isBallMachineAvailable(tenantId, startsAt, endsAt, excludeBookingId);
-  }
-  return { available: true };
-}
-

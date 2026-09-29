@@ -143,6 +143,7 @@ model TenantUser {
   userId    String
   role      TenantRole @default(MEMBER)
   status    String     @default("ACTIVE")
+  favoriteUserIds String[] @default([])
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
 
@@ -306,6 +307,7 @@ model Booking {
   status         BookingStatus @default(CONFIRMED)
   bookingType    BookingType   @default(MEMBER)
   paymentStatus  PaymentStatus @default(UNPAID)
+  paymentMethod  PaymentMethod?
   stripeSessionId String?      @unique
   price          Decimal       @default(0.0) @db.Decimal(10, 2)
   totalCost      Decimal       @default(0.0) @db.Decimal(10, 2)
@@ -341,6 +343,13 @@ enum InvitationStatus {
   PENDING
   ACCEPTED
   DECLINED
+}
+
+enum PaymentMethod {
+  WALLET
+  ONLINE
+  ON_SITE
+  INVOICE
 }
 
 enum PaymentStatus {
@@ -460,6 +469,7 @@ model WalletTransaction {
   type        WalletTransactionType
   description String
   bookingId   String?
+  stripeSessionId String? // wallet top-up; crediting is idempotent via an advisory lock in src/lib/wallet.ts
   createdAt   DateTime              @default(now())
 
   wallet UserWallet @relation(fields: [walletId], references: [id], onDelete: Cascade)

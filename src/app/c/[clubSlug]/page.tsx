@@ -14,6 +14,7 @@ export default async function ClubHomePage({ params }: { params: Promise<{ clubS
       userId={d.user?.id}
       firstName={d.user?.name?.split(" ")[0] ?? ""}
       partners={d.partners}
+      wallet={d.wallet}
     />
   );
 }

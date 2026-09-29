@@ -10,7 +10,46 @@ import {
   deleteMembershipPlan,
   getMembershipPlansByTenantId,
 } from "@/lib/data";
-import { TenantSettings } from "@/types";
+import { PriceRule, TenantRole, TenantSettings } from "@/types";
+import { prisma } from "@/lib/prisma";
+import { LIMIT_ROLES, SPORTS } from "@/lib/booking-rules";
+
+function cleanSlotLimits(v: TenantSettings["slotLimits"]): TenantSettings["slotLimits"] {
+  const out: NonNullable<TenantSettings["slotLimits"]> = {};
+  for (const [role] of LIMIT_ROLES) {
+    const row = v?.[role];
+    if (!row) continue;
+    out[role] = {};
+    for (const [sport] of SPORTS) {
+      const n = row[sport];
+      out[role]![sport] = n == null || !Number.isFinite(Number(n)) ? null : Math.max(0, Math.min(50, Math.round(Number(n))));
+    }
+  }
+  return out;
+}
+
+const num = (v: unknown) => (v === "" || v == null || !Number.isFinite(Number(v)) ? undefined : Number(v));
+
+function cleanPriceRules(rules: PriceRule[] | undefined): PriceRule[] | string {
+  const out: PriceRule[] = [];
+  for (const r of rules ?? []) {
+    const percent = Number(r.percent);
+    if (!r.label?.trim() || !Number.isFinite(percent) || percent < -100 || percent > 200) {
+      return "Jede Preisregel braucht einen Namen und einen Prozentwert zwischen -100 und 200.";
+    }
+    const weekdays = (r.weekdays ?? []).filter((d) => Number.isInteger(d) && d >= 0 && d <= 6);
+    out.push({
+      label: r.label.trim().slice(0, 40),
+      percent,
+      ...(weekdays.length ? { weekdays } : {}),
+      ...(num(r.fromHour) != null ? { fromHour: num(r.fromHour) } : {}),
+      ...(num(r.toHour) != null ? { toHour: num(r.toHour) } : {}),
+      ...(num(r.minLeadHours) != null ? { minLeadHours: num(r.minLeadHours) } : {}),
+      ...(num(r.maxLeadHours) != null ? { maxLeadHours: num(r.maxLeadHours) } : {}),
+    });
+  }
+  return out.slice(0, 20);
+}
 
 async function verifyClubAdmin(clubSlug: string) {
   const session = await auth();
@@ -91,7 +130,19 @@ export async function updateClubSettingsAction(
     };
   }
 
+  const priceRules = cleanPriceRules(settings.priceRules);
+  if (typeof priceRules === "string") return { success: false, error: priceRules };
+  const late = Number(settings.lateBookingMinutes ?? 15);
+  if (!(late >= 0 && late <= 120)) {
+    return { success: false, error: "Buchen nach Spielbeginn: 0 bis 120 Minuten." };
+  }
+
   const updated = await updateTenantSettings(clubSlug, {
+    slotLimits: cleanSlotLimits(settings.slotLimits),
+    lateBookingMinutes: late,
+    payOnSite: Boolean(settings.payOnSite),
+    payByInvoice: Boolean(settings.payByInvoice),
+    priceRules,
     openingHour: opening,
     closingHour: closing,
     slotDurationMinutes: slotDuration,
@@ -129,6 +180,7 @@ export interface CreateMembershipPlanInput {
   dailyBookingLimit: number;
   weeklyBookingLimit: number;
   allowedDurations: number[];
+  guestsPerWeek?: number | null;
 }
 
 export async function createMembershipPlanAction(
@@ -166,6 +218,7 @@ export async function createMembershipPlanAction(
       input.allowedDurations && input.allowedDurations.length > 0
         ? input.allowedDurations
         : [60],
+    guestsPerWeek: input.guestsPerWeek == null ? null : Math.max(0, Math.round(Number(input.guestsPerWeek))),
   });
 
   revalidatePath(`/c/${clubSlug}/admin`);
@@ -218,5 +271,25 @@ export async function deleteMembershipPlanAction(
   }
 
   revalidatePath(`/c/${clubSlug}/admin`);
+  return { success: true };
+}
+
+const ASSIGNABLE_ROLES: TenantRole[] = ["MEMBER", "COACH", "GUEST", "CLUB_ADMIN"];
+
+export async function setMemberRoleAction(clubSlug: string, userId: string, role: TenantRole) {
+  const authCheck = await verifyClubAdmin(clubSlug);
+  if (!authCheck.authorized || !authCheck.tenant) {
+    return { success: false, error: authCheck.error };
+  }
+  if (!ASSIGNABLE_ROLES.includes(role)) return { success: false, error: "Ungültige Rolle." };
+  if (userId === authCheck.session?.user.id) {
+    return { success: false, error: "Die eigene Rolle kann nicht geändert werden." };
+  }
+  const r = await prisma.tenantUser.updateMany({
+    where: { tenantId: authCheck.tenant.id, userId, role: { not: "PLATFORM_ADMIN" } },
+    data: { role },
+  });
+  if (!r.count) return { success: false, error: "Mitglied nicht gefunden." };
+  revalidatePath(`/c/${clubSlug}/admin`, "layout");
   return { success: true };
 }

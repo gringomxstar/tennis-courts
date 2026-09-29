@@ -27,6 +27,8 @@ export function CalendarView({
   blocks,
   userId,
   partners,
+  wallet,
+  windowDays,
 }: {
   tenant: Tenant;
   courts: Court[];
@@ -34,6 +36,9 @@ export function CalendarView({
   blocks: CourtBlock[];
   userId?: string;
   partners: Person[];
+  wallet: number;
+  /** Booking window of the user's plan; the strip never shows more than 7 days. */
+  windowDays: number | null;
 }) {
   const router = useRouter();
   const sheet = useSheetSlot();
@@ -48,11 +53,13 @@ export function CalendarView({
   const weekHours = Array.from({ length: close - open }, (_, i) => open + i);
 
   const date = useMemo(() => (ready ? addDays(startOfToday(), day) : null), [ready, day]);
-  const days = ready ? Array.from({ length: 7 }, (_, i) => addDays(startOfToday(), i)) : [];
+  const days = ready ? Array.from({ length: Math.max(1, Math.min(7, windowDays ?? 7)) }, (_, i) => addDays(startOfToday(), i)) : [];
+  // a running slot stays bookable for lateBookingMinutes after its start
+  const bookableFrom = nowMs - (tenant.settingsJson?.lateBookingMinutes ?? 15) * 60_000;
 
   const cell = (court: Court, h: number) => {
     const start = atHour(date!, h);
-    return { start, state: slotState(court.id, start, 60, bookings, blocks, userId, nowMs) };
+    return { start, state: slotState(court.id, start, 60, bookings, blocks, userId, bookableFrom) };
   };
   const tap = (court: Court, start: Date, state: SlotState) => {
     if (state === "free") sheet.open({ court, start });
@@ -229,7 +236,7 @@ export function CalendarView({
         </>
       )}
 
-      <BookingSheet slug={tenant.slug} settings={tenant.settingsJson} slot={sheet.slot} onClose={sheet.close} pool={partners} isAnon={!userId} />
+      <BookingSheet slug={tenant.slug} settings={tenant.settingsJson} slot={sheet.slot} onClose={sheet.close} pool={partners} isAnon={!userId} wallet={wallet} />
     </>
   );
 }

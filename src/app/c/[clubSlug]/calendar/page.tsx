@@ -12,6 +12,8 @@ export default async function CalendarPage({ params }: { params: Promise<{ clubS
       blocks={d.blocks}
       userId={d.user?.id}
       partners={d.partners}
+      wallet={d.wallet}
+      windowDays={d.windowDays}
     />
   );
 }

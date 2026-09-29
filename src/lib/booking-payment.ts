@@ -9,11 +9,18 @@ import { sendBookingConfirmation } from "@/lib/mail";
  */
 export async function markBookingPaid(bookingId: string, stripeSessionId: string) {
   const result = await prisma.booking.updateMany({
-    where: { id: bookingId, paymentStatus: { not: "PAID" } },
+    where: { id: bookingId, paymentStatus: { not: "PAID" }, status: { not: "CANCELLED" } },
     data: { status: "CONFIRMED", paymentStatus: "PAID", stripeSessionId },
   });
   // Nur beim tatsächlichen Übergang senden — Webhook-Retries/Abgleich lösen keine Doppel-Mail aus.
   if (result.count > 0) await sendBookingConfirmation(bookingId);
+  else {
+    // Bezahlt, nachdem die Buchung storniert/abgelaufen war: Geld zurück statt behalten.
+    const b = await prisma.booking.findUnique({ where: { id: bookingId } });
+    if (b?.status === "CANCELLED" && b.paymentStatus !== "PAID") {
+      await refundStripeBooking(stripeSessionId).catch((e) => console.error(`Rückerstattung ${bookingId}:`, e));
+    }
+  }
   return result.count > 0;
 }
 
@@ -54,4 +61,14 @@ export async function syncPendingBookingPayments(tenantId: string) {
       }
     })
   );
+}
+
+/** Refund a booking paid through Stripe Checkout. Returns the refunded CHF amount (0 if nothing was paid). */
+export async function refundStripeBooking(stripeSessionId: string) {
+  const stripe = getStripe();
+  const s = await stripe.checkout.sessions.retrieve(stripeSessionId);
+  const pi = typeof s.payment_intent === "string" ? s.payment_intent : s.payment_intent?.id;
+  if (!pi || s.payment_status !== "paid") return 0;
+  await stripe.refunds.create({ payment_intent: pi }, { idempotencyKey: `refund-${stripeSessionId}` });
+  return (s.amount_total ?? 0) / 100;
 }

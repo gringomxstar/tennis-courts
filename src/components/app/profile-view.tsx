@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { loginWithCredentials, logoutAction, registerUserAction } from "@/app/actions/auth";
 import { topUpWalletAction } from "@/app/actions/booking";
+import { updateProfileAction } from "@/app/actions/profile";
 import { Segmented } from "@/components/app/segmented";
 import { SwitchKnob } from "@/components/app/switch";
 import { Sheet } from "@/components/app/sheet";
@@ -34,6 +35,9 @@ export function ProfileView({
   wallet,
   plans,
   membership,
+  profile,
+  support,
+  clubs,
 }: {
   slug: string;
   clubName: string;
@@ -44,6 +48,9 @@ export function ProfileView({
   wallet: number;
   plans: MembershipPlan[];
   membership: { planId: string; name: string; price: number; validity: string } | null;
+  profile: { firstName: string; lastName: string; phone: string } | null;
+  support: { email?: string | null; phone?: string | null };
+  clubs: { slug: string; name: string }[];
 }) {
   const router = useRouter();
   const club = clubName.replace(/^Tennis Club /, "TC ");
@@ -68,14 +75,32 @@ export function ProfileView({
     return res;
   }, undefined);
 
-  // --- wallet
-  const [balance, setBalance] = useState(wallet);
+  // --- wallet (paid through Stripe Checkout, credited on return / by the webhook)
+  const [topping, setTopping] = useState<number | null>(null);
   async function topUp(v: number) {
-    const res = await topUpWalletAction({ clubSlug: slug, amount: v });
-    if (!res.success) return void toast(res.error ?? "Aufladen fehlgeschlagen");
-    if (typeof res.balance === "number") setBalance(res.balance);
-    toast(`CHF ${v} aufgeladen`);
+    if (topping) return;
+    setTopping(v);
+    const res = await topUpWalletAction({ clubSlug: slug, amount: v }).catch(() => null);
+    if (res?.success && res.checkoutUrl) return window.location.assign(res.checkoutUrl);
+    setTopping(null);
+    toast(res?.error ?? "Aufladen fehlgeschlagen");
   }
+
+  // --- profile
+  const [editing, setEditing] = useState(false);
+  const [, profileAction, profilePending] = useActionState(async (_: unknown, fd: FormData) => {
+    const res = await updateProfileAction(slug, {
+      firstName: String(fd.get("firstName") ?? ""),
+      lastName: String(fd.get("lastName") ?? ""),
+      phone: String(fd.get("phone") ?? ""),
+    });
+    toast(res.success ? "Profil gespeichert" : (res.error ?? "Speichern fehlgeschlagen"));
+    if (res.success) {
+      setEditing(false);
+      router.refresh();
+    }
+    return res;
+  }, undefined);
 
   // --- Abo sheet
   const [sheetOpen, setSheetOpen] = useState(openAbo && member);
@@ -183,7 +208,7 @@ export function ProfileView({
             </button>
           </form>
           <div className="mx-5 mt-3 rounded-[22px] bg-inset px-[18px] py-4 text-[15px] leading-[1.45] text-muted-foreground lg:max-w-[480px]">
-            Als Gast zahlst du pro Platz mit Twint. Mit einem Abo ist Spielen inklusive.
+            Als Gast zahlst du pro Platz online. Mit einem Abo ist Spielen inklusive.
           </div>
         </>
       )}
@@ -204,7 +229,7 @@ export function ProfileView({
             </div>
             <div className="mt-1 text-[52px] font-bold leading-[1.1] tracking-[-.045em]">
               <span className="text-[22px] tracking-normal text-muted-foreground">CHF </span>
-              {fmt(balance)}
+              {fmt(wallet)}
             </div>
             <div className="mt-[14px] flex gap-2">
               {[20, 50, 100].map((v) => (
@@ -213,9 +238,10 @@ export function ProfileView({
                   type="button"
                   aria-label={`CHF ${v} aufladen`}
                   onClick={() => topUp(v)}
-                  className="flex h-11 flex-1 items-center justify-center rounded-[14px] bg-inset text-[15px] font-bold active:scale-[.94]"
+                  disabled={topping !== null}
+                  className="flex h-11 flex-1 items-center justify-center gap-2 rounded-[14px] bg-inset text-[15px] font-bold active:scale-[.94]"
                 >
-                  + {v}
+                  {topping === v && <Spinner />}+ {v}
                 </button>
               ))}
             </div>
@@ -236,6 +262,85 @@ export function ProfileView({
             </button>
           </div>
         </>
+      )}
+
+      {profile && (
+        <div className="px-5 pt-3">
+          {editing ? (
+            <form action={profileAction} className={`${card} p-5`}>
+              <div className={label}>Meine Daten</div>
+              <div className="mt-3 flex flex-col gap-2.5">
+                <div className="flex gap-2.5">
+                  <input name="firstName" required defaultValue={profile.firstName} aria-label="Vorname" placeholder="Vorname" autoComplete="given-name" className={`${input} min-w-0 flex-1`} />
+                  <input name="lastName" required defaultValue={profile.lastName} aria-label="Nachname" placeholder="Nachname" autoComplete="family-name" className={`${input} min-w-0 flex-1`} />
+                </div>
+                <input name="phone" type="tel" defaultValue={profile.phone} aria-label="Telefon" placeholder="Telefon" autoComplete="tel" className={input} />
+              </div>
+              <div className="mt-3 flex gap-2">
+                <button type="button" onClick={() => setEditing(false)} className="h-12 flex-1 rounded-[15px] bg-inset text-[16px] font-bold">
+                  Abbrechen
+                </button>
+                <button type="submit" disabled={profilePending} className="flex h-12 flex-1 items-center justify-center gap-2 rounded-[15px] bg-clay text-[16px] font-bold text-white">
+                  {profilePending && <Spinner />}Speichern
+                </button>
+              </div>
+            </form>
+          ) : (
+            <button type="button" onClick={() => setEditing(true)} className={row}>
+              <span className="flex-1">
+                <span className="block text-[17px] font-semibold">Meine Daten</span>
+                <span className="block text-[14px] text-muted-foreground">
+                  {`${profile.firstName} ${profile.lastName}`.trim()}
+                  {profile.phone ? ` · ${profile.phone}` : ""}
+                </span>
+              </span>
+              <span className="text-[14px] font-bold text-clay-text">Bearbeiten</span>
+            </button>
+          )}
+        </div>
+      )}
+
+      {clubs.length > 1 && (
+        <div className="px-5 pt-3">
+          <div className={`${card} p-5`}>
+            <div className={label}>Club wechseln</div>
+            <div className="mt-2.5 flex flex-col gap-2">
+              {clubs.map((c) => (
+                <button
+                  key={c.slug}
+                  type="button"
+                  aria-current={c.slug === slug}
+                  onClick={() => router.push(`/c/${c.slug}`)}
+                  className={`flex h-12 items-center justify-between rounded-[15px] px-4 text-[16px] font-semibold ${c.slug === slug ? "bg-clay text-white" : "bg-inset"}`}
+                >
+                  {c.name}
+                  {c.slug === slug && <span className="text-[13px] font-bold">Aktiv</span>}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {(support.email || support.phone) && (
+        <div className="px-5 pt-3">
+          <div className={`${card} p-5`}>
+            <div className={label}>Hilfe &amp; Kontakt</div>
+            <div className="mt-1 text-[15px] text-muted-foreground">Fragen zu Buchungen oder deinem Abo? Der Club hilft dir weiter.</div>
+            <div className="mt-3 flex gap-2">
+              {support.email && (
+                <a href={`mailto:${support.email}`} className="flex h-12 flex-1 items-center justify-center rounded-[15px] bg-inset text-[15px] font-bold text-clay-text">
+                  E-Mail
+                </a>
+              )}
+              {support.phone && (
+                <a href={`tel:${support.phone.replace(/\s+/g, "")}`} className="flex h-12 flex-1 items-center justify-center rounded-[15px] bg-inset text-[15px] font-bold text-clay-text">
+                  Anrufen
+                </a>
+              )}
+            </div>
+          </div>
+        </div>
       )}
 
       <div className="px-5 pt-3">
@@ -283,7 +388,7 @@ export function ProfileView({
               className="mt-4 flex h-[60px] w-full items-center justify-center gap-2.5 rounded-[20px] bg-clay text-[18px] font-bold text-white active:scale-[.97]"
             >
               {paying && <Spinner />}
-              {paying ? "Twint…" : sp.price ? `Mit Twint bezahlen · CHF ${fmt(sp.price)}` : "Gast-Pass wählen"}
+              {paying ? "Weiterleiten…" : sp.price ? `Bezahlen · CHF ${fmt(sp.price)}` : "Gast-Pass wählen"}
             </button>
           )}
         </Sheet>
