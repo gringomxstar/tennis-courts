@@ -59,7 +59,7 @@ export function ReserveView({
 }) {
   const router = useRouter();
   const startDate = new Date(start);
-  const [rtype, setRtype] = useState<"single" | "double">(initialPlayers.length > 1 ? "double" : "single");
+  const [rtype, setRtype] = useState<"single" | "double">(initialPlayers.length > 2 ? "double" : "single");
   const [dur, setDur] = useState<1 | 2>(1);
   const [players, setPlayers] = useState<string[]>(initialPlayers);
   const [ball, setBall] = useState(false);
@@ -82,11 +82,12 @@ export function ReserveView({
   const others = members.filter((m) => m.id !== userId);
   const byId = new Map(others.map((m) => [m.id, m]));
   const nameOf = (id: string) => byId.get(id)?.name ?? "";
-  const max = rtype === "double" ? 3 : 1;
+  // single: 1–3 partners (2–4 players), double: at least 3 partners (4+ players)
+  const max = rtype === "double" ? 5 : 3;
   const count = players.length + guests.length;
   const full = () => {
     if (count < max) return false;
-    toast(max === 1 ? "Einzel: 1 Mitspieler. Für mehr auf Doppel wechseln" : "Maximal 3 Mitspieler");
+    toast(`Maximal ${max} Mitspieler`);
     return true;
   };
   const toggle = (id: string) => {
@@ -219,7 +220,7 @@ export function ReserveView({
               value={rtype}
               onChange={(v) => {
                 setRtype(v);
-                const m = v === "double" ? 3 : 1;
+                const m = v === "double" ? 5 : 3;
                 setPlayers(players.slice(0, m));
                 setGuests(guests.slice(0, Math.max(0, m - Math.min(players.length, m))));
                 if (v === "single") setDur(1);
@@ -436,7 +437,7 @@ export function ReserveView({
             {until !== null ? "Serie buchen" : cost.total > 0 ? payButtonLabel(pay, cost.total) : "Reservieren"}
           </button>
           {until === null && rtype === "double" && count < 3 && (
-            <div className="text-center text-[13px] text-muted-foreground lg:max-w-md">Doppel: wähle 3 Mitspieler oder Gäste (noch {3 - count}).</div>
+            <div className="text-center text-[13px] text-muted-foreground lg:max-w-md">Doppel: wähle mindestens 3 Mitspieler oder Gäste (noch {3 - count}).</div>
           )}
           {needPartner && count === 0 && rtype === "single" && (
             <div className="text-center text-[13px] text-muted-foreground lg:max-w-md">Wähle mindestens einen Mitspieler oder füge einen Gast hinzu.</div>

@@ -182,8 +182,9 @@ export async function createBookingAction(input: CreateBookingInput) {
   } else if (input.guestName) {
     rawParticipants.push({ type: "GUEST", guestName: input.guestName });
   }
-  if (rawParticipants.length > 3) {
-    return { success: false, error: "Maximal 3 Mitspieler pro Buchung." };
+  const maxPartners = input.matchType === "DOUBLE" ? 5 : 3;
+  if (rawParticipants.length > maxPartners) {
+    return { success: false, error: `Maximal ${maxPartners} Mitspieler pro Buchung.` };
   }
   const memberIds = [
     ...new Set(rawParticipants.filter((p) => p.type === "MEMBER" && p.userId).map((p) => p.userId!)),
