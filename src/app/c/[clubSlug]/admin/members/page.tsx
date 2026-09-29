@@ -12,7 +12,10 @@ export default async function AdminMembersPage({ params }: { params: Promise<{ c
 
   // Memberships are Postgres/Stripe-only (see api/checkout/route.ts), no mockDb equivalent,
   // so this queries Prisma directly, same as the invoice lookup on the old admin page.
-  const best = new Map<string, { status: keyof typeof RANK; planName: string; planId: string; stripeCustomerId: string | null }>();
+  const best = new Map<string, {
+    status: keyof typeof RANK; planName: string; planId: string; stripeCustomerId: string | null;
+    startsAt: Date; endsAt: Date | null; paidAt: Date | null; pricePaid: number | null;
+  }>();
   const profile = new Map<string, { birthDate: string; gender: string }>();
   if (process.env.DATABASE_URL) {
     const memberships = await prisma.membership.findMany({
@@ -23,7 +26,10 @@ export default async function AdminMembersPage({ params }: { params: Promise<{ c
     for (const m of memberships) {
       const cur = best.get(m.userId);
       if (!cur || RANK[m.status] < RANK[cur.status]) {
-        best.set(m.userId, { status: m.status, planName: m.plan.name, planId: m.plan.id, stripeCustomerId: m.user.stripeCustomerId });
+        best.set(m.userId, {
+          status: m.status, planName: m.plan.name, planId: m.plan.id, stripeCustomerId: m.user.stripeCustomerId,
+          startsAt: m.startsAt, endsAt: m.endsAt, paidAt: m.paidAt, pricePaid: m.pricePaid == null ? null : Number(m.pricePaid),
+        });
       }
     }
   }
@@ -53,6 +59,11 @@ export default async function AdminMembersPage({ params }: { params: Promise<{ c
         birthDate: profile.get(m.id)?.birthDate ?? "",
         gender: profile.get(m.id)?.gender ?? "",
         planId: ms && (ms.status === "ACTIVE" || ms.status === "PENDING") ? ms.planId : "",
+        planStatus: ms?.status ?? null,
+        planStart: ms?.startsAt.toISOString() ?? "",
+        planEnd: ms?.endsAt?.toISOString() ?? "",
+        paidAt: ms?.paidAt?.toISOString() ?? "",
+        pricePaid: ms?.pricePaid ?? null,
       };
     });
 
@@ -61,7 +72,7 @@ export default async function AdminMembersPage({ params }: { params: Promise<{ c
       <div className="flex items-end justify-between gap-3 px-5 pt-[66px] lg:pt-12">
         <div>
           <h1 className="text-[34px] font-bold tracking-[-.035em]">Mitglieder</h1>
-          <div className="mt-0.5 text-[15px] text-muted-foreground">Zahlungen Saison {new Date().getFullYear()}</div>
+          <div className="mt-0.5 text-[15px] text-muted-foreground">Abos & Zahlungen</div>
         </div>
         <ImportMembers slug={tenant.slug} />
       </div>

@@ -7,7 +7,7 @@ import { Avatar, Spinner } from "@/components/app/avatar";
 import { Sheet } from "@/components/app/sheet";
 import { AdminGrantCreditsButton } from "@/components/admin/admin-grant-credits-button";
 import { markInvoiceAsPaidManually, sendPaymentReminderAction } from "@/actions/admin-billing";
-import { importMembersAction, markMembershipPaidAction, removeMemberAction, saveMemberAction, setMemberRoleAction, type MemberInput } from "@/app/actions/club-settings";
+import { importMembersAction, markMembershipPaidAction, removeMemberAction, saveMemberAction, type MemberInput } from "@/app/actions/club-settings";
 import { parseMembers } from "@/lib/member-import";
 import type { TenantRole } from "@/types";
 import { initials } from "@/lib/courts";
@@ -27,6 +27,12 @@ export interface MemberRow {
   gender: string;
   /** current ACTIVE/PENDING plan */
   planId: string;
+  /** most relevant membership (active first), empty when none */
+  planStatus: "ACTIVE" | "PENDING" | "EXPIRED" | "CANCELLED" | null;
+  planStart: string;
+  planEnd: string;
+  paidAt: string;
+  pricePaid: number | null;
 }
 
 export interface PlanOption {
@@ -43,6 +49,30 @@ const ROLES: [TenantRole, string][] = [
 ];
 
 const pill = "rounded-full px-3.5 py-2 text-[13px] font-bold";
+const DAY = 86_400_000;
+const date = (iso: string) => new Date(iso).toLocaleDateString("de-CH", { day: "numeric", month: "numeric", year: "numeric", timeZone: "Europe/Zurich" });
+const daysLeft = (m: MemberRow) => (m.planId && m.planEnd ? Math.ceil((Date.parse(m.planEnd) - Date.now()) / DAY) : null);
+
+/** "bis 31.3.2027" with a warning tone near/after the end. */
+function Validity({ m }: { m: MemberRow }) {
+  const d = daysLeft(m);
+  if (d === null) return <span className="text-muted-foreground">–</span>;
+  return (
+    <span className={cn(d < 0 ? "text-destructive" : d <= 30 ? "text-amber-600" : "text-muted-foreground")}>
+      bis {date(m.planEnd)}
+      {d < 0 ? " · abgelaufen" : d <= 30 ? ` · noch ${d} T.` : ""}
+    </span>
+  );
+}
+
+const FILTERS = [
+  ["all", "Alle", () => true],
+  ["abo", "Mit Abo", (m: MemberRow) => Boolean(m.planId)],
+  ["none", "Ohne Abo", (m: MemberRow) => !m.planId],
+  ["open", "Unbezahlt", (m: MemberRow) => m.state === "invoice"],
+  ["soon", "Läuft ab", (m: MemberRow) => (daysLeft(m) ?? Infinity) <= 30],
+] as const;
+type FilterId = (typeof FILTERS)[number][0];
 
 export function AdminMembers({ slug, tenantId, members, plans }: { slug: string; tenantId: string; members: MemberRow[]; plans: PlanOption[] }) {
   const [editing, setEditing] = useState<MemberRow | "new" | null>(null);
@@ -51,8 +81,10 @@ export function AdminMembers({ slug, tenantId, members, plans }: { slug: string;
   const [paid, setPaid] = useState<string[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
   const [q, setQ] = useState("");
+  const [filter, setFilter] = useState<FilterId>("all");
   const needle = q.trim().toLowerCase();
-  const shown = needle ? members.filter((m) => `${m.name} ${m.email}`.toLowerCase().includes(needle)) : members;
+  const test = FILTERS.find(([id]) => id === filter)![2];
+  const shown = members.filter((m) => test(m) && (!needle || `${m.name} ${m.email} ${m.plan}`.toLowerCase().includes(needle)));
 
   async function markPaid(m: MemberRow) {
     if (busy) return;
@@ -67,12 +99,6 @@ export function AdminMembers({ slug, tenantId, members, plans }: { slug: string;
       return;
     }
     setPaid((p) => [...p, m.id]);
-    router.refresh();
-  }
-
-  async function setRole(m: MemberRow, role: TenantRole) {
-    const res = await setMemberRoleAction(slug, m.id, role);
-    toast(res.success ? `${m.name}: ${ROLES.find(([r]) => r === role)?.[1]}` : (res.error ?? "Rolle nicht geändert"));
     router.refresh();
   }
 
@@ -104,67 +130,102 @@ export function AdminMembers({ slug, tenantId, members, plans }: { slug: string;
           + Mitglied
         </button>
       </div>
-      <MemberSheet slug={slug} plans={plans} member={editing} onClose={() => setEditing(null)} />
-      <div className="flex flex-col gap-2.5 px-5 pt-3 lg:grid lg:grid-cols-2">
-      {needle && !shown.length && <div className="py-6 text-center text-[15px] text-muted-foreground">Niemand gefunden</div>}
-      {shown.map((m) => {
-        const isPaid = m.state === "paid" || paid.includes(m.id);
-        const sent = reminded.includes(m.id);
-        return (
-          <div key={m.id} className="flex items-center gap-3 rounded-[20px] border border-border bg-card px-4 py-3.5">
-            <Avatar ini={initials(m.name)} />
-            <div className="min-w-0 flex-1">
-              <button type="button" onClick={() => setEditing(m)} aria-label={`${m.name} bearbeiten`} className="block w-full min-w-0 text-left">
-                <div className="text-[16px] font-bold underline-offset-2 hover:underline">{m.name}</div>
-                <div className="truncate text-[13px] text-muted-foreground">{m.email}</div>
-                <div className="text-[14px] text-muted-foreground">{m.plan}</div>
-              </button>
-              <div className="mt-1.5 flex flex-wrap items-center gap-2">
-              {m.role !== "PLATFORM_ADMIN" && (
-                <select
-                  aria-label={`Rolle von ${m.name}`}
-                  value={m.role}
-                  onChange={(e) => setRole(m, e.target.value as TenantRole)}
-                  className="h-8 rounded-full border border-border bg-inset px-3 text-[13px] font-bold text-foreground outline-none"
-                >
-                  {ROLES.map(([r, l]) => (
-                    <option key={r} value={r}>
-                      {l}
-                    </option>
-                  ))}
-                </select>
+      <div className="no-scrollbar flex gap-2 overflow-x-auto px-5 pt-3">
+        {FILTERS.map(([id, label, t]) => {
+          const on = filter === id;
+          return (
+            <button
+              key={id}
+              type="button"
+              aria-pressed={on}
+              onClick={() => setFilter(id)}
+              className={cn(
+                "flex-none rounded-full border px-4 py-2 text-[14px] font-semibold",
+                on ? "border-foreground bg-foreground text-background" : "border-border text-foreground"
               )}
-              <AdminGrantCreditsButton clubSlug={slug} userId={m.id} userName={m.name} />
+            >
+              {label} <span className="opacity-60">{members.filter(t).length}</span>
+            </button>
+          );
+        })}
+      </div>
+      <MemberSheet slug={slug} plans={plans} member={editing} onClose={() => setEditing(null)} />
+      {/* desktop: scannable table; mobile: the same rows stack as cards */}
+      <div className="flex flex-col gap-2 px-5 pt-3 lg:gap-0 lg:overflow-hidden lg:rounded-[20px] lg:border lg:border-border lg:bg-card lg:mx-5 lg:mt-3 lg:px-0 lg:pt-0">
+        <div className="hidden grid-cols-[minmax(0,2.2fr)_minmax(0,1.6fr)_minmax(0,1.4fr)_150px] gap-4 border-b border-border px-5 py-3 text-[12px] font-bold uppercase tracking-[.06em] text-muted-foreground lg:grid">
+          <span>Mitglied</span>
+          <span>Abo</span>
+          <span>Gültigkeit</span>
+          <span className="text-right">Zahlung</span>
+        </div>
+        {!shown.length && <div className="py-6 text-center text-[15px] text-muted-foreground">Niemand gefunden</div>}
+        {shown.map((m) => {
+          const isPaid = m.state === "paid" || paid.includes(m.id);
+          const sent = reminded.includes(m.id);
+          const role = m.role !== "MEMBER" ? ROLES.find(([r]) => r === m.role)?.[1] : null;
+          return (
+            <div
+              key={m.id}
+              className="flex items-center gap-3 rounded-[20px] border border-border bg-card px-4 py-3 lg:grid lg:grid-cols-[minmax(0,2.2fr)_minmax(0,1.6fr)_minmax(0,1.4fr)_150px] lg:gap-4 lg:rounded-none lg:border-0 lg:border-b lg:px-5 lg:last:border-b-0 lg:hover:bg-inset/50"
+            >
+              <button type="button" onClick={() => setEditing(m)} aria-label={`${m.name} bearbeiten`} className="flex min-w-0 flex-1 items-center gap-3 text-left">
+                <Avatar ini={initials(m.name)} />
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-center gap-2">
+                    <span className="truncate text-[16px] font-bold underline-offset-2 hover:underline">{m.name}</span>
+                    {role && <span className="shrink-0 rounded-full bg-inset px-2 py-0.5 text-[11px] font-bold uppercase tracking-[.04em] text-muted-foreground">{role}</span>}
+                  </span>
+                  <span className="block truncate text-[13px] text-muted-foreground">{m.email}</span>
+                  {/* mobile: Abo + validity under the name */}
+                  <span className="block truncate text-[13px] lg:hidden">
+                    {m.planId ? <><b className="font-semibold">{m.plan}</b> · <Validity m={m} /></> : <span className="text-muted-foreground">Kein Abo</span>}
+                  </span>
+                </span>
+              </button>
+              <div className="hidden min-w-0 lg:block">
+                {m.planId ? (
+                  <>
+                    <div className="truncate text-[15px] font-semibold">{m.plan}</div>
+                    {m.pricePaid != null && <div className="text-[13px] text-muted-foreground">CHF {m.pricePaid}</div>}
+                  </>
+                ) : (
+                  <span className="text-[15px] text-muted-foreground">Kein Abo</span>
+                )}
+              </div>
+              <div className="hidden text-[14px] lg:block">
+                <Validity m={m} />
+                {m.planId && m.planStart && <div className="text-[12px] text-muted-foreground">seit {date(m.planStart)}</div>}
+              </div>
+              <div className="shrink-0 lg:flex lg:justify-end">
+                {isPaid ? (
+                  <span className={cn(pill, "bg-paid-bg text-paid-fg")}>Bezahlt</span>
+                ) : m.state === "invoice" ? (
+                  <button
+                    type="button"
+                    onClick={() => markPaid(m)}
+                    disabled={busy === m.id}
+                    aria-label={`Rechnung von ${m.name} als bezahlt markieren`}
+                    className={cn(pill, "bg-clay text-white")}
+                  >
+                    Bezahlt markieren
+                  </button>
+                ) : m.role === "CLUB_ADMIN" || m.role === "COACH" ? null : sent ? (
+                  <span className={cn(pill, "bg-inset text-muted-foreground")}>Gesendet</span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => remind(m)}
+                    disabled={busy === m.id}
+                    aria-label={`Zahlungserinnerung an ${m.name} senden`}
+                    className={cn(pill, "border border-border text-foreground")}
+                  >
+                    Erinnern
+                  </button>
+                )}
               </div>
             </div>
-            {isPaid ? (
-              <span className={cn(pill, "bg-paid-bg text-paid-fg")}>Bezahlt</span>
-            ) : m.state === "invoice" ? (
-              <button
-                type="button"
-                onClick={() => markPaid(m)}
-                disabled={busy === m.id}
-                aria-label={`Rechnung von ${m.name} als bezahlt markieren`}
-                className={cn(pill, "bg-clay text-white")}
-              >
-                Bezahlt markieren
-              </button>
-            ) : m.role === "CLUB_ADMIN" || m.role === "COACH" ? null : sent ? (
-              <span className={cn(pill, "bg-inset text-muted-foreground")}>Gesendet</span>
-            ) : (
-              <button
-                type="button"
-                onClick={() => remind(m)}
-                disabled={busy === m.id}
-                aria-label={`Zahlungserinnerung an ${m.name} senden`}
-                className={cn(pill, "bg-clay text-white")}
-              >
-                Erinnern
-              </button>
-            )}
-          </div>
-        );
-      })}
+          );
+        })}
       </div>
     </>
   );
@@ -390,20 +451,83 @@ function MemberSheet({ slug, plans, member, onClose }: { slug: string; plans: Pl
               </select>
             </label>
           </div>
-          <label className="block">
+          <div>
             <span className={fieldLabel}>Rolle</span>
-            <select value={f.role} onChange={(e) => set({ role: e.target.value as TenantRole })} className={field}>
-              {ROLES.map(([r, l]) => <option key={r} value={r}>{l}</option>)}
-            </select>
-          </label>
-          <label className="block">
-            <span className={fieldLabel}>Abo {current?.planId ? `(aktuell: ${current.plan})` : ""}</span>
-            <select value={f.planId} onChange={(e) => set({ planId: e.target.value })} className={field}>
-              <option value="">{current?.planId ? "unverändert" : "kein Abo"}</option>
-              {plans.map((p) => <option key={p.id} value={p.id}>{p.name} · CHF {p.price}</option>)}
-              {current?.planId && <option value="__end">Abo beenden</option>}
-            </select>
-          </label>
+            <div className="mt-1.5 grid grid-cols-4 gap-1.5" role="radiogroup" aria-label="Rolle">
+              {ROLES.map(([r, l]) => (
+                <button
+                  key={r}
+                  type="button"
+                  role="radio"
+                  aria-checked={f.role === r}
+                  onClick={() => set({ role: r })}
+                  className={cn("h-11 rounded-[13px] border text-[14px] font-bold", f.role === r ? "border-clay bg-clay text-white" : "border-border bg-inset text-foreground")}
+                >
+                  {l}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <span className={fieldLabel}>Abo</span>
+            {current?.planStatus && (
+              <div className="mt-1.5 rounded-[16px] border border-border bg-card px-4 py-3">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[16px] font-bold">{current.plan}</span>
+                  <span
+                    className={cn(
+                      "rounded-full px-2.5 py-1 text-[12px] font-bold",
+                      current.planStatus === "ACTIVE" ? "bg-paid-bg text-paid-fg" : current.planStatus === "PENDING" ? "bg-amber-100 text-amber-800" : "bg-inset text-muted-foreground"
+                    )}
+                  >
+                    {{ ACTIVE: "Aktiv", PENDING: "Rechnung offen", EXPIRED: "Abgelaufen", CANCELLED: "Beendet" }[current.planStatus]}
+                  </span>
+                </div>
+                <div className="mt-1 text-[14px] text-muted-foreground">
+                  Laufzeit {current.planStart ? date(current.planStart) : "?"} – {current.planEnd ? date(current.planEnd) : "offen"}
+                  {(() => {
+                    const d = daysLeft(current);
+                    return d === null ? null : <span className={cn(d < 0 ? "text-destructive" : d <= 30 && "text-amber-600")}> · {d < 0 ? "abgelaufen" : `noch ${d} Tage`}</span>;
+                  })()}
+                </div>
+                {(current.paidAt || current.pricePaid != null) && (
+                  <div className="text-[13px] text-muted-foreground">
+                    {[current.paidAt && `Bezahlt am ${date(current.paidAt)}`, current.pricePaid != null && `CHF ${current.pricePaid}`].filter(Boolean).join(" · ")}
+                  </div>
+                )}
+              </div>
+            )}
+            <div className="mt-2 text-[13px] font-semibold text-muted-foreground">{current?.planId ? "Wechseln zu" : "Abo zuweisen"}</div>
+            <div className="mt-1.5 grid max-h-[260px] grid-cols-2 gap-1.5 overflow-y-auto" role="radiogroup" aria-label="Abo wählen">
+              {plans.map((p) => {
+                const on = f.planId === p.id;
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={on}
+                    onClick={() => set({ planId: on ? "" : p.id })}
+                    className={cn("rounded-[13px] border px-3 py-2.5 text-left", on ? "border-clay bg-free-tint" : "border-border bg-inset")}
+                  >
+                    <span className="block text-[14px] font-bold leading-tight">{p.name}</span>
+                    <span className="block text-[13px] text-muted-foreground">CHF {p.price}{p.id === current?.planId ? " · aktuell" : ""}</span>
+                  </button>
+                );
+              })}
+            </div>
+            {current?.planId && (
+              <button
+                type="button"
+                aria-pressed={f.planId === "__end"}
+                onClick={() => set({ planId: f.planId === "__end" ? "" : "__end" })}
+                className={cn("mt-1.5 h-10 w-full rounded-[13px] border text-[14px] font-bold", f.planId === "__end" ? "border-destructive bg-destructive text-white" : "border-border text-clay-text")}
+              >
+                {f.planId === "__end" ? "Abo wird beim Speichern beendet" : "Abo beenden"}
+              </button>
+            )}
+          </div>
           {f.planId && f.planId !== "__end" && (
             <label className="flex cursor-pointer items-center gap-3">
               <input type="checkbox" checked={Boolean(f.paid)} onChange={(e) => set({ paid: e.target.checked })} className="h-5 w-5 accent-clay" />
@@ -415,6 +539,12 @@ function MemberSheet({ slug, plans, member, onClose }: { slug: string; plans: Pl
               <input type="checkbox" checked={Boolean(f.invite)} onChange={(e) => set({ invite: e.target.checked })} className="h-5 w-5 accent-clay" />
               <span className="text-[15px] font-bold">Einladungs-Mail senden</span>
             </label>
+          )}
+          {!isNew && f.id && (
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-[14px] text-muted-foreground">Gutschrift (z.B. Witterungsausfall)</span>
+              <AdminGrantCreditsButton clubSlug={slug} userId={f.id} userName={`${f.firstName} ${f.lastName}`} />
+            </div>
           )}
           <button
             type="button"
