@@ -328,7 +328,8 @@ export async function getUserBookings(userId: string, tenantId: string): Promise
       const dbBookings = await prisma.booking.findMany({
         where: {
           tenantId,
-          status: { not: "CANCELLED" },
+          // EXPIRED = abandoned checkout, never a real booking
+          status: { notIn: ["CANCELLED", "EXPIRED"] },
           OR: [{ organizerId: userId }, { participants: { some: { userId } } }],
         },
         include: bookingInclude,

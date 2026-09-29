@@ -17,7 +17,6 @@ export interface PlanRules {
   bookingWindowDays: number;
   allowedDurations: number[];
   simultaneousBookingLimit: number;
-  dailyBookingLimit?: number;
   guestsPerWeek?: number | null;
   sports?: SportType[];
   playWindow?: { weekdays: number[]; fromHour: number; toHour: number } | null;
@@ -105,11 +104,6 @@ export function checkBookingRules(i: RuleInput): string | null {
     if (!ok) return `Dein Abo erlaubt nur Buchungen von ${d.join(" oder ")} Minuten.`;
     if (active.length >= i.plan.simultaneousBookingLimit) {
       return `Dein Abo erlaubt höchstens ${i.plan.simultaneousBookingLimit} aktive Buchungen gleichzeitig.`;
-    }
-    const day = new Date(s).setUTCHours(0, 0, 0, 0);
-    const sameDay = i.mine.filter((b) => new Date(b.startsAt).setUTCHours(0, 0, 0, 0) === day).length;
-    if (i.plan.dailyBookingLimit != null && sameDay >= i.plan.dailyBookingLimit) {
-      return `Dein Abo erlaubt höchstens ${i.plan.dailyBookingLimit} Buchung${i.plan.dailyBookingLimit === 1 ? "" : "en"} pro Tag.`;
     }
     if (i.guestCount > 0 && i.plan.guestsPerWeek != null) {
       const w = weekStart(s);
