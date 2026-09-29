@@ -66,6 +66,8 @@ export interface RuleInput {
 export function slotLimitFor(settings: TenantSettings | null | undefined, role: TenantRole, sport: SportType): number {
   const row = settings?.slotLimits?.[role as LimitRole];
   if (row) return row[sport] ?? Infinity;
+  // coaches are unlimited unless the club sets a Trainer limit
+  if (role === "COACH") return Infinity;
   return settings?.marlyRuleEnabled ? (settings.maxActiveSlotsPerPlayer ?? 2) : Infinity;
 }
 
@@ -85,7 +87,8 @@ export function checkBookingRules(i: RuleInput): string | null {
   const minutes = (e - s) / 60_000;
   const active = i.mine.filter((b) => new Date(b.endsAt).getTime() > now);
 
-  if (i.plan) {
+  // coaches teach on club courts, their own Abo (if any) doesn't restrict that
+  if (i.plan && i.role !== "COACH") {
     if (s - now > i.plan.bookingWindowDays * DAY) {
       return `Mit deinem Abo kannst du höchstens ${i.plan.bookingWindowDays} Tage im Voraus buchen.`;
     }
@@ -143,6 +146,20 @@ export function checkBookingRules(i: RuleInput): string | null {
     }
   }
   return null;
+}
+
+/** Weekly starts from `start` up to and including `until` (club wall-clock time kept across DST), max 53. */
+export function weeklyStarts(start: Date, until: Date): Date[] {
+  const out: Date[] = [];
+  const { hour } = clubTime(start);
+  for (let i = 0; i < 53; i++) {
+    const d = new Date(start.getTime() + i * WEEK);
+    // shift by the DST difference so 18:00 stays 18:00
+    d.setTime(d.getTime() + (hour - clubTime(d).hour) * 3_600_000);
+    if (d.getTime() > until.getTime()) break;
+    out.push(d);
+  }
+  return out;
 }
 
 /** First ball-machine booking overlapping [start, end), if any. */

@@ -13,10 +13,11 @@ import {
 import { prisma } from "@/lib/prisma";
 import { getStripe } from "@/lib/stripe";
 import { revalidatePath } from "next/cache";
-import { computeBookingCost, paysGuestRate } from "@/lib/pricing";
+import { computeBookingCost, needsFloodlight, paysGuestRate } from "@/lib/pricing";
 import { BookingType, BlockReason, BookingParticipant, PaymentMethod, TenantSettings } from "@/types";
 import { sendBookingCancellation, sendBookingConfirmation } from "@/lib/mail";
-import { ballMachineConflict, cancelDeadlineMinutes, checkBookingRules, deadlineText, lateBookingCutoff } from "@/lib/booking-rules";
+import { ballMachineConflict, cancelDeadlineMinutes, checkBookingRules, deadlineText, lateBookingCutoff, weeklyStarts } from "@/lib/booking-rules";
+import { randomUUID } from "node:crypto";
 import { InsufficientFundsError, creditWallet, debitWallets, refundBookingWallets } from "@/lib/wallet";
 import { refundStripeBooking } from "@/lib/booking-payment";
 import { bookingLink, verifyBookingToken } from "@/lib/booking-link";
@@ -197,9 +198,13 @@ export async function createBookingAction(input: CreateBookingInput) {
 
   const totalPlayersCount = 1 + rawParticipants.length;
   const isDouble = input.matchType === "DOUBLE" || totalPlayersCount >= 4;
+  if (input.matchType === "DOUBLE" && totalPlayersCount < 4) {
+    return { success: false, error: "Für ein Doppel braucht es 4 Spieler: wähle 3 Mitspieler oder Gäste." };
+  }
 
-  // Dynamic duration & Consecutive Doubles Rule: 120 min requires a 4-player double
-  if (input.durationMinutes > 90) {
+  const member = isGuest ? null : await getMemberContext(tenant.id, organizerId);
+  // Dynamic duration & Consecutive Doubles Rule: 120 min requires a 4-player double (not for training)
+  if (input.durationMinutes > 90 && member?.role !== "COACH") {
     if (!isDouble) {
       return {
         success: false,
@@ -247,7 +252,6 @@ export async function createBookingAction(input: CreateBookingInput) {
   }
 
   // Club rules, role/sport limits and membership-plan rules (against the real bookings)
-  const member = isGuest ? null : await getMemberContext(tenant.id, organizerId);
   const guestRate = paysGuestRate(!isGuest, member?.role, Boolean(member?.plan));
   if (member && !isClubAdmin) {
     const mine = await getUserBookings(organizerId, tenant.id);
@@ -365,7 +369,7 @@ export async function createBookingAction(input: CreateBookingInput) {
     status: m === "ONLINE" ? ("PENDING" as const) : ("CONFIRMED" as const),
     paymentStatus: !m ? ("WAIVED" as const) : m === "WALLET" ? ("PAID" as const) : ("UNPAID" as const),
     paymentMethod: m,
-    bookingType: isGuest ? ("GUEST" as const) : input.bookingType || "MEMBER",
+    bookingType: isGuest ? ("GUEST" as const) : input.bookingType || (member?.role === "COACH" ? ("COACH" as const) : "MEMBER"),
     price: totalCost,
     totalCost,
     hasBallMachine: Boolean(input.hasBallMachine),
@@ -449,6 +453,126 @@ export async function createBookingAction(input: CreateBookingInput) {
     paymentMethod: method,
     ...(isGuest ? { manageUrl: bookingLink(input.clubSlug, created.id) } : {}),
   };
+}
+
+// ponytail: a series is tagged via idempotencyKey "series:<id>:<n>" instead of a schema column; add Booking.seriesId if series need more than cancel-all
+const SERIES = "series:";
+const seriesOf = (key: string | null | undefined) => (key?.startsWith(SERIES) ? key.split(":")[1] : undefined);
+
+/**
+ * Trainer: the same court and hour every week until `until`. Weeks that are taken or blocked are
+ * skipped and reported. No member limits; the court fee goes on the club invoice.
+ */
+export async function createCoachSeriesAction(input: {
+  clubSlug: string;
+  courtId: string;
+  startsAt: string;
+  durationMinutes: number;
+  until: string;
+}) {
+  const session = await auth();
+  const tenant = await getTenantBySlug(input.clubSlug);
+  if (!session?.user?.id || !tenant || !process.env.DATABASE_URL) return { success: false as const, error: "Bitte melde dich an." };
+  const userId = session.user.id;
+  const member = await getMemberContext(tenant.id, userId);
+  if (member?.role !== "COACH" && !isClubAdminFor(session.user, input.clubSlug)) {
+    return { success: false as const, error: "Serienbuchungen sind Trainern vorbehalten." };
+  }
+  const court = (await getCourtsByTenantId(tenant.id)).find((c) => c.id === input.courtId);
+  if (!court || court.status !== "ACTIVE") return { success: false as const, error: "Tennisplatz nicht gefunden." };
+  const start = new Date(input.startsAt);
+  const until = new Date(input.until);
+  const minutes = input.durationMinutes;
+  if (Number.isNaN(start.getTime()) || Number.isNaN(until.getTime()) || until <= start) {
+    return { success: false as const, error: "Ungültiger Zeitraum." };
+  }
+  if (![60, 90, 120].includes(minutes)) return { success: false as const, error: "Ungültige Spieldauer." };
+  if (start.getTime() < lateBookingCutoff(tenant.settingsJson)) {
+    return { success: false as const, error: "Dieser Zeitslot hat bereits begonnen." };
+  }
+
+  const starts = weeklyStarts(start, until);
+  const last = starts[starts.length - 1];
+  const [taken, blocks] = await Promise.all([
+    getBookingsInRange(tenant.id, new Date(start.getTime() - 3 * HOUR).toISOString(), new Date(last.getTime() + minutes * 60_000).toISOString()),
+    getBlocksInRange(tenant.id, start.toISOString(), new Date(last.getTime() + minutes * 60_000).toISOString()),
+  ]);
+  const hit = (s: Date, e: Date) => (b: { courtId: string; startsAt: string; endsAt: string }) =>
+    b.courtId === court.id && s.getTime() < new Date(b.endsAt).getTime() && e.getTime() > new Date(b.startsAt).getTime();
+  const free: Date[] = [];
+  const skipped: string[] = [];
+  for (const s of starts) {
+    const e = new Date(s.getTime() + minutes * 60_000);
+    if (taken.some(hit(s, e)) || blocks.some(hit(s, e))) skipped.push(s.toISOString());
+    else free.push(s);
+  }
+  if (!free.length) return { success: false as const, error: "In diesem Zeitraum ist der Platz zu dieser Zeit nie frei." };
+
+  const seriesId = randomUUID().slice(0, 8);
+  const rows = free.map((s, n) => {
+    const e = new Date(s.getTime() + minutes * 60_000);
+    const hour = Number(s.toLocaleString("en-US", { timeZone: "Europe/Zurich", hour: "numeric", hourCycle: "h23" }));
+    const light = needsFloodlight(court, hour) || needsFloodlight(court, hour + minutes / 60 - 1);
+    const { total } = computeBookingCost({
+      settings: tenant.settingsJson,
+      court,
+      isGuest: false,
+      planSports: member?.plan?.sports ?? null,
+      durationMinutes: minutes,
+      guestCount: 0,
+      hasBallMachine: false,
+      hasLighting: light,
+      start: s,
+    });
+    return prisma.booking.create({
+      data: {
+        tenantId: tenant.id,
+        courtId: court.id,
+        organizerId: userId,
+        createdById: userId,
+        startsAt: s,
+        endsAt: e,
+        bookingType: "COACH",
+        hasLighting: light,
+        price: total,
+        totalCost: total,
+        paymentMethod: total > 0 ? "INVOICE" : null,
+        paymentStatus: total > 0 ? "UNPAID" : "WAIVED",
+        idempotencyKey: `${SERIES}${seriesId}:${n}`,
+        notes: "Training (Serie)",
+        participants: { create: [{ userId, role: "COACH", invitationStatus: "ACCEPTED" }] },
+      },
+    });
+  });
+  try {
+    await prisma.$transaction(rows);
+  } catch (e) {
+    // the exclusion constraint caught a booking made in the meantime
+    console.error("Series creation failed:", e);
+    return { success: false as const, error: "Serie fehlgeschlagen. Ein Termin wurde eventuell gerade vergeben, bitte erneut versuchen." };
+  }
+  revalidatePath(`/c/${input.clubSlug}`, "layout");
+  return { success: true as const, created: free.length, skipped };
+}
+
+/** Cancel every future booking of the series `bookingId` belongs to. Invoice bookings: nothing to refund. */
+export async function cancelSeriesAction(bookingId: string, clubSlug: string) {
+  const session = await auth();
+  const tenant = await getTenantBySlug(clubSlug);
+  if (!session?.user?.id || !tenant || !process.env.DATABASE_URL) return { success: false as const, error: "Bitte melde dich an." };
+  const b = await prisma.booking.findUnique({ where: { id: bookingId } });
+  const id = seriesOf(b?.idempotencyKey);
+  if (!b || !id || b.tenantId !== tenant.id) return { success: false as const, error: "Serie nicht gefunden." };
+  const isClubAdmin = isClubAdminFor(session.user, clubSlug);
+  if (b.organizerId !== session.user.id && !isClubAdmin) return { success: false as const, error: "Keine Berechtigung." };
+  const from = isClubAdmin ? new Date() : new Date(Date.now() + cancelDeadlineMinutes(tenant.settingsJson) * 60_000);
+  // ponytail: plain status update, no wallet/Stripe refund; series are invoice-only (see createCoachSeriesAction)
+  const r = await prisma.booking.updateMany({
+    where: { tenantId: tenant.id, idempotencyKey: { startsWith: `${SERIES}${id}:` }, startsAt: { gt: from }, status: { not: "CANCELLED" } },
+    data: { status: "CANCELLED", cancelledAt: new Date(), cancelledById: session.user.id },
+  });
+  revalidatePath(`/c/${clubSlug}`, "layout");
+  return { success: true as const, cancelled: r.count };
 }
 
 function cancelDeadlineError(startsAt: Date, settings: TenantSettings | null | undefined) {

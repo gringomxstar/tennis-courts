@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { ballMachineConflict, checkBookingRules, slotLimitFor, type RuleInput } from "../src/lib/booking-rules";
+import { ballMachineConflict, checkBookingRules, slotLimitFor, weeklyStarts, type RuleInput } from "../src/lib/booking-rules";
 
 const H = 3_600_000;
 const now = Date.UTC(2030, 0, 7, 8); // Monday
@@ -56,3 +56,15 @@ assert.equal(ballMachineConflict(bm, at(10), at(11), "a"), undefined);
 assert.match(checkBookingRules({ ...p, plan: { ...plan, dailyBookingLimit: 1 }, mine: [own(4)] })!, /1 Buchung pro Tag/);
 assert.equal(checkBookingRules({ ...p, plan: { ...plan, dailyBookingLimit: 1 }, mine: [own(30)] }), null);
 console.log("booking rules ok");
+
+// coaches: no marly fallback limit, own Abo ignored
+assert.equal(slotLimitFor(marly, "COACH", "TENNIS"), Infinity);
+assert.equal(checkBookingRules({ ...base, role: "COACH", plan: { bookingWindowDays: 1, allowedDurations: [60], simultaneousBookingLimit: 1 }, start: at(24 * 5), end: at(24 * 5 + 1), mine: [own(2), own(4)] }), null);
+// weekly series keeps club wall-clock time across the DST switch (25.10.2026)
+{
+  const first = new Date("2026-10-13T16:00:00Z"); // Tue 18:00 Zurich (CEST)
+  const s = weeklyStarts(first, new Date("2026-11-03T23:00:00Z"));
+  assert.deepEqual(s.map((d) => d.toISOString()), ["2026-10-13T16:00:00.000Z", "2026-10-20T16:00:00.000Z", "2026-10-27T17:00:00.000Z", "2026-11-03T17:00:00.000Z"]);
+  assert.equal(weeklyStarts(first, new Date("2030-01-01")).length, 53);
+}
+console.log("coach + series ok");

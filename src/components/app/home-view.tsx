@@ -1,5 +1,7 @@
 "use client";
 
+import { ModeSwitch } from "@/components/app/mode-switch";
+
 import { useMemo } from "react";
 import Link from "next/link";
 import { BookingSheet } from "@/components/app/booking-sheet";
@@ -124,7 +126,8 @@ export function HomeView({
       <div>
       <div className="px-5 pt-[66px] lg:pt-12">
         <div className="flex items-start justify-between gap-3">
-          <div className="text-[15px] font-medium text-muted-foreground">{ready ? longDate(new Date()) : " "}</div>
+          <div className="whitespace-nowrap text-[15px] font-medium text-muted-foreground">{ready ? longDate(new Date()) : " "}</div>
+          {canAdmin && <ModeSwitch slug={tenant.slug} admin={false} />}
           {/* eslint-disable-next-line @next/next/no-img-element -- data URL */}
           {tenant.logoUrl && <img src={tenant.logoUrl} alt={tenant.name} className="-mt-3 h-12 w-12 shrink-0 object-contain lg:hidden" />}
         </div>
@@ -217,22 +220,6 @@ export function HomeView({
                 ? "Läuft am 31. März ab. Jetzt für die nächste Saison verlängern."
                 : `${userId ? "Sandplätze ohne Platzgebühr" : "Saison"} bis 31. März · ab CHF ${Number.isInteger(minPlanPrice) ? minPlanPrice : minPlanPrice.toFixed(2)}`}
             </span>
-          </span>
-          <Chevron />
-        </Link>
-      )}
-
-      {canAdmin && (
-        <Link
-          href={`/c/${tenant.slug}/admin`}
-          className="mx-5 mt-2.5 flex items-center gap-3.5 rounded-[22px] border border-border bg-card px-[18px] py-4 transition-transform duration-[350ms] ease-spring active:scale-[.98]"
-        >
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-foreground text-background">
-            <svg aria-hidden width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" /></svg>
-          </span>
-          <span className="flex-1">
-            <span className="block text-[16px] font-bold">Club verwalten</span>
-            <span className="mt-px block text-[14px] text-muted-foreground">Sperren, Mitglieder, Statistik, Einstellungen</span>
           </span>
           <Chevron />
         </Link>

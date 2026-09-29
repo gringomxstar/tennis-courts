@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { Segmented } from "@/components/app/segmented";
 import { Spinner } from "@/components/app/avatar";
 import { SwitchKnob } from "@/components/app/switch";
-import { createBookingAction } from "@/app/actions/booking";
+import { createBookingAction, createCoachSeriesAction } from "@/app/actions/booking";
 import { setFavoritesAction } from "@/app/actions/profile";
 import { computeBookingCost, isDinerSlot, needsFloodlight, payButtonLabel, payOptions } from "@/lib/pricing";
 import { courtColor, courtLabel, hh, initials, longDate, slotState } from "@/lib/courts";
@@ -35,6 +35,8 @@ export function ReserveView({
   guestRate,
   needPartner = false,
   planSports,
+  isCoach = false,
+  seriesUntil,
 }: {
   tenant: Tenant;
   court: Court;
@@ -50,6 +52,10 @@ export function ReserveView({
   guestRate: boolean;
   needPartner?: boolean;
   planSports: SportType[] | null;
+  /** Trainer: 2h alone, weekly series on the club invoice. */
+  isCoach?: boolean;
+  /** Default end of a series (YYYY-MM-DD, season end). */
+  seriesUntil?: string;
 }) {
   const router = useRouter();
   const startDate = new Date(start);
@@ -63,6 +69,8 @@ export function ReserveView({
   const [guestForm, setGuestForm] = useState<{ name: string; email: string } | null>(null);
   const [split, setSplit] = useState(false);
   const [method, setMethod] = useState<PaymentMethod | null>(null);
+  // Trainer series: repeat weekly until this date (YYYY-MM-DD), null = single booking
+  const [until, setUntil] = useState<string | null>(null);
   const [favs, setFavs] = useState<string[]>(
     favoriteUserIds.length ? favoriteUserIds : partners.slice(0, 3).map((p) => p.id)
   );
@@ -95,7 +103,7 @@ export function ReserveView({
     setGuestForm(null);
   };
   const pickDur = (n: 1 | 2) => {
-    if (n === 2 && rtype === "single") {
+    if (n === 2 && rtype === "single" && !isCoach) {
       toast("2 Stunden am Stück gibt es nur im Doppel");
       return;
     }
@@ -129,8 +137,27 @@ export function ReserveView({
   const l = courtLabel(court);
   const q = search.toLowerCase();
 
+  async function confirmSeries(u: string) {
+    setPaying(true);
+    const res = await createCoachSeriesAction({
+      clubSlug: tenant.slug,
+      courtId: court.id,
+      startsAt: startDate.toISOString(),
+      durationMinutes: dur * 60,
+      // end of the chosen day, club time is at most 2h ahead of UTC
+      until: `${u}T21:59:59Z`,
+    }).catch(() => ({ success: false as const, error: "Verbindung fehlgeschlagen. Bitte erneut versuchen." }));
+    setPaying(false);
+    if (!res.success) return void toast(res.error);
+    const skip = res.skipped.map((d) => new Date(d).toLocaleDateString("de-CH", { day: "numeric", month: "numeric" }));
+    toast(`${res.created} Trainings gebucht${skip.length ? ` · belegt, übersprungen: ${skip.join(", ")}` : ""}`, { duration: skip.length ? 10_000 : 4000 });
+    router.push(`/c/${tenant.slug}/bookings`);
+    router.refresh();
+  }
+
   async function confirm() {
     if (paying) return;
+    if (until) return confirmSeries(until);
     setPaying(true);
     const res = await createBookingAction({
       clubSlug: tenant.slug,
@@ -346,6 +373,25 @@ export function ReserveView({
 
           <div className="lg:col-start-1 lg:row-start-2">
 
+          {isCoach && (
+            <>
+              <h2 className="mt-6 text-[20px] font-bold tracking-[-.02em]">Training</h2>
+              <button type="button" aria-pressed={until !== null} onClick={() => setUntil(until === null ? (seriesUntil ?? "") : null)} className="mt-2.5 flex w-full items-center gap-3 rounded-[20px] border border-border bg-card px-4 py-3.5 text-left">
+                <span className="flex-1">
+                  <span className="block text-[16px] font-semibold">Jede Woche wiederholen</span>
+                  <span className="block text-[13px] text-muted-foreground">Belegte Wochen werden übersprungen · auf Rechnung</span>
+                </span>
+                <SwitchKnob on={until !== null} />
+              </button>
+              {until !== null && (
+                <label className="mt-2.5 flex h-12 items-center justify-between gap-3 rounded-[15px] bg-inset px-4 text-[16px] font-semibold">
+                  bis
+                  <input type="date" required value={until} min={start.slice(0, 10)} onChange={(e) => setUntil(e.target.value)} className="bg-transparent text-right text-[16px] text-foreground outline-none" />
+                </label>
+              )}
+            </>
+          )}
+
           {(tenant.settingsJson?.ballMachineAvailable ?? true) && (
             <>
               <h2 className="mt-6 text-[20px] font-bold tracking-[-.02em]">Extras</h2>
@@ -363,12 +409,12 @@ export function ReserveView({
         <div className="border-t border-border bg-glass px-5 pb-10 pt-3 backdrop-blur-[24px] lg:flex lg:flex-col lg:items-end lg:pb-6">
           <div className="flex justify-between px-1 pb-2.5 lg:w-full lg:max-w-md text-[14px] font-semibold text-muted-foreground">
             <span>Total</span>
-            <span className="text-[17px] font-bold text-foreground">{cost.total ? `CHF ${cost.total}` : "Inklusive"}</span>
+            <span className="text-[17px] font-bold text-foreground">{cost.total ? `CHF ${cost.total}${until !== null ? " pro Termin" : ""}` : "Inklusive"}</span>
           </div>
-          {cost.total > 0 && opts.length > 1 && (
+          {until === null && cost.total > 0 && opts.length > 1 && (
             <Segmented className="mb-2.5 lg:w-full lg:max-w-md" label="Zahlungsart" value={pay} onChange={setMethod} options={opts} />
           )}
-          {canSplit && (
+          {until === null && canSplit && (
             <button type="button" aria-pressed={split} onClick={() => setSplit(!split)} className="mb-2.5 flex w-full items-center gap-3 rounded-[16px] bg-inset px-4 py-3 text-left lg:max-w-md">
               <span className="flex-1">
                 <span className="block text-[15px] font-semibold">Kosten teilen</span>
@@ -382,14 +428,17 @@ export function ReserveView({
           <button
             type="button"
             onClick={confirm}
-            disabled={paying || (needPartner && count === 0)}
+            disabled={paying || (needPartner && count === 0) || (until === null && rtype === "double" && count < 3)}
             className="flex h-[58px] w-full items-center justify-center gap-2.5 rounded-[20px] text-[18px] font-bold text-white active:scale-[.97] disabled:opacity-50 disabled:active:scale-100 lg:max-w-md"
             style={{ background: color, boxShadow: `0 14px 30px -10px ${color}` }}
           >
             {paying && <Spinner />}
-            {cost.total > 0 ? payButtonLabel(pay, cost.total) : "Reservieren"}
+            {until !== null ? "Serie buchen" : cost.total > 0 ? payButtonLabel(pay, cost.total) : "Reservieren"}
           </button>
-          {needPartner && count === 0 && (
+          {until === null && rtype === "double" && count < 3 && (
+            <div className="text-center text-[13px] text-muted-foreground lg:max-w-md">Doppel: wähle 3 Mitspieler oder Gäste (noch {3 - count}).</div>
+          )}
+          {needPartner && count === 0 && rtype === "single" && (
             <div className="text-center text-[13px] text-muted-foreground lg:max-w-md">Wähle mindestens einen Mitspieler oder füge einen Gast hinzu.</div>
           )}
         </div>

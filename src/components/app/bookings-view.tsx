@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { cancelBookingAction } from "@/app/actions/booking";
+import { cancelBookingAction, cancelSeriesAction } from "@/app/actions/booking";
 import { Segmented } from "@/components/app/segmented";
 import { Dot } from "@/components/app/avatar";
 import { useNow } from "@/components/app/use-now";
@@ -64,6 +64,16 @@ export function BookingsView({
     if (!res.success) return void toast(res.error ?? "Stornieren fehlgeschlagen");
     const refund = "refundAmount" in res ? res.refundAmount : 0;
     toast(refund ? `Storniert · CHF ${refund} zurückerstattet` : "Buchung storniert");
+    router.refresh();
+  }
+
+  async function cancelSeries(id: string) {
+    if (!confirm("Alle kommenden Termine dieser Serie stornieren?")) return;
+    setBusy(true);
+    const res = await cancelSeriesAction(id, slug);
+    setBusy(false);
+    if (!res.success) return void toast(res.error);
+    toast(`${res.cancelled} Termine storniert`);
     router.refresh();
   }
 
@@ -126,6 +136,7 @@ export function BookingsView({
                     <div className="mt-0.5 text-[14px] text-muted-foreground">{SURFACE_LABEL[surfaceKind(c)]}</div>
                   </div>
                 </div>
+                {up && b.seriesId && <div className="mt-2 text-[14px] font-semibold text-muted-foreground">Training · wöchentliche Serie</div>}
                 {up && players && <div className="mt-2 text-[14px] text-muted-foreground">mit {players}</div>}
                 {up && b.status === "PENDING" && <div className="mt-2 text-[14px] font-semibold text-clay-text">Wartet auf Zahlung</div>}
                 {up && b.paymentStatus === "UNPAID" && (b.paymentMethod === "ON_SITE" || b.paymentMethod === "INVOICE") && (
@@ -146,7 +157,13 @@ export function BookingsView({
                   >
                     {on ? "Wirklich stornieren?" : "Stornieren"}
                   </button>
-                ) : (
+                ) : null}
+                {up && b.seriesId && (
+                  <button type="button" disabled={busy} onClick={() => cancelSeries(b.id)} className="mt-2 w-full text-center text-[14px] font-semibold text-clay-text">
+                    Ganze Serie stornieren
+                  </button>
+                )}
+                {!up && (
                   <Link href={`/c/${slug}/calendar`} className={`${actCls} bg-inset text-clay-text`}>
                     Nochmal buchen
                   </Link>

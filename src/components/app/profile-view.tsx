@@ -146,6 +146,7 @@ export function ProfileView({
       {admin && (
         <nav aria-label="Club verwalten" className={`${card} mx-5 mt-4 overflow-hidden lg:max-w-md`}>
           {[
+            ["stats", "Statistik", "Auslastung, Umsatz, CSV-Export"],
             ["settings", "Club-Einstellungen", "Öffnungszeiten, Storno, Preise, Regeln"],
             ["settings#branding", "Clubfarbe & Logo", "Farbe und Logo des Clubs"],
             ["settings#plaetze", "Plätze", "Anlegen, bearbeiten, sperren"],

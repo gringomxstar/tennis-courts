@@ -1,9 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { BookingSheet } from "@/components/app/booking-sheet";
+import { BookingDetailSheet } from "@/components/app/booking-detail-sheet";
+import { LabeledSwitch } from "@/components/app/switch";
 import { Dot } from "@/components/app/avatar";
 import { useSheetSlot } from "@/components/app/use-sheet-slot";
 import { useNow } from "@/components/app/use-now";
@@ -32,6 +33,7 @@ export function CalendarView({
   guestRate,
   needPartner = false,
   planSports,
+  admin = false,
 }: {
   tenant: Tenant;
   courts: Court[];
@@ -45,12 +47,22 @@ export function CalendarView({
   guestRate: boolean;
   needPartner?: boolean;
   planSports: SportType[] | null;
+  /** Admin calendar: every booking opens its detail sheet and can be cancelled. */
+  admin?: boolean;
 }) {
-  const router = useRouter();
   const sheet = useSheetSlot();
+  const [detail, setDetail] = useState<Booking | null>(null);
   const nowMs = useNow();
   const ready = nowMs > 0;
-  const [view, setView] = useState<"list" | "grid">("list");
+  const [picked, setView] = useState<"list" | "grid" | null>(null);
+  // remembered per device, read once mounted (ready) so SSR and hydration agree; storage may be blocked
+  const view = picked ?? (ready ? storedView() : "list");
+  const pickView = (v: "list" | "grid") => {
+    setView(v);
+    try {
+      localStorage.setItem("calendarView", v);
+    } catch {}
+  };
   const [day, setDay] = useState(0);
   const [filter, setFilter] = useState<"all" | SurfaceKind>("all");
   const open = tenant.settingsJson?.openingHour ?? 7;
@@ -72,7 +84,7 @@ export function CalendarView({
   };
   const tap = (court: Court, start: Date, state: SlotState) => {
     if (state === "free") sheet.open({ court, start });
-    else if (state === "mine") router.push(`/c/${tenant.slug}/bookings`);
+    else if (state === "mine" || (admin && state === "taken")) setDetail(bookingAt(court.id, start, 60, bookings) ?? null);
     else if (state === "blocked") toast(`Platz gesperrt: ${blockLabel(court, start)}`);
   };
 
@@ -110,7 +122,7 @@ export function CalendarView({
     <>
       <div className="flex items-center justify-between gap-3 px-5 pt-[60px] lg:pt-12">
         <h1 className="text-[30px] font-bold tracking-[-.035em]">Kalender</h1>
-        <ViewSwitch grid={view === "grid"} onChange={(g) => setView(g ? "grid" : "list")} />
+        <LabeledSwitch left="Liste" right="Raster" label="Rasteransicht" on={view === "grid"} onChange={(g) => pickView(g ? "grid" : "list")} />
       </div>
 
       {ready && view === "list" && (
@@ -154,7 +166,7 @@ export function CalendarView({
                   <div ref={(el) => { if (el && el.dataset.day !== String(day)) { el.dataset.day = String(day); el.scrollLeft = Math.max(0, startHour - open) * CHIP; } }} className="no-scrollbar -mx-3.5 flex gap-1.5 overflow-x-auto px-3.5">
                     {weekHours.map((h) => {
                       const { start, state } = cell(c, h);
-                      const inert = state === "taken" || state === "past";
+                      const inert = (state === "taken" && !admin) || state === "past";
                       return (
                         <button
                           key={h}
@@ -209,10 +221,10 @@ export function CalendarView({
                   {weekHours.map((h) => {
                     const { start, state } = cell(c, h);
                     const isNow = day === 0 && now.getHours() === h;
-                    const inert = state === "taken" || state === "past" || state === "blocked";
-                    const b = state === "taken" ? bookingAt(c.id, start, 60, bookings) : undefined;
+                    const inert = (state === "taken" && !admin) || state === "past" || state === "blocked";
+                    const b = state === "taken" || state === "mine" ? bookingAt(c.id, start, 60, bookings) : undefined;
                     const text =
-                      state === "mine" ? "Du" : state === "taken" ? (b && shortName(b)) || "Belegt" : state === "blocked" ? blockLabel(c, start) : "";
+                      state === "mine" ? (b && shortName(b)) || "Du" : state === "taken" ? (b && shortName(b)) || "Belegt" : state === "blocked" ? blockLabel(c, start) : "";
                     return (
                       <div key={h} className="relative box-border h-[62px] border-t border-border px-1 py-[3px]">
                         <button
@@ -247,30 +259,15 @@ export function CalendarView({
       )}
 
       <BookingSheet slug={tenant.slug} settings={tenant.settingsJson} slot={sheet.slot} onClose={sheet.close} pool={partners} isAnon={!userId} guestRate={guestRate} needPartner={needPartner} planSports={planSports} wallet={wallet} />
+      <BookingDetailSheet slug={tenant.slug} settings={tenant.settingsJson} booking={detail} court={courts.find((c) => c.id === detail?.courtId)} userId={userId} admin={admin} onClose={() => setDetail(null)} />
     </>
   );
 }
 
-/** Liste/Raster slider: labels on both sides, a brand-colored knob that slides. */
-function ViewSwitch({ grid, onChange }: { grid: boolean; onChange: (grid: boolean) => void }) {
-  const side = (on: boolean) => cn("text-[15px] font-semibold transition-colors duration-300", on ? "text-foreground" : "text-muted-foreground");
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={grid}
-      aria-label="Rasteransicht"
-      onClick={() => onChange(!grid)}
-      className="flex items-center gap-2.5"
-    >
-      <span className={side(!grid)}>Liste</span>
-      <span aria-hidden className="relative block h-8 w-[56px] rounded-full bg-inset shadow-[inset_0_0_0_1px_var(--border)]">
-        <span
-          className="absolute top-[3px] h-[26px] w-[26px] rounded-full bg-clay shadow-[0_2px_6px_rgba(0,0,0,.25)] transition-[left] duration-[350ms] ease-spring"
-          style={{ left: grid ? 27 : 3 }}
-        />
-      </span>
-      <span className={side(grid)}>Raster</span>
-    </button>
-  );
+function storedView(): "list" | "grid" {
+  try {
+    return localStorage.getItem("calendarView") === "grid" ? "grid" : "list";
+  } catch {
+    return "list";
+  }
 }
