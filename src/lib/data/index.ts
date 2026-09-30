@@ -132,7 +132,7 @@ function mapPrismaBooking(b: PrismaBookingWithRelations): Booking {
     status: b.status as BookingStatus,
     bookingType: b.bookingType as BookingType,
     notes: b.notes || null,
-    seriesId: b.idempotencyKey?.startsWith("series:") ? b.idempotencyKey.split(":")[1] : undefined,
+    seriesId: b.idempotencyKey?.startsWith("series:") || b.idempotencyKey?.startsWith("kurs:") ? b.idempotencyKey.split(":")[1] : undefined,
     hasBallMachine: Boolean((b as { hasBallMachine?: boolean }).hasBallMachine),
     hasLighting: Boolean((b as { hasLighting?: boolean }).hasLighting),
     totalCost: Number((b as { totalCost?: unknown }).totalCost || 0),

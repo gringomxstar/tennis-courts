@@ -453,7 +453,8 @@ export async function createBookingAction(input: CreateBookingInput) {
 
 // ponytail: a series is tagged via idempotencyKey "series:<id>:<n>" instead of a schema column; add Booking.seriesId if series need more than cancel-all
 const SERIES = "series:";
-const seriesOf = (key: string | null | undefined) => (key?.startsWith(SERIES) ? key.split(":")[1] : undefined);
+const KURS = "kurs:";
+const seriesOf = (key: string | null | undefined) => (key?.startsWith(SERIES) || key?.startsWith(KURS) ? key.split(":")[1] : undefined);
 
 /**
  * Trainer: the same court and hour every week until `until`. Weeks that are taken or blocked are
@@ -549,6 +550,86 @@ export async function createCoachSeriesAction(input: {
   return { success: true as const, created: free.length, skipped };
 }
 
+/**
+ * Trainer: ein Kurs über mehrere Plätze, je Zeile eigene Zeit und Dauer (bis 8 h), gratis.
+ * Alles oder nichts: bei einer Kollision wird nichts gebucht.
+ */
+export async function createCoachBlockAction(input: {
+  clubSlug: string;
+  name: string;
+  items: { courtId: string; startsAt: string; durationMinutes: number }[];
+}) {
+  const session = await auth();
+  const tenant = await getTenantBySlug(input.clubSlug);
+  if (!session?.user?.id || !tenant || !process.env.DATABASE_URL) return { success: false as const, error: "Bitte melde dich an." };
+  const userId = session.user.id;
+  const member = await getMemberContext(tenant.id, userId);
+  if (member?.role !== "COACH" && !isClubAdminFor(session.user, input.clubSlug)) {
+    return { success: false as const, error: "Kursbuchungen sind Trainern vorbehalten." };
+  }
+  const name = input.name.trim().slice(0, 80);
+  if (!name) return { success: false as const, error: "Bitte einen Kursnamen angeben." };
+  if (!input.items.length || input.items.length > 40) return { success: false as const, error: "1 bis 40 Plätze pro Kurs." };
+
+  const courts = await getCourtsByTenantId(tenant.id);
+  const cutoff = lateBookingCutoff(tenant.settingsJson);
+  const parsed: { court: (typeof courts)[number]; s: Date; e: Date; minutes: number; row: number }[] = [];
+  for (const [i, it] of input.items.entries()) {
+    const court = courts.find((c) => c.id === it.courtId);
+    const s = new Date(it.startsAt);
+    const minutes = it.durationMinutes;
+    if (!court || court.status !== "ACTIVE") return { success: false as const, error: `Zeile ${i + 1}: Platz nicht gefunden.` };
+    if (Number.isNaN(s.getTime()) || !Number.isInteger(minutes) || minutes < 30 || minutes > 480) {
+      return { success: false as const, error: `Zeile ${i + 1}: Ungültige Zeit oder Dauer.` };
+    }
+    if (s.getTime() < cutoff) return { success: false as const, error: `Zeile ${i + 1}: Dieser Zeitslot hat bereits begonnen.` };
+    parsed.push({ court, s, e: new Date(s.getTime() + minutes * 60_000), minutes, row: i + 1 });
+  }
+
+  const from = new Date(Math.min(...parsed.map((p) => p.s.getTime())) - 9 * HOUR).toISOString();
+  const to = new Date(Math.max(...parsed.map((p) => p.e.getTime()))).toISOString();
+  const [taken, blocks] = await Promise.all([getBookingsInRange(tenant.id, from, to), getBlocksInRange(tenant.id, from, to)]);
+  const hit = (p: (typeof parsed)[number]) => (b: { courtId: string; startsAt: string; endsAt: string; status?: string }) =>
+    b.status !== "CANCELLED" && b.courtId === p.court.id && p.s.getTime() < new Date(b.endsAt).getTime() && p.e.getTime() > new Date(b.startsAt).getTime();
+  const clash = parsed.filter((p, i) => taken.some(hit(p)) || blocks.some(hit(p)) || parsed.some((q, j) => j < i && q.court.id === p.court.id && q.s < p.e && q.e > p.s));
+  if (clash.length) {
+    return { success: false as const, error: `Nicht frei: ${clash.map((p) => `Zeile ${p.row} (${p.court.name})`).join(", ")}. Nichts wurde gebucht.` };
+  }
+
+  const kursId = randomUUID().slice(0, 8);
+  try {
+    await prisma.$transaction(
+      parsed.map((p, n) =>
+        prisma.booking.create({
+          data: {
+            tenantId: tenant.id,
+            courtId: p.court.id,
+            organizerId: userId,
+            createdById: userId,
+            startsAt: p.s,
+            endsAt: p.e,
+            bookingType: "COACH",
+            hasLighting: needsFloodlight(p.court, p.s, p.minutes),
+            price: 0,
+            totalCost: 0,
+            paymentMethod: null,
+            paymentStatus: "WAIVED",
+            idempotencyKey: `${KURS}${kursId}:${n}`,
+            notes: name,
+            participants: { create: [{ userId, role: "COACH", invitationStatus: "ACCEPTED" }] },
+          },
+        })
+      )
+    );
+  } catch (e) {
+    // the exclusion constraint caught a booking made in the meantime
+    console.error("Kurs creation failed:", e);
+    return { success: false as const, error: "Kurs fehlgeschlagen. Ein Platz wurde eventuell gerade vergeben, bitte erneut versuchen." };
+  }
+  revalidatePath(`/c/${input.clubSlug}`, "layout");
+  return { success: true as const, created: parsed.length };
+}
+
 /** Cancel every future booking of the series `bookingId` belongs to. Invoice bookings: nothing to refund. */
 export async function cancelSeriesAction(bookingId: string, clubSlug: string) {
   const session = await auth();
@@ -562,7 +643,7 @@ export async function cancelSeriesAction(bookingId: string, clubSlug: string) {
   const from = isClubAdmin ? new Date() : new Date(Date.now() + cancelDeadlineMinutes(tenant.settingsJson) * 60_000);
   // ponytail: plain status update, no wallet/Stripe refund; series are invoice-only (see createCoachSeriesAction)
   const r = await prisma.booking.updateMany({
-    where: { tenantId: tenant.id, idempotencyKey: { startsWith: `${SERIES}${id}:` }, startsAt: { gt: from }, status: { not: "CANCELLED" } },
+    where: { tenantId: tenant.id, idempotencyKey: { startsWith: `${b.idempotencyKey!.split(":")[0]}:${id}:` }, startsAt: { gt: from }, status: { not: "CANCELLED" } },
     data: { status: "CANCELLED", cancelledAt: new Date(), cancelledById: session.user.id },
   });
   revalidatePath(`/c/${clubSlug}`, "layout");
