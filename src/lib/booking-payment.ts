@@ -84,5 +84,6 @@ export async function refundStripeBooking(stripeSessionId: string) {
   const pi = typeof s.payment_intent === "string" ? s.payment_intent : s.payment_intent?.id;
   if (!pi || s.payment_status !== "paid") return 0;
   await stripe.refunds.create({ payment_intent: pi }, { idempotencyKey: `refund-${stripeSessionId}` });
+  await prisma.booking.updateMany({ where: { stripeSessionId, refundedAt: null }, data: { refundedAt: new Date() } });
   return (s.amount_total ?? 0) / 100;
 }

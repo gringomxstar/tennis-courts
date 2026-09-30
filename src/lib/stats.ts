@@ -70,7 +70,7 @@ export async function loadStats(tenantId: string, year: number, openHour: number
       where: { tenantId, startsAt: { gte: from, lt: to } },
       select: {
         id: true, courtId: true, organizerId: true, startsAt: true, endsAt: true, status: true, bookingType: true,
-        paymentStatus: true, paymentMethod: true, totalCost: true, hasLighting: true, cancelledAt: true, createdAt: true, updatedAt: true,
+        paymentStatus: true, paymentMethod: true, totalCost: true, hasLighting: true, cancelledAt: true, refundedAt: true, createdAt: true, updatedAt: true,
         organizer: { select: { firstName: true, lastName: true, email: true, birthDate: true } },
         court: { select: { name: true, sportType: true } },
         participants: { select: { userId: true, role: true, guestName: true, user: { select: { birthDate: true } } } },
@@ -347,9 +347,9 @@ export function exportRows(s: Stats, type: ExportType): unknown[][] {
         b.participants.filter((p) => p.role !== "ORGANIZER" && p.role !== "GUEST").length,
         b.participants.filter((p) => p.role === "GUEST").map((p) => p.guestName).join(", "),
       ],
-        // online payments are refunded in full on cancel (refundStripeBooking): reverse them so the export nets to 0
-        ...(b.status === "CANCELLED" && b.paymentMethod === "ONLINE" && b.paymentStatus === "PAID" && Number(b.totalCost) > 0
-          ? [[chDate(b.cancelledAt ?? b.updatedAt), "", "", b.court.name, name(b.organizer), b.organizer.email, TYPE_LABEL[b.bookingType] ?? b.bookingType,
+        // Stripe refunds are always full (refundStripeBooking, dated by refundedAt): reverse them so the export nets to 0
+        ...(b.refundedAt && b.paymentMethod === "ONLINE" && b.paymentStatus === "PAID" && Number(b.totalCost) > 0
+          ? [[chDate(b.refundedAt), "", "", b.court.name, name(b.organizer), b.organizer.email, TYPE_LABEL[b.bookingType] ?? b.bookingType,
               "Storno-Rückerstattung", METHOD_LABEL.ONLINE, "zurückerstattet", (-Number(b.totalCost)).toFixed(2), "", "", ""]]
           : []),
       ]),
