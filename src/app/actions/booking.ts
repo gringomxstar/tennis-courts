@@ -569,7 +569,7 @@ export async function createCoachBlockAction(input: {
   }
   const name = input.name.trim().slice(0, 80);
   if (!name) return { success: false as const, error: "Bitte einen Kursnamen angeben." };
-  if (!input.items.length || input.items.length > 40) return { success: false as const, error: "1 bis 40 Plätze pro Kurs." };
+  if (!input.items.length || input.items.length > 400) return { success: false as const, error: "Zu viele Termine (max. 400)." };
 
   const courts = await getCourtsByTenantId(tenant.id);
   const cutoff = lateBookingCutoff(tenant.settingsJson);
@@ -628,6 +628,66 @@ export async function createCoachBlockAction(input: {
   }
   revalidatePath(`/c/${input.clubSlug}`, "layout");
   return { success: true as const, created: parsed.length };
+}
+
+/**
+ * Kurs bearbeiten: Name ändern, je Platz die Dauer ändern oder den Platz streichen, gilt für alle
+ * künftigen Termine des Kurses. Alles oder nichts; eigene Termine zählen nicht als Konflikt.
+ */
+export async function editCoachCourseAction(input: {
+  clubSlug: string;
+  kursId: string;
+  name?: string;
+  courts?: { courtId: string; minutes?: number; remove?: boolean }[];
+}) {
+  const session = await auth();
+  const tenant = await getTenantBySlug(input.clubSlug);
+  if (!session?.user?.id || !tenant || !process.env.DATABASE_URL) return { success: false as const, error: "Bitte melde dich an." };
+  const isAdmin = isClubAdminFor(session.user, input.clubSlug);
+  const now = new Date();
+  const future = await prisma.booking.findMany({
+    where: { tenantId: tenant.id, idempotencyKey: { startsWith: `${KURS}${input.kursId}:` }, status: { not: "CANCELLED" }, startsAt: { gt: now } },
+  });
+  if (!future.length) return { success: false as const, error: "Kurs nicht gefunden oder keine künftigen Termine." };
+  if (!isAdmin && future.some((b) => b.organizerId !== session.user.id)) return { success: false as const, error: "Keine Berechtigung." };
+
+  const name = input.name?.trim().slice(0, 80);
+  const edits = new Map((input.courts ?? []).map((c) => [c.courtId, c]));
+  const updates: { id: string; endsAt: Date }[] = [];
+  const removed: string[] = [];
+  for (const b of future) {
+    const e = edits.get(b.courtId);
+    if (e?.remove) removed.push(b.id);
+    else if (e?.minutes) {
+      if (!Number.isInteger(e.minutes) || e.minutes < 30 || e.minutes > 480) return { success: false as const, error: "Ungültige Dauer." };
+      updates.push({ id: b.id, endsAt: new Date(b.startsAt.getTime() + e.minutes * 60_000) });
+    }
+  }
+  if (updates.length) {
+    const from = new Date(Math.min(...future.map((b) => b.startsAt.getTime())) - 9 * HOUR).toISOString();
+    const to = new Date(Math.max(...updates.map((u) => u.endsAt.getTime()))).toISOString();
+    const own = new Set(future.map((b) => b.id));
+    const [taken, blocks] = await Promise.all([getBookingsInRange(tenant.id, from, to), getBlocksInRange(tenant.id, from, to)]);
+    const byId = new Map(future.map((b) => [b.id, b]));
+    const clash = updates.filter((u) => {
+      const b = byId.get(u.id)!;
+      const hit = (x: { courtId: string; startsAt: string; endsAt: string }) =>
+        x.courtId === b.courtId && b.startsAt.getTime() < new Date(x.endsAt).getTime() && u.endsAt.getTime() > new Date(x.startsAt).getTime();
+      return taken.some((x) => x.status !== "CANCELLED" && !own.has(x.id) && hit(x)) || blocks.some(hit);
+    });
+    if (clash.length) {
+      return { success: false as const, error: `${clash.length} Termin(e) kollidieren mit anderen Buchungen, z.B. am ${byId.get(clash[0].id)!.startsAt.toLocaleDateString("de-CH")}. Nichts wurde geändert.` };
+    }
+  }
+  await prisma.$transaction([
+    ...updates.map((u) => prisma.booking.update({ where: { id: u.id }, data: { endsAt: u.endsAt } })),
+    ...(removed.length
+      ? [prisma.booking.updateMany({ where: { id: { in: removed } }, data: { status: "CANCELLED", cancelledAt: now, cancelledById: session.user.id } })]
+      : []),
+    ...(name ? [prisma.booking.updateMany({ where: { id: { in: future.map((b) => b.id) } }, data: { notes: name } })] : []),
+  ]);
+  revalidatePath(`/c/${input.clubSlug}`, "layout");
+  return { success: true as const };
 }
 
 /** Cancel every future booking of the series `bookingId` belongs to. Invoice bookings: nothing to refund. */

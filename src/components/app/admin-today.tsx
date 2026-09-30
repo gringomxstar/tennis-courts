@@ -214,7 +214,7 @@ export function AdminToday({
                       {court && <Dot color={courtColor(court)} size={9} />}
                       {court ? courtLabel(court).name : ""}
                     </div>
-                    <div className="truncate text-[13px] text-ink-3">{b.bookingType === "COACH" ? `Training · ${playersOf(b)}` : playersOf(b)}</div>
+                    <div className="truncate text-[13px] text-ink-3">{b.bookingType === "COACH" ? `Training · ${b.notes && !b.notes.startsWith("Training") ? b.notes : playersOf(b)}` : playersOf(b)}</div>
                   </div>
                   <button type="button" onClick={() => cancel(b)} aria-label={`Buchung von ${name} stornieren`} className="btn btn-ghost !h-9 text-bad">
                     Stornieren

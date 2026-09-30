@@ -57,6 +57,7 @@ const initial = (p: { firstName: string; lastName: string } | null | undefined) 
 
 /** "Max M. / Anna B. / …" — all players; empty when the viewer may not see names (see loadClubData). */
 export function shortName(b: Booking) {
+  if (b.bookingType === "COACH" && b.notes && !b.notes.startsWith("Training")) return b.notes; // Kursname statt Trainer
   const others = b.participants.filter((p) => p.role !== "ORGANIZER").map((p) => initial(p.user) || p.guestName || "");
   return [initial(b.organizer), ...others].filter(Boolean).join(" / ");
 }

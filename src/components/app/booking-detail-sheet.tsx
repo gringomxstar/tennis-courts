@@ -87,7 +87,7 @@ export function BookingDetailSheet({
           </div>
 
           <div className="mb-1 mt-4 text-[13px] font-semibold text-ink-2">
-            {b.bookingType === "COACH" ? "Training" : names.length >= 4 ? "Doppel" : "Spieler"}
+            {b.bookingType === "COACH" ? (b.notes && !b.notes.startsWith("Training") ? `Kurs: ${b.notes}` : "Training") : names.length >= 4 ? "Doppel" : "Spieler"}
           </div>
           <div className="flex flex-col">
             {names.map((n, i) => (
