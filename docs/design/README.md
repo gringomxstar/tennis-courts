@@ -22,7 +22,6 @@ Umschalter oben in drei Gruppen (Mitglied, Zugang, Verwaltung), jede Seite bei 3
 
 **Mitglied**
 - **Start:** Hero-Karte (Verlauf, Uhrzeit 60px, Avatare, drei Aktionen), Platzkarte mit freien Slots als Buttons (Tipp öffnet direkt das Buchungs-Sheet), Kommende Buchungen, Heatmap, Abo-Donut. Plus-Button trägt auf dem Handy jetzt Text („Reservieren“).
-- **Leer, kein Abo:** neues Mitglied, Hinweis-Banner mit Preis und „Abo ansehen“, freie Slots direkt buchbar.
 - **Kalender, zwei Handy-Varianten** (Desktop bleibt: Raster Plätze × Stunden, Formular rechts 320px):
   - **A (Vorschlag v3):** Tagesleiste, Stundenliste mit Platz-Chips.
   - **B (heutige Idee):** pro Platz eine Zeile mit Stunden-Chips, umschaltbar Liste/Raster (Raster = 9 Plätze × Stunden).
@@ -33,7 +32,7 @@ Umschalter oben in drei Gruppen (Mitglied, Zugang, Verwaltung), jede Seite bei 3
 - **Abos** (heutige Struktur): abgelaufenes Abo vorausgewählt, Sportart, Für mich/Als Paar, Optionen, Kaufleiste unten mit Auto-Verlängern, ein Tipp verlängert.
 - **Rechnung:** Beleg mit Status, PDF/E-Mail, weitere Belege, offener Betrag direkt bezahlbar.
 
-**Zugang** (ohne Navigation): **Login** (mit Fehlerzustand, Gast-Button), **Registrieren**, **Gast-Buchung** (Slot, Name/E-Mail/Handy, Twint oder Karte, Preis-Split).
+**Zugang** (ohne Navigation): **Einstieg** (abgemeldet, heutige Struktur: Mitglied anmelden primär, Als Gast buchen, Mitglied werden; ohne Abo keine Mitglied-Buchung), **Login** (mit Fehlerzustand, Gast-Button), **Registrieren**, **Gast-Buchung** (Slot, Name/E-Mail/Handy, Twint oder Karte, Preis-Split).
 
 **Verwaltung**
 - **Übersicht (/admin):** Kacheln pro Bereich mit der wichtigsten Zahl.
@@ -45,7 +44,7 @@ Umschalter oben in drei Gruppen (Mitglied, Zugang, Verwaltung), jede Seite bei 3
 
 ## Regeln aus der Abnahme
 - Klarheit vor Optik, so wenig Tipps wie nötig. Hauptaktion ohne Scrollen sichtbar, Aktionen immer mit Text, keine Box in der Box.
-- Leere und Fehlerzustände zeigen, wo sie zählen (keine Buchung, kein Abo, falsches Passwort, betroffene Buchungen beim Sperren).
+- Leere und Fehlerzustände zeigen, wo sie zählen (kein Abo, falsches Passwort, betroffene Buchungen beim Sperren).
 
 ## Noch nicht im Entwurf
 Dark Mode: gleiche Tokens invertiert (Grund `#101413`, Karte `#182120`).
