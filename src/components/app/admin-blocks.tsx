@@ -10,7 +10,7 @@ import { SwitchKnob } from "@/components/app/switch";
 import { overlapsDay, useToday } from "@/components/app/admin-today";
 import { createCourtBlockAction, deleteCourtBlockAction } from "@/app/actions/booking";
 import { CreateCourtBlockForm } from "@/components/admin/create-court-block-form";
-import { atHour, courtColor, courtLabel, hhmm, longDate, SURFACE_COLOR, SURFACE_LABEL, surfaceKind } from "@/lib/courts";
+import { addDays, atHour, courtColor, courtLabel, hhmm, longDate, SURFACE_COLOR, SURFACE_LABEL, surfaceKind } from "@/lib/courts";
 import type { BlockReason, Court, CourtBlock, TenantSettings } from "@/types";
 import { cn } from "@/lib/utils";
 
@@ -24,7 +24,7 @@ const REASON_LABEL: Record<BlockReason, string> = {
   RAIN: "Regen",
   MAINTENANCE: "Wartung",
   TOURNAMENT: "Turnier",
-  SNOW: "Schnee",
+  SNOW: "Wintersperre",
   TRAINING: "Training",
   EVENT: "Event",
   PRIVATE: "Privat",
@@ -55,6 +55,11 @@ export function AdminBlocks({
   function toggle(court: Court, todays: CourtBlock[], on: boolean) {
     if (today === null) return;
     const day = new Date(today);
+    const tomorrow = addDays(day, 1).getTime();
+    // a winter closure or multi-day block also covers today: turning today off must not delete all of it
+    if (on && todays.some((b) => new Date(b.startsAt).getTime() < today || new Date(b.endsAt).getTime() > tomorrow)) {
+      return void toast(`${courtLabel(court).name}: Teil einer längeren Sperre, unter „Aktiv und geplant“ bearbeiten`);
+    }
     startTransition(async () => {
       setOverride([court.id, on ? null : reason]);
       const results = on
@@ -165,10 +170,16 @@ function Planned({ slug, courts, blocks, now }: { slug: string; courts: Court[];
   const [busy, setBusy] = useState(false);
   const [picked, setPicked] = useState<string[]>([]);
   const [armed, setArmed] = useState(false);
-  const [editing, setEditing] = useState<CourtBlock | null>(null);
+  const [editing, setEditing] = useState<CourtBlock[] | null>(null);
   const sorted = [...blocks].sort((a, b) => a.startsAt.localeCompare(b.startsAt));
   const live = picked.filter((id) => sorted.some((b) => b.id === id));
   const allOn = sorted.length > 0 && live.length === sorted.length;
+  // same time, reason and note on several courts = one row ("Platz 2–7 · Regen")
+  const groups = new Map<string, CourtBlock[]>();
+  for (const b of sorted) {
+    const k = [b.startsAt, b.endsAt, b.reason, b.description ?? ""].join("|");
+    groups.set(k, [...(groups.get(k) ?? []), b]);
+  }
 
   async function removePicked() {
     if (!live.length || busy) return;
@@ -204,33 +215,42 @@ function Planned({ slug, courts, blocks, now }: { slug: string; courts: Court[];
         )}
       </div>
       <div className="mt-2">
-        {sorted.map((b) => {
+        {[...groups.values()].map((g) => {
+          const b = g[0];
           const court = courts.find((c) => c.id === b.courtId);
+          const names = courts.filter((c) => g.some((x) => x.courtId === c.id)).map((c) => courtLabel(c).name);
           const start = new Date(b.startsAt);
-          const on = live.includes(b.id);
+          const end = new Date(b.endsAt);
+          const ids = g.map((x) => x.id);
+          const on = ids.every((id) => live.includes(id));
+          // whole days (00:00–00:00) or longer than a day: show the date range, not the clock
+          const long = end.getTime() - start.getTime() >= 86_400_000 || (hhmm(start) === "00:00" && hhmm(end) === "00:00");
+          const when = long
+            ? `${longDate(start)} – ${longDate(new Date(end.getTime() - 1))} · ganztägig`
+            : `${longDate(start)} · ${hhmm(start)}–${hhmm(end)}`;
           return (
-            <div key={b.id} className={cn("flex items-center gap-3 border-t border-line py-3 first:border-t-0", on && "bg-brand-tint")}>
+            <div key={ids.join()} className={cn("flex items-center gap-3 border-t border-line py-3 first:border-t-0", on && "bg-brand-tint")}>
               <input
                 type="checkbox"
                 checked={on}
-                onChange={() => setPicked(on ? live.filter((x) => x !== b.id) : [...live, b.id])}
-                aria-label={`Sperre ${court?.name ?? ""} ${longDate(start)} auswählen`}
+                onChange={() => setPicked(on ? live.filter((x) => !ids.includes(x)) : [...new Set([...live, ...ids])])}
+                aria-label={`Sperre ${names.join(", ")} ${longDate(start)} auswählen`}
                 className="h-5 w-5 shrink-0 accent-clay"
               />
               {court && <Dot color={courtColor(court)} size={9} />}
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 text-[15px] font-bold">
-                  <span className="truncate">{court?.name ?? "Platz"} · {REASON_LABEL[b.reason]}</span>
+                  <span className="truncate">{(g.length === courts.length ? "Alle Plätze" : names.join(", ")) || "Platz"} · {REASON_LABEL[b.reason]}</span>
                   {start.getTime() <= now && <span className="pill bg-bad-bg text-bad">aktiv</span>}
                 </div>
                 <div className="text-[13px] text-ink-3">
-                  {longDate(start)} · {hhmm(start)}–{hhmm(new Date(b.endsAt))}
+                  {when}
                   {b.description && ` · ${b.description}`}
                 </div>
               </div>
               <button
                 type="button"
-                onClick={() => setEditing(b)}
+                onClick={() => setEditing(g)}
                 aria-label={`Sperre ${court?.name ?? ""} ${longDate(start)} bearbeiten`}
                 className="btn btn-ghost !h-9 shrink-0"
               >
@@ -242,7 +262,7 @@ function Planned({ slug, courts, blocks, now }: { slug: string; courts: Court[];
       </div>
       <Sheet open={Boolean(editing)} onOpenChange={(o) => !o && setEditing(null)} title="Sperre bearbeiten">
         <div className="text-[28px] font-bold tracking-[-.03em]">Sperre bearbeiten</div>
-        {editing && <CreateCourtBlockForm key={editing.id} clubSlug={slug} courts={courts} edit={editing} onDone={() => setEditing(null)} />}
+        {editing && <CreateCourtBlockForm key={editing[0].id} clubSlug={slug} courts={courts} edit={editing[0]} group={editing} onDone={() => setEditing(null)} />}
       </Sheet>
     </>
   );
