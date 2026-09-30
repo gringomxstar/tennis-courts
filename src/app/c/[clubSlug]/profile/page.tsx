@@ -8,7 +8,7 @@ import { creditTopUpSession } from "@/lib/wallet";
 async function loadProfile(ctx: TenantContext) {
   const { tenant, user } = ctx;
   const support = { email: tenant.email, phone: tenant.phone };
-  if (!user) return { wallet: 0, membership: null, profile: null, support, clubs: [] };
+  if (!user) return { wallet: 0, walletTx: [], membership: null, profile: null, support, clubs: [] };
   const [wallet, m, me, clubs] = await Promise.all([
     getUserWallet(tenant.id, user.id),
     process.env.DATABASE_URL
@@ -33,6 +33,13 @@ async function loadProfile(ctx: TenantContext) {
     clubs,
     profile: me ? { firstName: me.firstName, lastName: me.lastName, phone: me.phone ?? "" } : null,
     wallet: wallet.balance,
+    // formatted here so server and client render the same string
+    walletTx: wallet.transactions.map((t) => ({
+      id: t.id,
+      amount: t.amount,
+      description: t.description,
+      date: new Date(t.createdAt).toLocaleDateString("de-CH", { timeZone: "Europe/Zurich", day: "2-digit", month: "2-digit", year: "numeric" }),
+    })),
     membership: m
       ? {
           name: m.plan.name,

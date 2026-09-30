@@ -31,6 +31,7 @@ export function ProfileView({
   next,
   openRegister,
   wallet,
+  walletTx,
   membership,
   profile,
   support,
@@ -44,6 +45,7 @@ export function ProfileView({
   next?: string;
   openRegister?: boolean;
   wallet: number;
+  walletTx: { id: string; amount: number; description: string; date: string }[];
   membership: { name: string; price: number; pending: boolean; validity: string } | null;
   profile: { firstName: string; lastName: string; phone: string } | null;
   support: { email?: string | null; phone?: string | null };
@@ -222,6 +224,25 @@ export function ProfileView({
                     ))}
                   </div>
                 </div>
+
+                {walletTx.length > 0 && (
+                  <div className="card p-5">
+                    <h2 className="text-[17px] font-bold">Guthaben-Bewegungen</h2>
+                    <ul className="mt-2 divide-y divide-border">
+                      {walletTx.map((t) => (
+                        <li key={t.id} className="flex items-baseline justify-between gap-3 py-2.5">
+                          <div className="min-w-0">
+                            <div className="truncate text-[15px] font-semibold">{t.description}</div>
+                            <small className="text-[13px] text-ink-2">{t.date}</small>
+                          </div>
+                          <b className={`shrink-0 text-[15px] ${t.amount > 0 ? "text-ok" : ""}`}>
+                            {t.amount > 0 ? "+" : "−"} {fmt(Math.abs(t.amount))}
+                          </b>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
 
                 <div className="card p-5">
                   <div className="flex items-center justify-between gap-3">
