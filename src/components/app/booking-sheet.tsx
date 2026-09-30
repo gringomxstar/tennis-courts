@@ -239,7 +239,7 @@ export function BookingSheet({
                       type="button"
                       aria-pressed={on}
                       onClick={() => setPlayers(on ? players.filter((x) => x !== p.id) : [...players, p.id])}
-                      className="chip h-[38px] bg-bg pl-1 pr-3 shadow-none"
+                      className="chip h-[38px] bg-bg pl-1 pr-3 shadow-none aria-pressed:bg-ink aria-pressed:text-card"
                     >
                       <span aria-hidden className="flex h-[30px] w-[30px] items-center justify-center rounded-full text-[10.5px] font-bold text-white" style={{ background: avatarBg(ini) }}>
                         {ini}
@@ -248,7 +248,7 @@ export function BookingSheet({
                     </button>
                   );
                 })}
-                <button type="button" aria-pressed={coGuest !== null} onClick={() => setCoGuest(coGuest === null ? "" : null)} className="chip h-[38px] bg-bg text-brand-deep shadow-none">
+                <button type="button" aria-pressed={coGuest !== null} onClick={() => setCoGuest(coGuest === null ? "" : null)} className="chip h-[38px] bg-bg text-brand-deep shadow-none aria-pressed:bg-ink aria-pressed:text-card">
                   + Gast
                 </button>
                 <Link href={reserveHref} className="chip h-[38px] bg-bg text-brand-deep shadow-none">

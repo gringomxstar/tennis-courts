@@ -241,13 +241,14 @@ body {
   }
 }
 
-/* v3 building blocks (entwurf-v3.html .card / .btn / .chip / .pill / .sum); segments and switches live in segmented.tsx / switch.tsx */
-@utility card {
+/* v3 building blocks, in the components layer so Tailwind utilities override them (entwurf-v3.html .card / .btn / .chip / .pill / .sum); segments and switches live in segmented.tsx / switch.tsx */
+@layer components {
+.card {
   background: var(--card);
   border-radius: 24px;
   box-shadow: var(--sh);
 }
-@utility btn {
+.btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -265,15 +266,15 @@ body {
   &:active:not(:disabled) { transform: translateY(1px); }
   &:disabled { opacity: 0.5; }
 }
-@utility btn-pri {
+.btn-pri {
   background: var(--brand-deep);
   color: #fff;
 }
-@utility btn-ghost {
+.btn-ghost {
   background: var(--bg);
   box-shadow: none;
 }
-@utility chip {
+.chip {
   display: inline-flex;
   align-items: center;
   gap: 7px;
@@ -289,7 +290,7 @@ body {
   flex: none;
   &[aria-pressed="true"] { background: var(--ink); color: var(--card); }
 }
-@utility pill {
+.pill {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -300,7 +301,7 @@ body {
   font-weight: 600;
   white-space: nowrap;
 }
-@utility sum {
+.sum {
   background: var(--bg);
   border-radius: 16px;
   padding: 14px;
@@ -309,6 +310,7 @@ body {
   gap: 6px 12px;
   font-size: 14px;
 }
-@utility stripes {
+.stripes {
   background: var(--stripes);
+}
 }

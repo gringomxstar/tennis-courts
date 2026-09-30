@@ -1,6 +1,7 @@
 import type { Booking, Court, CourtBlock, LimitRole, TenantSettings } from "@/types";
 
-export const BOOKING_COLORS: Record<LimitRole, string> = { MEMBER: "#64748b", GUEST: "#d97706", COACH: "#7c3aed" };
+// design v3 booking types (docs/design/README.md)
+export const BOOKING_COLORS: Record<LimitRole, string> = { MEMBER: "#38b58a", GUEST: "#f0a33a", COACH: "#7c5cff" };
 export const BOOKING_ROLE_LABEL: Record<LimitRole, string> = { MEMBER: "Mitglied", GUEST: "Gast", COACH: "Trainer" };
 
 /** Calendar color of a booking by its type; tournaments/events etc. use the member color. */

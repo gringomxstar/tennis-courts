@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { BookingSheet } from "@/components/app/booking-sheet";
 import { BookingDetailSheet } from "@/components/app/booking-detail-sheet";
@@ -8,7 +8,7 @@ import { LabeledSwitch } from "@/components/app/switch";
 import { Dot } from "@/components/app/avatar";
 import { useSheetSlot } from "@/components/app/use-sheet-slot";
 import { useNow } from "@/components/app/use-now";
-import { addDays, atHour, BOOKING_ROLE_LABEL, bookingAt, bookingColor, courtColor, courtLabel, shortName, slotState, startOfToday, surfaceKind, WD, type SlotState, type SurfaceKind } from "@/lib/courts";
+import { addDays, atHour, BOOKING_ROLE_LABEL, bookingAt, bookingColor, courtColor, courtLabel, hhmm, longDate, shortName, slotState, startOfToday, surfaceKind, WD, type SlotState, type SurfaceKind } from "@/lib/courts";
 import type { Person } from "@/lib/partners";
 import type { BlockReason, Booking, Court, CourtBlock, Tenant, SportType } from "@/types";
 import { cn } from "@/lib/utils";
@@ -89,7 +89,7 @@ export function CalendarView({
   };
 
   const dayButtons = (compact: boolean) => (
-    <div className={cn("flex px-5", compact ? "gap-1.5 pt-2.5 lg:w-[560px] lg:flex-none" : "gap-2 pt-4")}>
+    <div className={cn("flex px-5 @min-[640px]:px-0", compact ? "gap-1.5 pt-2.5" : "gap-2 pt-4")}>
       {days.map((d, i) => {
         const on = i === day;
         return (
@@ -99,14 +99,14 @@ export function CalendarView({
             aria-pressed={on}
             onClick={() => setDay(i)}
             className={cn(
-              "flex flex-1 flex-col items-center justify-center border transition-all ease-spring",
-              compact ? "h-[54px] rounded-[15px] duration-300" : "h-[72px] gap-0.5 rounded-[20px] duration-[350ms]",
-              on ? "border-clay bg-clay text-white" : "border-border bg-card text-foreground",
-              on && !compact && "scale-[1.06]"
+              // v3 .days: white cards, the chosen day in ink
+              "flex flex-1 flex-col items-center justify-center shadow-card transition-all ease-spring",
+              compact ? "h-[54px] rounded-[15px] duration-300" : "h-[66px] gap-0.5 rounded-[18px] duration-[350ms]",
+              on ? "bg-ink text-card" : "bg-card text-ink"
             )}
           >
-            <span className={cn("font-semibold opacity-90", compact ? "text-[13px] leading-[1.1]" : "text-[14px]")}>{i === 0 ? "Heute" : WD[d.getDay()]}</span>
-            <span className={cn("font-bold", compact ? "text-[19px] leading-[1.15]" : "text-[22px] tracking-[-.02em]")}>{d.getDate()}</span>
+            <span className={cn("font-semibold", on ? "opacity-70" : "text-ink-3", compact ? "text-[12px] leading-[1.1]" : "text-[11.5px]")}>{i === 0 ? "Heute" : WD[d.getDay()]}</span>
+            <span className={cn("font-bold", compact ? "text-[17px] leading-[1.15]" : "text-[18px]")}>{d.getDate()}</span>
           </button>
         );
       })}
@@ -119,7 +119,7 @@ export function CalendarView({
   const shown = courts.filter((c) => filter === "all" || surfaceKind(c) === filter);
   const tint = (color: string, pct: number) => ({ background: `color-mix(in srgb, ${color} ${pct}%, transparent)`, color: `color-mix(in srgb, ${color} 75%, var(--foreground))` });
   const legend = (
-    <div className="flex flex-wrap gap-x-3.5 gap-y-1 px-5 pt-2.5 text-[13px] font-semibold text-muted-foreground">
+    <div className="flex flex-wrap gap-x-3.5 gap-y-1 px-5 pt-3 text-[12.5px] text-ink-2 @min-[640px]:px-0">
       {(["MEMBER", "GUEST", "COACH"] as const).map((r) => (
         <span key={r} className="flex items-center gap-1.5">
           <Dot color={bookingColor({ bookingType: r }, tenant.settingsJson)} size={9} />
@@ -128,25 +128,136 @@ export function CalendarView({
       ))}
       {userId && (
         <span className="flex items-center gap-1.5">
-          <Dot color="var(--tennis-clay)" size={9} />
+          <Dot color="var(--me)" size={9} />
           Deine
         </span>
       )}
     </div>
   );
 
+  // desktop (>= 1024, design v3): courts as columns, hours as rows, colored blocks, now-line; the form opens in the right panel
+  const HOUR_MS = 3_600_000;
+  const nowIdx = day === 0 ? now.getHours() - open : -1;
+  const sel = sheet.slot;
+  const deskCell = (c: Court, h: number) => {
+    const { start, state } = cell(c, h);
+    const l = courtLabel(c);
+    if (state === "past") return <div key={c.id} className="stripes h-14 rounded-[13px]" />;
+    const b = state === "taken" || state === "mine" ? bookingAt(c.id, start, 60, bookings) : undefined;
+    const bStart = b ? new Date(b.startsAt).getTime() : 0;
+    // a longer booking is drawn once, from the cell it starts in; the cells below stay empty under it
+    if (b && bStart < start.getTime() && h > open && cell(c, h - 1).state === state) return <div key={c.id} className="h-14 rounded-[13px] bg-bg" />;
+    const rows = b ? Math.max(1, Math.min(close - h, Math.ceil((new Date(b.endsAt).getTime() - start.getTime()) / HOUR_MS))) : 1;
+    const picked = state === "free" && sel?.court.id === c.id && sel.start.getTime() === start.getTime();
+    const inert = state === "taken" && !admin;
+    const ev =
+      state === "mine" || state === "taken"
+        ? { bg: state === "mine" ? "var(--me)" : bookingColor(b, tenant.settingsJson), fg: "#fff", title: (b && shortName(b)) || (state === "mine" ? "Du" : "Belegt"), sub: state === "mine" ? "Meine Buchung" : b ? BOOKING_ROLE_LABEL[b.bookingType === "GUEST" ? "GUEST" : b.bookingType === "COACH" ? "COACH" : "MEMBER"] : "" }
+        : state === "blocked"
+          ? { bg: "var(--block)", fg: "var(--ink)", title: blockLabel(c, start), sub: "" }
+          : null;
+    return (
+      <button
+        key={c.id}
+        type="button"
+        disabled={inert}
+        onClick={() => tap(c, start, state)}
+        aria-label={`${l.name}, ${h}:00, ${STATE_LABEL[state]}${ev?.title && state !== "mine" ? `, ${ev.title}` : ""}`}
+        className={cn(
+          "relative h-14 rounded-[13px] bg-bg",
+          state === "free" && "hover:bg-brand-soft",
+          picked && "bg-brand-soft shadow-[inset_0_0_0_2px_var(--brand-deep)]",
+          (inert || state === "blocked") && "cursor-default"
+        )}
+      >
+        {picked && <span className="text-[12px] font-semibold text-brand-deep">+ Reservieren</span>}
+        {ev && (
+          <span
+            className="absolute inset-x-0 top-0 z-[1] flex items-center overflow-hidden rounded-[13px] px-[9px] text-left text-[12px] font-semibold leading-[1.2] shadow-[0_8px_18px_-10px_rgba(0,0,0,.35)]"
+            style={{ background: ev.bg, color: ev.fg, bottom: `calc(${-(rows - 1) * 100}% - ${(rows - 1) * 5}px)` }}
+          >
+            <span className="min-w-0">
+              <span className="block truncate">{ev.title}</span>
+              {ev.sub && <span className="block truncate text-[11px] font-medium opacity-80">{ev.sub}</span>}
+            </span>
+          </span>
+        )}
+      </button>
+    );
+  };
+  const deskGrid = ready && date && (
+    <div className="hidden flex-col gap-4 @min-[1024px]:flex">
+      <div className="flex items-center gap-3 pt-2">
+        <h1 className="text-[32px] font-semibold leading-[1.05] tracking-[-.02em]">Kalender</h1>
+        <div className="flex-1" />
+        <button type="button" className="btn w-[42px] px-0" aria-label="Vortag" disabled={day === 0} onClick={() => setDay(day - 1)}>‹</button>
+        <span className="btn">{longDate(date)}</span>
+        <button type="button" className="btn w-[42px] px-0" aria-label="Folgetag" disabled={day >= days.length - 1} onClick={() => setDay(day + 1)}>›</button>
+        <button type="button" className="btn btn-ghost" disabled={day === 0} onClick={() => setDay(0)}>Heute</button>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {([["all", "Alle Plätze"], ["clay", "Sand"], ["hard", "Allwetter"], ["padel", "Padel"]] as const).map(([id, label]) => (
+          <button key={id} type="button" aria-pressed={filter === id} onClick={() => setFilter(id)} className="chip">
+            {id !== "all" && <Dot color={`var(--surface-${id})`} size={9} />}
+            {label}
+          </button>
+        ))}
+      </div>
+      {/* leave room for the right-hand booking panel (sheet.tsx, >= 1100) */}
+      <div className={cn("card px-[22px] py-5", (sel || detail) && "min-[1100px]:mr-[376px]")}>
+        <div className="relative grid gap-[5px]" style={{ gridTemplateColumns: `52px repeat(${shown.length}, minmax(0, 1fr))` }}>
+          <div />
+          {shown.map((c) => {
+            const l = courtLabel(c);
+            return (
+              <div key={c.id} className="flex h-[58px] min-w-0 items-center gap-2 rounded-[14px] bg-bg px-2">
+                <span aria-hidden className="h-[9px] w-[9px] flex-none rounded-[3px]" style={{ background: courtColor(c) }} />
+                <div className="min-w-0">
+                  <b className="block truncate text-[13px] font-semibold">{l.name}</b>
+                  <small className="block truncate text-[11px] text-ink-3">{l.sub}</small>
+                </div>
+              </div>
+            );
+          })}
+          {weekHours.map((h, i) => (
+            <Fragment key={h}>
+              <div className={cn("flex h-14 items-center justify-center rounded-[12px] text-[12.5px] font-semibold text-ink-2", i === nowIdx && "bg-brand-deep text-white")}>{h}:00</div>
+              {shown.map((c) => deskCell(c, h))}
+            </Fragment>
+          ))}
+          {nowIdx >= 0 && nowIdx < weekHours.length && (
+            <div aria-hidden className="pointer-events-none absolute left-[57px] right-0 z-[2] border-t-2 border-dashed border-brand-deep" style={{ top: 63 + nowIdx * 61 + (now.getMinutes() / 60) * 56 }}>
+              <span className="absolute -left-[52px] -top-2.5 bg-card px-[3px] text-[11px] font-bold text-brand-deep">{hhmm(now)}</span>
+            </div>
+          )}
+        </div>
+        <div className="mt-3 flex flex-wrap gap-3.5 text-[12.5px] text-ink-2">
+          {userId && <span className="flex items-center gap-1.5"><i className="inline-block h-3 w-3 rounded-[4px] bg-me" />Meine Buchung</span>}
+          {(["MEMBER", "GUEST", "COACH"] as const).map((r) => (
+            <span key={r} className="flex items-center gap-1.5">
+              <i className="inline-block h-3 w-3 rounded-[4px]" style={{ background: bookingColor({ bookingType: r }, tenant.settingsJson) }} />
+              {r === "MEMBER" ? "Mitglieder" : r === "COACH" ? "Training" : BOOKING_ROLE_LABEL[r]}
+            </span>
+          ))}
+          <span className="flex items-center gap-1.5"><i className="inline-block h-3 w-3 rounded-[4px] bg-block" />Gesperrt</span>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <>
-      <div className="flex items-center justify-between gap-3 px-5 pt-[60px] lg:pt-12">
-        <h1 className="text-[30px] font-bold tracking-[-.035em]">Kalender</h1>
+      {/* phone and tablet: the existing Liste/Raster views (owner: keep sideways scroll, slider and grid) */}
+      <div className="@min-[1024px]:hidden">
+      <div className="flex items-center justify-between gap-3 px-5 pt-[60px] @min-[640px]:px-0 @min-[640px]:pt-2">
+        <h1 className="text-[28px] font-semibold leading-[1.05] tracking-[-.02em]">Kalender</h1>
         <LabeledSwitch left="Liste" right="Raster" label="Rasteransicht" on={view === "grid"} onChange={(g) => pickView(g ? "grid" : "list")} />
       </div>
 
       {ready && view === "list" && (
         <>
           {dayButtons(false)}
-          <div className="lg:flex lg:items-end">
-          <div className="no-scrollbar flex gap-2 overflow-x-auto px-5 pt-3.5 lg:flex-1">
+          <div className="no-scrollbar flex gap-2 overflow-x-auto px-5 py-1 pt-3.5 @min-[640px]:px-0">
             {([["all", "Alle"], ["clay", "Sand"], ["hard", "Allwetter"], ["padel", "Padel"]] as const).map(([id, label]) => {
               const on = filter === id;
               return (
@@ -155,34 +266,31 @@ export function CalendarView({
                   type="button"
                   aria-pressed={on}
                   onClick={() => setFilter(id)}
-                  className={cn(
-                    "flex-none rounded-full border px-[18px] py-[11px] text-[16px] font-semibold transition-all duration-[250ms]",
-                    on ? "border-foreground bg-foreground text-background" : "border-border bg-transparent text-foreground"
-                  )}
+                  className="chip"
                 >
+                  {id !== "all" && <Dot color={`var(--surface-${id})`} size={9} />}
                   {label}
                 </button>
               );
             })}
           </div>
-          </div>
           {legend}
           {/* desktop: courts stacked, all hours in one row that fits the width (no hidden sideways scroll) */}
-          <div className="flex flex-col gap-3 px-5 pt-4 sm:gap-2">
+          <div className="flex flex-col gap-3 px-5 pt-4 @min-[640px]:px-0">
             {shown.map((c) => {
               const l = courtLabel(c);
               return (
-                <div key={c.id} className="rounded-[24px] border border-border bg-card p-3.5 sm:rounded-[20px] sm:p-2.5 xl:flex xl:items-center xl:gap-3">
-                  <div className="flex items-center gap-2 px-1 pb-2.5 xl:w-[210px] xl:flex-none xl:pb-0 xl:pl-2">
+                <div key={c.id} className="card p-3.5 sm:p-2.5">
+                  <div className="flex items-baseline gap-2 px-1 pb-2">
                     <Dot color={courtColor(c)} size={9} />
-                    <div className="text-[19px] font-bold tracking-[-.01em]">{l.name}</div>
-                    <div className="text-[15px] text-muted-foreground">{l.sub}</div>
+                    <div className="text-[15px] font-semibold">{l.name}</div>
+                    <div className="text-[12.5px] text-ink-3">{l.sub}</div>
                     <div className="flex-1" />
                     {c.hasLighting && (
                       <svg role="img" aria-label="Flutlicht" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z" /></svg>
                     )}
                   </div>
-                  <div ref={(el) => { if (el && el.dataset.day !== String(day)) { el.dataset.day = String(day); el.scrollLeft = Math.max(0, startHour - open) * CHIP; } }} className="no-scrollbar -mx-3.5 flex gap-1.5 overflow-x-auto px-3.5 sm:mx-0 sm:grid sm:auto-cols-fr sm:grid-flow-col sm:gap-1 sm:overflow-visible sm:px-0 xl:flex-1">
+                  <div ref={(el) => { if (el && el.dataset.day !== String(day)) { el.dataset.day = String(day); el.scrollLeft = Math.max(0, startHour - open) * CHIP; } }} className="no-scrollbar -mx-3.5 flex gap-1.5 overflow-x-auto px-3.5 sm:mx-0 sm:grid sm:auto-cols-fr sm:grid-flow-col sm:gap-1 sm:overflow-visible sm:px-0">
                     {weekHours.map((h) => {
                       const { start, state } = cell(c, h);
                       const inert = (state === "taken" && !admin) || state === "past";
@@ -196,12 +304,12 @@ export function CalendarView({
                           aria-label={`${l.name}, ${h}:00, ${STATE_LABEL[state]}`}
                           style={taken}
                           className={cn(
-                            "flex h-[58px] w-[72px] flex-none items-center justify-center rounded-[15px] border text-[18px] font-bold tracking-[-.01em] transition-transform duration-300 ease-spring sm:h-[48px] sm:w-auto sm:min-w-0 sm:rounded-[12px] sm:text-[15px]",
-                            state === "free" && "border-free-border bg-seg-on text-foreground active:scale-[.92]",
-                            state === "mine" && "border-clay bg-clay text-white active:scale-[.92]",
-                            state === "blocked" && "border-transparent bg-inset text-muted-foreground opacity-55",
-                            state === "taken" && "cursor-default border-transparent",
-                            state === "past" && "cursor-default border-transparent bg-inset text-muted-foreground opacity-40",
+                            "flex h-[58px] w-[72px] flex-none items-center justify-center rounded-[14px] text-[17px] font-semibold transition-transform duration-300 ease-spring sm:h-[48px] sm:w-auto sm:min-w-0 sm:rounded-[12px] sm:text-[14px]",
+                            state === "free" && "bg-bg text-ink active:scale-[.92]",
+                            state === "mine" && "bg-brand-deep text-white active:scale-[.92]",
+                            state === "blocked" && "stripes text-ink-3",
+                            state === "taken" && "cursor-default",
+                            state === "past" && "cursor-default bg-bg text-ink-3 opacity-35",
                             // wider screens hide elapsed hours by time (not state) so all court rows keep the same columns
                             start.getTime() < bookableFrom && "sm:hidden"
                           )}
@@ -220,16 +328,13 @@ export function CalendarView({
 
       {ready && view === "grid" && (
         <>
-          <div className="lg:flex lg:items-center lg:justify-between lg:pr-5 lg:[&>div:last-child]:pt-2.5">
-            {dayButtons(true)}
-            {legend}
-          </div>
-          {/* data-wide lets the club layout drop its max width for this view */}
-          <div data-wide ref={(el) => { if (el && el.dataset.day !== String(day)) { el.dataset.day = String(day); el.scrollTop = Math.max(0, startHour - open - 1) * 62; } }} className="mt-2.5 flex h-[650px] overflow-auto border-t border-border lg:mx-5 lg:h-[calc(100dvh-190px)]">
-            <div className="sticky left-0 z-[4] h-max w-[56px] flex-none bg-background">
-              <div className="sticky top-0 z-[5] h-[62px] bg-background" />
+          {dayButtons(true)}
+          {legend}
+          <div ref={(el) => { if (el && el.dataset.day !== String(day)) { el.dataset.day = String(day); el.scrollTop = Math.max(0, startHour - open - 1) * 62; } }} className="card mx-5 mt-3 flex h-[650px] overflow-auto @min-[640px]:mx-0">
+            <div className="sticky left-0 z-[4] h-max w-[56px] flex-none bg-card">
+              <div className="sticky top-0 z-[5] h-[62px] bg-card" />
               {weekHours.map((h) => (
-                <div key={h} className={cn("relative box-border", h === open ? "top-1" : "-top-[9px]", "h-[62px] pr-2 text-right text-[15px] font-semibold text-muted-foreground")}>
+                <div key={h} className={cn("relative box-border", h === open ? "top-1" : "-top-[9px]", "h-[62px] pr-2 text-right text-[13px] font-semibold text-ink-2")}>
                   {h}:00
                 </div>
               ))}
@@ -237,13 +342,13 @@ export function CalendarView({
             {courts.map((c) => {
               const l = courtLabel(c);
               return (
-                <div key={c.id} className="h-max w-[calc((min(100vw,640px)-56px)/2)] flex-none border-l border-border lg:w-auto lg:min-w-0 lg:flex-1">
-                  <div className="sticky top-0 z-[3] flex h-[62px] flex-col items-center justify-center gap-0.5 border-b border-border bg-background">
-                    <div className="flex items-center gap-1.5 text-[18px] font-bold">
+                <div key={c.id} className="h-max w-[calc((min(100vw,640px)-72px)/2)] flex-none border-l border-line">
+                  <div className="sticky top-0 z-[3] flex h-[62px] flex-col items-center justify-center gap-0.5 border-b border-line bg-card">
+                    <div className="flex items-center gap-1.5 text-[15px] font-semibold">
                       <Dot color={courtColor(c)} size={9} />
                       {l.name}
                     </div>
-                    <div className="text-[14px] text-muted-foreground">{l.sub}</div>
+                    <div className="text-[12px] text-ink-3">{l.sub}</div>
                   </div>
                   {weekHours.map((h) => {
                     const { start, state } = cell(c, h);
@@ -253,29 +358,27 @@ export function CalendarView({
                     const text =
                       state === "mine" ? (b && shortName(b)) || "Du" : state === "taken" ? (b && shortName(b)) || "Belegt" : state === "blocked" ? blockLabel(c, start) : "";
                     return (
-                      <div key={h} className={cn("relative box-border h-[62px] border-t border-border px-1 py-[3px]", state === "past" && "lg:bg-inset/60")}>
+                      <div key={h} className="relative box-border h-[62px] border-t border-line px-1 py-[3px]">
                         <button
                           type="button"
                           disabled={inert}
                           onClick={() => tap(c, start, state)}
                           aria-label={`${l.name}, ${h}:00, ${STATE_LABEL[state]}${text && state === "taken" ? `, ${text}` : ""}`}
-                          style={state === "taken" ? { ...tint(bookingColor(b, tenant.settingsJson), 18), boxShadow: `inset 3px 0 0 ${bookingColor(b, tenant.settingsJson)}` } : undefined}
+                          style={state === "taken" ? { background: bookingColor(b, tenant.settingsJson), color: "#fff" } : undefined}
                           className={cn(
-                            "box-border flex h-full w-full items-center rounded-[12px] px-2.5 text-left text-[16px] font-bold leading-tight transition-transform duration-[250ms] ease-spring",
-                            // desktop: empty cells stay calm, hover shows what a click books
-                            state === "free" && "group bg-free-tint text-clay-text active:scale-[.94] lg:bg-transparent lg:hover:bg-free-tint",
-                            state === "mine" && "bg-clay text-white active:scale-[.94]",
-                            state === "blocked" && "cursor-default bg-acc text-muted-foreground",
+                            "box-border flex h-full w-full items-center rounded-[9px] px-2.5 text-left text-[14px] font-semibold leading-tight transition-transform duration-[250ms] ease-spring",
+                            state === "free" && "bg-bg active:scale-[.94]",
+                            state === "mine" && "bg-me text-white active:scale-[.94]",
+                            state === "blocked" && "stripes cursor-default text-ink-3",
                             state === "taken" && "cursor-default",
-                            state === "past" && "cursor-default bg-inset opacity-35 lg:hidden"
+                            state === "past" && "cursor-default bg-bg opacity-35"
                           )}
                         >
                           <span className="line-clamp-2">{text}</span>
-                          {state === "free" && <span className="hidden text-[14px] lg:group-hover:inline">+ {h}:00</span>}
                         </button>
                         {isNow && (
-                          <div aria-hidden className="absolute inset-x-0 z-[2] h-0.5 bg-clay" style={{ top: `${(now.getMinutes() / 60) * 100}%` }}>
-                            <div className="absolute -left-1 -top-[3px] h-2 w-2 rounded-full bg-clay" />
+                          <div aria-hidden className="absolute inset-x-0 z-[2] h-0.5 bg-brand-deep" style={{ top: `${(now.getMinutes() / 60) * 100}%` }}>
+                            <div className="absolute -left-1 -top-[3px] h-2 w-2 rounded-full bg-brand-deep" />
                           </div>
                         )}
                       </div>
@@ -287,6 +390,10 @@ export function CalendarView({
           </div>
         </>
       )}
+
+      </div>
+
+      {deskGrid}
 
       <BookingSheet slug={tenant.slug} settings={tenant.settingsJson} slot={sheet.slot} onClose={sheet.close} pool={partners} isAnon={!userId} guestRate={guestRate} needPartner={needPartner} planSports={planSports} wallet={wallet} />
       <BookingDetailSheet slug={tenant.slug} settings={tenant.settingsJson} booking={detail} court={courts.find((c) => c.id === detail?.courtId)} userId={userId} admin={admin} onClose={() => setDetail(null)} />

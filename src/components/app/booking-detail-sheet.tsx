@@ -74,38 +74,36 @@ export function BookingDetailSheet({
     <Sheet open={Boolean(booking)} onOpenChange={(o) => !o && onClose()} title="Buchung">
       {b && start && end && (
         <>
-          <div className="flex items-end justify-between">
-            <div>
-              <div className="text-[15px] font-semibold text-muted-foreground">{longDate(start)}</div>
-              <div className="text-[44px] font-bold leading-none tracking-[-.05em]">
-                {hhmm(start)}–{hhmm(end)}
-              </div>
-            </div>
+          <div>
+            <h2 className="text-[26px] font-bold leading-[1.1] tracking-[-.03em]">
+              {longDate(start)}, {hhmm(start)}–{hhmm(end)}
+            </h2>
             {court && (
-              <div className="pb-1 text-right">
-                <div className="flex items-center justify-end gap-[7px] text-[18px] font-bold">
-                  <Dot color={courtColor(court)} size={9} />
-                  {courtLabel(court).name}
-                </div>
-                <div className="text-[14px] text-muted-foreground">{courtLabel(court).sub}</div>
+              <div className="mt-1 flex items-center gap-[7px] text-[13.5px] text-ink-2">
+                <Dot color={courtColor(court)} size={9} />
+                {courtLabel(court).name}, {courtLabel(court).sub}
               </div>
             )}
           </div>
 
-          <div className="mt-6 text-[13px] font-bold uppercase tracking-[.06em] text-muted-foreground">
+          <div className="mb-1 mt-4 text-[13px] font-semibold text-ink-2">
             {b.bookingType === "COACH" ? "Training" : names.length >= 4 ? "Doppel" : "Spieler"}
           </div>
-          <div className="mt-2 flex flex-col gap-2">
+          <div className="flex flex-col">
             {names.map((n, i) => (
-              <div key={i} className="flex items-center gap-3 rounded-[16px] bg-inset px-3.5 py-2.5">
-                <Avatar ini={initials(n)} />
-                <span className="text-[16px] font-semibold">{n}</span>
+              <div key={i} className="flex items-center gap-3 border-t border-line py-3 first:border-t-0 first:pt-1">
+                <Avatar ini={initials(n)} className="h-9 w-9 text-[12px]" />
+                <span className="min-w-0 flex-1 truncate text-[15px] font-semibold">{n}</span>
+                {i === 0 && <span className="text-[12.5px] text-ink-3">hat gebucht</span>}
               </div>
             ))}
           </div>
           {admin && b.paymentStatus && b.totalCost ? (
-            <div className="mt-3 text-[14px] text-muted-foreground">
-              CHF {b.totalCost} · {b.paymentStatus === "PAID" ? "bezahlt" : b.paymentStatus === "WAIVED" ? "gratis" : "offen"}
+            <div className="sum mt-3">
+              <span>Preis</span>
+              <b className="font-semibold">
+                CHF {b.totalCost} · {b.paymentStatus === "PAID" ? "bezahlt" : b.paymentStatus === "WAIVED" ? "gratis" : "offen"}
+              </b>
             </div>
           ) : null}
 
@@ -114,7 +112,7 @@ export function BookingDetailSheet({
               type="button"
               disabled={busy}
               onClick={cancel}
-              className={`mt-5 flex h-[54px] w-full items-center justify-center gap-2.5 rounded-[18px] text-[17px] font-bold transition-all duration-[250ms] ${armed ? "bg-clay text-white" : "bg-inset text-clay-text"}`}
+              className={`btn mt-4 h-[50px] w-full flex-none text-[15.5px] shadow-none ${armed ? "bg-bad text-white" : "bg-bad-bg text-bad"}`}
             >
               {busy && <Spinner />}
               {armed ? "Wirklich stornieren?" : "Stornieren"}
@@ -122,7 +120,7 @@ export function BookingDetailSheet({
           ) : (
             own &&
             !started && (
-              <div className="mt-5 text-[14px] text-muted-foreground">
+              <div className="mt-4 text-center text-[13.5px] text-ink-3">
                 Stornieren nur bis {deadlineText(deadline)} vor Spielbeginn. Bei Fragen: Club kontaktieren.
               </div>
             )
