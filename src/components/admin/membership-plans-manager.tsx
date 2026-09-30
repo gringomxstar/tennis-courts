@@ -237,7 +237,7 @@ export function MembershipPlansManager({ clubSlug, initialPlans }: MembershipPla
   };
 
   return (
-    <section className="rounded-[26px] border border-border bg-card p-5">
+    <section className="card p-5">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 className="text-[22px] font-bold tracking-[-.02em]">Tarife ({plans.length})</h2>
@@ -264,7 +264,7 @@ export function MembershipPlansManager({ clubSlug, initialPlans }: MembershipPla
           <form ref={formRef} onSubmit={handleCreatePlan} className="flex flex-col gap-4 rounded-[20px] bg-inset p-4">
             <h3 className="text-[17px] font-bold tracking-[-.01em]">{editingId ? "Tarif bearbeiten" : "Neuer Tarif"}</h3>
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_auto]">
+            <div className="grid grid-cols-1 gap-4 @min-[640px]:grid-cols-[1fr_auto]">
               <label className="block">
                 <span className={label}>Tarifname *</span>
                 <input
@@ -276,7 +276,7 @@ export function MembershipPlansManager({ clubSlug, initialPlans }: MembershipPla
                   className={input}
                 />
               </label>
-              <div className="grid grid-cols-2 gap-3 sm:w-[240px]">
+              <div className="grid grid-cols-2 gap-3 @min-[640px]:w-[240px]">
                 <label className="block">
                   <span className={label}>Preis *</span>
                   <input
@@ -311,7 +311,7 @@ export function MembershipPlansManager({ clubSlug, initialPlans }: MembershipPla
               />
             </label>
 
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 @min-[640px]:grid-cols-4">
               <label className="block">
                 <span className={label}>Vorlauf</span>
                 <input
@@ -395,8 +395,8 @@ export function MembershipPlansManager({ clubSlug, initialPlans }: MembershipPla
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-[1fr_120px_120px]">
-              <label className="col-span-2 block sm:col-span-1">
+            <div className="grid grid-cols-2 gap-3 @min-[640px]:grid-cols-[1fr_120px_120px]">
+              <label className="col-span-2 block @min-[640px]:col-span-1">
                 <span className={label}>Kategorie</span>
                 <input
                   list="planCategories"
@@ -422,7 +422,7 @@ export function MembershipPlansManager({ clubSlug, initialPlans }: MembershipPla
               </label>
             </div>
 
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-2 @min-[640px]:grid-cols-2">
               <button type="button" aria-pressed={couple} onClick={() => setCouple(!couple)} className={toggleRow}>
                 <span className="flex-1 text-[16px] font-semibold">Paar-Abo (2 Personen)</span>
                 <SwitchKnob on={couple} />
@@ -481,7 +481,7 @@ export function MembershipPlansManager({ clubSlug, initialPlans }: MembershipPla
             <button
               type="submit"
               disabled={loading}
-              className="flex h-[54px] w-full items-center justify-center gap-2.5 rounded-[17px] bg-clay text-[17px] font-bold text-white active:scale-[.97] disabled:opacity-70"
+              className="btn btn-pri !h-[50px] w-full active:scale-[.97] disabled:opacity-70"
             >
               {loading && <Spinner />}
               Tarif speichern
@@ -515,7 +515,7 @@ export function MembershipPlansManager({ clubSlug, initialPlans }: MembershipPla
             {groups.map(([cat, group]) => (
               <div key={cat ?? ""}>
                 <h3 className={`${label} mb-1.5 mt-2 px-1`}>{cat ?? "Ohne Kategorie"}</h3>
-                <div className="overflow-hidden rounded-[22px] border border-border">
+                <div className="overflow-hidden">
                   {group.map((plan) => {
                     const age = ageLabel(plan);
                     return (
