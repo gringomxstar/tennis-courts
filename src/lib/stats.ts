@@ -104,7 +104,8 @@ export async function loadStats(tenantId: string, year: number, openHour: number
   // only what has started: a confirmed booking next week is not played yet
   const played = (y: number) => bookings.filter((b) => PLAYED.has(b.status) && b.startsAt <= new Date() && inYear(b.startsAt, y));
   const playedY = played(year);
-  // Kasse = cash principle (OR 957 Abs. 2, small clubs): revenue counts when the money comes in, not when the game is played.
+  // Revenue = Leistungsprinzip as confirmed by the Treuhänder: a Guthaben top-up is a liability (see wallet.liability),
+  // the booking is the revenue, also when paid from Guthaben. Dated by payment/booking, not by play date.
   // Wallet/online are paid at booking; on-site/invoice when the admin marks them paid (last update).
   // ponytail: no Booking.paidAt column; add one if a paid booking can be edited later and the date matters
   const paidOn = (b: (typeof bookings)[number]) => (b.paymentMethod === "WALLET" || b.paymentMethod === "ONLINE" ? b.createdAt : b.updatedAt);
@@ -218,8 +219,7 @@ export async function loadStats(tenantId: string, year: number, openHour: number
       bookings: p.length,
       hours: r2(p.reduce((s, b) => s + hours(b), 0)),
       guests: p.reduce((s, b) => s + b.participants.filter((x) => x.role === "GUEST").length + (b.bookingType === "GUEST" ? 1 : 0), 0),
-      // Guthaben-Buchungen are not counted: that money came in with the top-up
-      bookingRevenue: r2(paidIn(y).filter((b) => b.paymentMethod !== "WALLET").reduce((s, b) => s + Number(b.totalCost), 0)),
+      bookingRevenue: r2(paidIn(y).reduce((s, b) => s + Number(b.totalCost), 0)),
       aboRevenue: r2(paidMemberships.filter((m) => inYear(aboDate(m), y)).reduce((s, m) => s + aboAmount(m), 0)),
     };
   };
@@ -359,10 +359,10 @@ export function exportRows(s: Stats, type: ExportType): unknown[][] {
   }
   if (type === "kasse") {
     return [
-      ["Monat", ...METHODS.map((m) => METHOD_LABEL[m]), "Abos", "Guthaben-Aufladungen", "Total Einnahmen (ohne Guthaben-Nutzung)"],
+      ["Monat", ...METHODS.map((m) => METHOD_LABEL[m]), "Abos", "Guthaben-Aufladungen (Verbindlichkeit, nicht im Total)", "Total Einnahmen"],
       ...s.kasse.months.map((m) => [
         `${String(m.m).padStart(2, "0")}.${s.year}`, ...METHODS.map((k) => m.byMethod[k].toFixed(2)), m.abos.toFixed(2), m.topUps.toFixed(2),
-        (m.byMethod.ONLINE + m.byMethod.ON_SITE + m.byMethod.INVOICE + m.abos + m.topUps).toFixed(2),
+        (m.byMethod.WALLET + m.byMethod.ONLINE + m.byMethod.ON_SITE + m.byMethod.INVOICE + m.abos).toFixed(2),
       ]),
       [],
       ["Offene Posten", s.kasse.open.toFixed(2)],
