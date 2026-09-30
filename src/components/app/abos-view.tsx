@@ -104,6 +104,9 @@ export function AbosView({
   const proofTip = aged.find((p) => p.proofRequired && fits(p) && personsOf(p) === 1 && p.price < fitPrice);
 
   const rate = sport === "PADEL" ? guestRatePadel : guestRate;
+  // a guest pays their share of the court: tennis 2 players, padel 4
+  const players = sport === "PADEL" ? 4 : 2;
+  const share = rate / players;
   const registerHref = (id: string) => `/c/${slug}/profile?register=1&next=${encodeURIComponent(`/c/${slug}/abos?plan=${id}`)}`;
 
   async function pay(p: MembershipPlan, paymentMethod: Method) {
@@ -144,7 +147,7 @@ export function AbosView({
     personsOf(p) === 2
       ? `CHF ${fmt(p.price / 2)} pro Person`
       : sport !== "COMBO" && rate > 0
-        ? `Als Gast nach ${Math.ceil(p.price / rate)} Stunden bezahlt`
+        ? `Als Gast nach ${Math.ceil(p.price / share)} Stunden bezahlt`
         : "";
 
   const input = "h-12 w-full min-w-0 rounded-[14px] bg-bg px-4 text-[15px] text-ink outline-none focus:shadow-[inset_0_0_0_2px_var(--brand-deep)]";
@@ -217,9 +220,9 @@ export function AbosView({
     ) : (
       rate > 0 && (
         <>
-          Als Gast zahlst du <strong className="text-foreground">CHF {fmt(rate)} pro Stunde</strong>
-          {sport === "PADEL" ? " Padel" : ""}. Das {catOf(adult)}-Abo ist nach{" "}
-          <strong className="text-foreground">{Math.ceil(adult.price / rate)} Stunden</strong> bezahlt, danach spielst du bis 31. März ohne Platzgebühr.
+          Als Gast zahlst du <strong className="text-foreground">CHF {fmt(share)} pro Stunde</strong>
+          {sport === "PADEL" ? " Padel" : ""} (Platz CHF {fmt(rate)}, geteilt zu {players === 4 ? "viert" : "zweit"}). Das {catOf(adult)}-Abo ist nach{" "}
+          <strong className="text-foreground">{Math.ceil(adult.price / share)} Stunden</strong> bezahlt, danach spielst du bis 31. März ohne Platzgebühr.
         </>
       )
     );

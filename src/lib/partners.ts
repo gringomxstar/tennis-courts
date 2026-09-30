@@ -17,10 +17,13 @@ export function frequentPartners(bookings: Booking[], userId: string, members: U
     );
     for (const id of new Set(ids)) counts.set(id, (counts.get(id) ?? 0) + 1);
   }
-  const others = members.filter((m) => m.id !== userId && m.role !== "GUEST" && m.role !== "PLATFORM_ADMIN");
+  const others = members.filter((m) => m.id !== userId && isPartner(m));
   const ranked = [...others].sort((a, b) => (counts.get(b.id) ?? 0) - (counts.get(a.id) ?? 0));
   return ranked.slice(0, n).map(toPerson);
 }
+
+/** Club members plus registered guests (own password); guests booked by e-mail only stay out. */
+export const isPartner = (m: UserSummary) => m.role !== "PLATFORM_ADMIN" && (m.role !== "GUEST" || Boolean(m.hasAccount));
 
 export const toPerson = (m: UserSummary): Person => ({
   id: m.id,

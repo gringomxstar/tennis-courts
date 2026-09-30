@@ -335,6 +335,7 @@ export async function getTenantMembers(tenantId: string): Promise<UserSummary[]>
           lastName: tu.user.lastName,
           phone: tu.user.phone,
           role: tu.role as TenantRole,
+          hasAccount: Boolean(tu.user.passwordHash),
           planSports: tu.user.memberships.length ? planFromDb(tu.user.memberships[tu.user.memberships.length - 1].plan).sports ?? ["TENNIS"] : null,
         }));
       }
