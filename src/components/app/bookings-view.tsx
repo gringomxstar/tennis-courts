@@ -27,12 +27,14 @@ function groupOf(d: Date, up: boolean) {
 export function BookingsView({
   slug,
   userId,
+  isCoach = false,
   bookings,
   courts,
   cancelDeadlineMinutes = 24 * 60,
 }: {
   slug: string;
   userId?: string;
+  isCoach?: boolean;
   bookings: Booking[];
   courts: Court[];
   /** Same rule as cancelDeadlineError in actions/booking.ts — don't offer a button that can only fail. */
@@ -112,6 +114,11 @@ export function BookingsView({
       <div className="flex items-center gap-3">
         <h1 className="text-[28px] font-bold tracking-[-.03em] @min-[640px]:text-[32px]">Buchungen</h1>
         <div className="flex-1" />
+        {isCoach && (
+          <Link href={`/c/${slug}/trainer`} className="btn btn-ghost">
+            Kurs buchen
+          </Link>
+        )}
         {userId && (
           <Link href={`/c/${slug}/calendar`} className="btn btn-pri">
             Reservieren
@@ -158,7 +165,7 @@ export function BookingsView({
                         <div className="min-w-0 flex-1">
                           <b className="flex items-center gap-1.5 text-[16px]"><Dot color={courtColor(c)} />{courtLabel(c).name}</b>
                           <small className="block truncate text-[13.5px] text-ink-2">
-                            {b.seriesId ? "Training, wöchentliche Serie" : players ? `mit ${players}` : "Einzel"}
+                            {b.seriesId ? (b.notes && b.notes !== "Training (Serie)" ? `Kurs ${b.notes}` : "Training, wöchentliche Serie") : players ? `mit ${players}` : "Einzel"}
                           </small>
                         </div>
                         {up && <span className={`pill ${pill[1]}`}>{pill[0]}</span>}
@@ -174,7 +181,7 @@ export function BookingsView({
                           )}
                           {b.seriesId && (
                             <button type="button" disabled={busy} onClick={() => cancelSeries(b.id)} className="btn h-9 text-[13.5px] text-bad">
-                              Ganze Serie stornieren
+                              {b.notes && b.notes !== "Training (Serie)" ? "Ganzen Kurs stornieren" : "Ganze Serie stornieren"}
                             </button>
                           )}
                         </div>

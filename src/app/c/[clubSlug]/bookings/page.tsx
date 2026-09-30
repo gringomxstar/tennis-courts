@@ -2,7 +2,7 @@ import { after } from "next/server";
 import { cancelDeadlineMinutes } from "@/lib/booking-rules";
 import { getTenantContext } from "@/lib/tenant";
 import { syncPendingBookingPayments } from "@/lib/booking-payment";
-import { getCourtsByTenantId, getUserBookings } from "@/lib/data";
+import { getCourtsByTenantId, getMemberContext, getUserBookings } from "@/lib/data";
 import { BookingsView } from "@/components/app/bookings-view";
 
 export default async function BookingsPage({ params }: { params: Promise<{ clubSlug: string }> }) {
@@ -10,10 +10,11 @@ export default async function BookingsPage({ params }: { params: Promise<{ clubS
   const { tenant, user } = await getTenantContext(clubSlug);
   if (user) after(() => syncPendingBookingPayments(tenant.id));
 
+  const isCoach = user ? (await getMemberContext(tenant.id, user.id))?.role === "COACH" : false;
   const [bookings, courts] = await Promise.all([
     user ? getUserBookings(user.id, tenant.id) : Promise.resolve([]),
     getCourtsByTenantId(tenant.id),
   ]);
 
-  return <BookingsView slug={tenant.slug} userId={user?.id} bookings={bookings} courts={courts} cancelDeadlineMinutes={cancelDeadlineMinutes(tenant.settingsJson)} />;
+  return <BookingsView isCoach={isCoach} slug={tenant.slug} userId={user?.id} bookings={bookings} courts={courts} cancelDeadlineMinutes={cancelDeadlineMinutes(tenant.settingsJson)} />;
 }
