@@ -172,6 +172,8 @@ body {
   --color-block: var(--block);
   --color-ok: var(--ok);
   --color-ok-bg: var(--ok-bg);
+  --color-warn: var(--warn);
+  --color-warn-bg: var(--warn-bg);
   --color-bad: var(--bad);
   --color-bad-bg: var(--bad-bg);
   --color-go: var(--go);

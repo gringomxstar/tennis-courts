@@ -96,7 +96,7 @@ export function GuestBookingCard({
         </div>
       )}
 
-      <div className="mt-4 rounded-[26px] border border-border bg-card p-5">
+      <div className="card mt-4 p-5">
         <div className="flex items-start justify-between gap-3">
           <div>
             <div className="text-[15px] font-semibold text-muted-foreground">{now ? longDate(start) : ""}</div>
@@ -173,7 +173,7 @@ function ClaimAccount({ slug, bookingId, token, email }: { slug: string; booking
   }
 
   return (
-    <form onSubmit={submit} className="mt-4 rounded-[26px] border border-border bg-card p-5">
+    <form onSubmit={submit} className="card mt-4 p-5">
       <h2 className="text-[22px] font-bold leading-[1.15] tracking-[-.03em]">Nächstes Mal ohne Formular.</h2>
       <p className="mt-1 text-[15px] text-muted-foreground">
         Setz ein Passwort – deine E-Mail <span className="font-semibold text-foreground">{email}</span> haben wir schon.
