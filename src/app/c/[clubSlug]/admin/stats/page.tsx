@@ -46,6 +46,7 @@ export default async function AdminStatsPage({ params, searchParams }: {
   const settings = tenant.settingsJson;
   const s = await loadStats(tenant.id, year, settings?.openingHour ?? 7, settings?.closingHour ?? 22);
   const { kasse, auslastung: a, gv, pflege, junioren: j } = s;
+  // Leistungsprinzip (Treuhänder): a top-up is a liability, revenue arises with the booking (incl. paid from Guthaben)
   const monthTotal = (m: (typeof kasse.months)[number]) => METHODS.reduce((t, k) => t + m.byMethod[k], 0) + m.abos;
   const yearTotal = kasse.months.reduce((t, m) => t + monthTotal(m), 0);
 
@@ -127,7 +128,7 @@ export default async function AdminStatsPage({ params, searchParams }: {
         {/* 1. Kasse */}
         <section id="kasse" className={`${card} scroll-mt-4`}>
           <h2 className={h2}>Kassenjournal</h2>
-          <p className={sub}>Bezahlte Buchungen nach Spieldatum und Zahlart, dazu Abos nach Zahlungsdatum. Guthaben-Zahlungen sind bereits bei der Aufladung eingenommen.</p>
+          <p className={sub}>Bezahlte Buchungen nach Zahlungsdatum und Zahlart, dazu Abos nach Zahlungsdatum. Aufladungen sind noch keine Einnahme (Verbindlichkeit), Einnahme entsteht mit der Buchung.</p>
           <div className="mt-4 grid grid-cols-2 gap-2.5 @min-[1024px]:grid-cols-4">
             <Tile label="Einnahmen total" value={chf(yearTotal)} hint="Buchungen + Abos" />
             <Tile label="Offene Posten" value={chf(kasse.open)} hint="vor Ort / Rechnung unbezahlt" />

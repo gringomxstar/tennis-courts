@@ -44,7 +44,7 @@ export function ProfileView({
   next?: string;
   openRegister?: boolean;
   wallet: number;
-  membership: { name: string; price: number; validity: string } | null;
+  membership: { name: string; price: number; pending: boolean; validity: string } | null;
   profile: { firstName: string; lastName: string; phone: string } | null;
   support: { email?: string | null; phone?: string | null };
   clubs: { slug: string; name: string }[];
@@ -226,7 +226,7 @@ export function ProfileView({
                 <div className="card p-5">
                   <div className="flex items-center justify-between gap-3">
                     <h2 className="text-[17px] font-bold">Mein Abo</h2>
-                    {membership && <span className="pill bg-ok-bg text-ok">aktiv</span>}
+                    {membership && !membership.pending && <span className="pill bg-ok-bg text-ok">aktiv</span>}
                   </div>
                   <div className="mt-2 flex items-center gap-3">
                     <div className="min-w-0 flex-1">

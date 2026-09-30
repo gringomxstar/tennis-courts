@@ -17,6 +17,8 @@ import { cn } from "@/lib/utils";
 export interface MemberRow {
   id: string;
   name: string;
+  firstName: string;
+  lastName: string;
   email: string;
   plan: string;
   /** paid = ACTIVE membership, invoice = PENDING offline invoice, remind = anything else */
@@ -537,11 +539,10 @@ function MemberSheet({ slug, plans, member, onClose }: { slug: string; plans: Pl
   if (member && member !== shown) {
     setShown(member);
     setArmed(false);
-    const [first, ...rest] = member === "new" ? [""] : member.name.split(" ");
     setF(
       member === "new"
         ? { firstName: "", lastName: "", email: "", phone: "", birthDate: "", gender: "", role: "MEMBER", planId: "", paid: true, invite: true }
-        : { id: member.id, firstName: first, lastName: rest.join(" "), email: member.email, phone: member.phone, birthDate: member.birthDate, gender: member.gender as MemberInput["gender"], role: member.role, planId: "", paid: true }
+        : { id: member.id, firstName: member.firstName, lastName: member.lastName, email: member.email, phone: member.phone, birthDate: member.birthDate, gender: member.gender as MemberInput["gender"], role: member.role, planId: "", paid: true }
     );
   }
   if (!member && shown) setShown(null);

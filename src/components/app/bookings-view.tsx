@@ -145,7 +145,7 @@ export function BookingsView({
                   const c = byId.get(b.courtId)!;
                   const start = new Date(b.startsAt);
                   const players = b.participants
-                    .filter((p) => p.userId !== userId && p.role !== "ORGANIZER")
+                    .filter((p) => p.userId !== userId)
                     .map((p) => (p.user ? `${p.user.firstName} ${p.user.lastName}` : p.guestName))
                     .filter(Boolean)
                     .join(", ");

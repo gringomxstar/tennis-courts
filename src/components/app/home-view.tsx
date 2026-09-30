@@ -123,7 +123,7 @@ export function HomeView({
   };
   const others = (b: Booking) =>
     b.participants
-      .filter((p) => p.userId !== userId && p.role !== "ORGANIZER")
+      .filter((p) => p.userId !== userId)
       .map((p) => (p.user ? `${p.user.firstName} ${p.user.lastName}`.trim() : p.guestName ?? ""))
       .filter(Boolean);
   const short = (n: string) => { const [f, ...r] = n.split(" "); return r.length ? `${f} ${r[r.length - 1][0]}.` : f; };

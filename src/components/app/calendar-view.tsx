@@ -225,9 +225,9 @@ export function CalendarView({
   };
   async function bookKurs() {
     setKursBusy(true);
-    const res = await createCoachBlockAction({ clubSlug: tenant.slug, name: kurs, color: kursColor, items: kursItems() });
+    const res = await createCoachBlockAction({ clubSlug: tenant.slug, name: kurs, color: kursColor, items: kursItems() }).catch(() => null);
     setKursBusy(false);
-    if (!res.success) return void toast(res.error);
+    if (!res?.success) return void toast(res?.error ?? "Kurs konnte nicht gebucht werden.");
     toast(`Kurs gebucht: ${res.created} Termine`);
     setMarked(new Map());
     setKurs("");
@@ -239,7 +239,7 @@ export function CalendarView({
             <b className="px-2 text-[14px]">{marked.size} Kacheln ({kursItems().length} Buchungen)</b>
             <ColorPicker dark value={kursColor} onChange={setKursColor} />
             <input aria-label="Kursname" value={kurs} onChange={(e) => setKurs(e.target.value)} placeholder="Kursname" maxLength={80} className="h-10 min-w-0 flex-1 rounded-[12px] bg-card px-3 text-[15px] text-foreground outline-none" />
-            <button type="button" disabled={!marked.size || !kurs.trim() || kursBusy} onClick={bookKurs} className="btn btn-primary h-10">
+            <button type="button" disabled={!marked.size || !kurs.trim() || kursBusy} onClick={bookKurs} className="btn btn-pri h-10">
               Als Kurs buchen
             </button>
           </div>

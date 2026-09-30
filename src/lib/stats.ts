@@ -101,9 +101,11 @@ export async function loadStats(tenantId: string, year: number, openHour: number
 
   const inYear = (d: Date, y = year) => local(d).y === y;
   const yb = bookings.filter((b) => inYear(b.startsAt));
-  const played = (y: number) => bookings.filter((b) => PLAYED.has(b.status) && inYear(b.startsAt, y));
+  // only what has started: a confirmed booking next week is not played yet
+  const played = (y: number) => bookings.filter((b) => PLAYED.has(b.status) && b.startsAt <= new Date() && inYear(b.startsAt, y));
   const playedY = played(year);
-  // Kasse = cash principle (OR 957 Abs. 2, small clubs): revenue counts when the money comes in, not when the game is played.
+  // Revenue = Leistungsprinzip as confirmed by the Treuhänder: a Guthaben top-up is a liability (see wallet.liability),
+  // the booking is the revenue, also when paid from Guthaben. Dated by payment/booking, not by play date.
   // Wallet/online are paid at booking; on-site/invoice when the admin marks them paid (last update).
   // ponytail: no Booking.paidAt column; add one if a paid booking can be edited later and the date matters
   const paidOn = (b: (typeof bookings)[number]) => (b.paymentMethod === "WALLET" || b.paymentMethod === "ONLINE" ? b.createdAt : b.updatedAt);
@@ -357,10 +359,10 @@ export function exportRows(s: Stats, type: ExportType): unknown[][] {
   }
   if (type === "kasse") {
     return [
-      ["Monat", ...METHODS.map((m) => METHOD_LABEL[m]), "Abos", "Guthaben-Aufladungen", "Total Einnahmen (ohne Guthaben-Nutzung)"],
+      ["Monat", ...METHODS.map((m) => METHOD_LABEL[m]), "Abos", "Guthaben-Aufladungen (Verbindlichkeit, nicht im Total)", "Total Einnahmen"],
       ...s.kasse.months.map((m) => [
         `${String(m.m).padStart(2, "0")}.${s.year}`, ...METHODS.map((k) => m.byMethod[k].toFixed(2)), m.abos.toFixed(2), m.topUps.toFixed(2),
-        (m.byMethod.ONLINE + m.byMethod.ON_SITE + m.byMethod.INVOICE + m.abos + m.topUps).toFixed(2),
+        (m.byMethod.WALLET + m.byMethod.ONLINE + m.byMethod.ON_SITE + m.byMethod.INVOICE + m.abos).toFixed(2),
       ]),
       [],
       ["Offene Posten", s.kasse.open.toFixed(2)],

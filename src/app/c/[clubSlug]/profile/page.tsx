@@ -14,9 +14,14 @@ async function loadProfile(ctx: TenantContext) {
     process.env.DATABASE_URL
       ? prisma.membership
           .findFirst({
-            where: { userId: user.id, tenantId: tenant.id, status: { in: ["ACTIVE", "PENDING"] } },
+            where: {
+              userId: user.id,
+              tenantId: tenant.id,
+              status: { in: ["ACTIVE", "PENDING"] },
+              OR: [{ endsAt: null }, { endsAt: { gt: new Date() } }], // a lapsed Abo is no Abo
+            },
             include: { plan: true },
-            orderBy: { startsAt: "desc" },
+            orderBy: { startsAt: "asc" }, // the running one before a renewal that starts later
           })
           .catch(() => null)
       : null,
@@ -32,6 +37,7 @@ async function loadProfile(ctx: TenantContext) {
       ? {
           name: m.plan.name,
           price: Number(m.plan.price),
+          pending: m.status === "PENDING",
           // formatted here so server and client render the same string
           validity:
             m.status === "PENDING"

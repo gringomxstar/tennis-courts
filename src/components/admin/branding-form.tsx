@@ -67,7 +67,9 @@ export function BrandingForm({ clubSlug, clubName, color: initialColor, logo: in
     e.target.value = "";
     if (!file) return;
     if (!/^image\/(png|jpeg|webp|svg\+xml)$/.test(file.type)) return void toast("Bitte ein PNG, JPG, WebP oder SVG wählen.");
-    setLogo(await toDataUrl(file).catch(() => null));
+    const url = await toDataUrl(file).catch(() => null);
+    if (!url) return void toast("Das Bild konnte nicht gelesen werden.");
+    setLogo(url);
   }
 
   async function save() {
