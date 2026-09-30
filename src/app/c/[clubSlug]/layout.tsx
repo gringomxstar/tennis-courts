@@ -1,4 +1,6 @@
+import type { Metadata } from "next";
 import { getTenantContext } from "@/lib/tenant";
+import { prisma } from "@/lib/prisma";
 import { TabBar } from "@/components/app/tab-bar";
 import { DemoSwitcher } from "@/components/app/demo-switcher";
 import { initials } from "@/lib/courts";
@@ -8,6 +10,20 @@ const DEMO_PERSONAS = [
   { email: null, label: "Gast", name: "Nicht angemeldet" },
   ...Object.entries(DEMO_ACCOUNTS).map(([email, p]) => ({ email, label: p.label, name: `${p.firstName} ${p.lastName}` })),
 ];
+
+// Tab title, favicon, iOS home-screen icon and manifest follow the club's branding (see ./icon and ./manifest.webmanifest).
+export async function generateMetadata({ params }: { params: Promise<{ clubSlug: string }> }): Promise<Metadata> {
+  const { clubSlug } = await params;
+  const t = await prisma.tenant.findUnique({ where: { slug: clubSlug }, select: { name: true } });
+  if (!t) return {};
+  return {
+    title: t.name,
+    description: `Plätze bei ${t.name} reservieren`,
+    manifest: `/c/${clubSlug}/manifest.webmanifest`,
+    icons: { icon: `/c/${clubSlug}/icon?s=64`, apple: `/c/${clubSlug}/icon?s=180` },
+    appleWebApp: { capable: true, title: t.name, statusBarStyle: "black-translucent" },
+  };
+}
 
 export default async function ClubLayout({
   children,
