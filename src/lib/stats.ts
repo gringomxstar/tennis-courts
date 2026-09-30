@@ -22,7 +22,7 @@ export const TYPE_LABEL: Record<string, string> = {
   EVENT: "Anlass",
 };
 export const REASON_LABEL: Record<string, string> = {
-  RAIN: "Regen", MAINTENANCE: "Wartung", TOURNAMENT: "Turnier", SNOW: "Schnee", TRAINING: "Training",
+  RAIN: "Regen", MAINTENANCE: "Wartung", TOURNAMENT: "Turnier", SNOW: "Wintersperre", TRAINING: "Training",
   EVENT: "Anlass", PRIVATE: "Privat", OTHER: "Andere",
 };
 /** Age classes (age reached in the year, Swiss Tennis style). */
@@ -190,7 +190,10 @@ export async function loadStats(tenantId: string, year: number, openHour: number
   const blockedByReason: Record<string, number> = {};
   for (const bl of blocks) {
     if (!inYear(bl.startsAt)) continue;
-    blockedByReason[bl.reason] = (blockedByReason[bl.reason] ?? 0) + hours(bl);
+    // opening hours only: a winter closure runs through the nights (00:00–00:00)
+    let h = 0;
+    for (let t = bl.startsAt.getTime(); t < bl.endsAt.getTime(); t += 3_600_000) if (slotHours.includes(local(new Date(t)).h)) h++;
+    blockedByReason[bl.reason] = (blockedByReason[bl.reason] ?? 0) + Math.min(h, hours(bl));
   }
   const capacity = activeDays * slotHours.length;
   const auslastung = {

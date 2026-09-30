@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils";
 /** Hour chips are 72px + 6px gap; rows open scrolled to this hour. */
 const CHIP = 78;
 const REASON: Record<BlockReason, string> = {
-  RAIN: "Regen", MAINTENANCE: "Wartung", TOURNAMENT: "Turnier", SNOW: "Schnee", TRAINING: "Training",
+  RAIN: "Regen", MAINTENANCE: "Wartung", TOURNAMENT: "Turnier", SNOW: "Wintersperre", TRAINING: "Training",
   EVENT: "Anlass", PRIVATE: "Privat", OTHER: "Gesperrt",
 };
 const STATE_LABEL: Record<SlotState, string> = { free: "frei", mine: "deine Buchung", taken: "belegt", blocked: "gesperrt", past: "vorbei" };
