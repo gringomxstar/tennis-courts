@@ -111,6 +111,8 @@ export default async function AdminMembersPage({ params }: { params: Promise<{ c
       return {
         id: m.id,
         name: `${m.firstName} ${m.lastName}`.trim(),
+        firstName: m.firstName,
+        lastName: m.lastName,
         email: m.email,
         plan: ms?.planName ?? "Keine Mitgliedschaft",
         state: ms?.status === "ACTIVE" ? "paid" : ms?.status === "PENDING" ? "invoice" : "remind",

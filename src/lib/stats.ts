@@ -101,7 +101,8 @@ export async function loadStats(tenantId: string, year: number, openHour: number
 
   const inYear = (d: Date, y = year) => local(d).y === y;
   const yb = bookings.filter((b) => inYear(b.startsAt));
-  const played = (y: number) => bookings.filter((b) => PLAYED.has(b.status) && inYear(b.startsAt, y));
+  // only what has started: a confirmed booking next week is not played yet
+  const played = (y: number) => bookings.filter((b) => PLAYED.has(b.status) && b.startsAt <= new Date() && inYear(b.startsAt, y));
   const playedY = played(year);
   // Kasse = cash principle (OR 957 Abs. 2, small clubs): revenue counts when the money comes in, not when the game is played.
   // Wallet/online are paid at booking; on-site/invoice when the admin marks them paid (last update).

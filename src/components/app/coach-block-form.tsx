@@ -85,9 +85,9 @@ export function CoachBlockForm({ slug, courts, courses }: { slug: string; courts
       items: dates.flatMap((date) =>
         lines.map((l) => ({ courtId: l.courtId, startsAt: new Date(`${date}T${l.time}`).toISOString(), durationMinutes: Math.round(l.hours * 60) }))
       ),
-    });
+    }).catch(() => null);
     setBusy(false);
-    if (!res.success) return setMsg({ ok: false, text: res.error });
+    if (!res?.success) return setMsg({ ok: false, text: res?.error ?? "Fehlgeschlagen" });
     setMsg({ ok: true, text: `${res.created} Termine gebucht.` });
     router.refresh();
   }
@@ -164,7 +164,7 @@ export function CoachBlockForm({ slug, courts, courses }: { slug: string; courts
         </div>
 
         {msg && <p role="status" className={msg.ok ? "text-[14px] font-semibold text-brand-deep" : "text-[14px] font-semibold text-bad"}>{msg.text}</p>}
-        <button type="submit" disabled={busy || !courts.length} className="btn btn-primary h-12">
+        <button type="submit" disabled={busy || !courts.length} className="btn btn-pri h-12">
           {busy ? <Spinner /> : `Kurs buchen (${dates.length * lines.length} Termine, gratis)`}
         </button>
       </form>
@@ -188,10 +188,10 @@ function Course({ slug, c, courts }: { slug: string; c: CourseSummary; courts: C
 
   async function run(fn: () => Promise<{ success: boolean; error?: string }>, ok: string) {
     setBusy(true);
-    const res = await fn();
+    const res = await fn().catch(() => null);
     setBusy(false);
-    setMsg(res.success ? ok : (res.error ?? "Fehlgeschlagen"));
-    if (res.success) router.refresh();
+    setMsg(res?.success ? ok : (res?.error ?? "Fehlgeschlagen"));
+    if (res?.success) router.refresh();
   }
   const save = () =>
     run(
@@ -238,7 +238,7 @@ function Course({ slug, c, courts }: { slug: string; c: CourseSummary; courts: C
       ))}
       {msg && <p role="status" className="text-[14px] font-semibold">{msg}</p>}
       <div className="flex flex-wrap gap-2">
-        <button type="button" disabled={busy} onClick={save} className="btn btn-primary h-11">
+        <button type="button" disabled={busy} onClick={save} className="btn btn-pri h-11">
           Speichern
         </button>
         <button type="button" disabled={busy} onClick={() => confirm("Ganzen Kurs absagen?") && run(() => cancelSeriesAction(c.bookingId, slug), "Kurs abgesagt.")} className="btn h-11 text-bad">

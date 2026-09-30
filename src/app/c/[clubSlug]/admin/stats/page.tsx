@@ -46,7 +46,8 @@ export default async function AdminStatsPage({ params, searchParams }: {
   const settings = tenant.settingsJson;
   const s = await loadStats(tenant.id, year, settings?.openingHour ?? 7, settings?.closingHour ?? 22);
   const { kasse, auslastung: a, gv, pflege, junioren: j } = s;
-  const monthTotal = (m: (typeof kasse.months)[number]) => METHODS.reduce((t, k) => t + m.byMethod[k], 0) + m.abos;
+  // same as the CSV: wallet bookings are not counted again, the money came in with the top-up
+  const monthTotal = (m: (typeof kasse.months)[number]) => METHODS.reduce((t, k) => t + (k === "WALLET" ? 0 : m.byMethod[k]), 0) + m.abos + m.topUps;
   const yearTotal = kasse.months.reduce((t, m) => t + monthTotal(m), 0);
 
   const months = kasse.months.map(monthTotal);
@@ -80,7 +81,7 @@ export default async function AdminStatsPage({ params, searchParams }: {
       </div>
 
       <div className="grid grid-cols-2 gap-2.5 px-5 pt-3.5 @min-[640px]:gap-4 @min-[640px]:px-0 @min-[1024px]:grid-cols-4">
-        {kpi("Einnahmen", chf(yearTotal), "Buchungen und Abos", true)}
+        {kpi("Einnahmen", chf(yearTotal), "Buchungen, Abos, Aufladungen", true)}
         {kpi("Mitglieder mit Abo", String(gv.members), `Vorjahr ${gv.membersPrev}`)}
         {kpi("Buchungen", String(gv.cur.bookings), `Vorjahr ${gv.prev.bookings}`)}
         {kpi("Offene Posten", chf(kasse.open), "vor Ort / Rechnung", false, kasse.open > 0)}
@@ -127,9 +128,9 @@ export default async function AdminStatsPage({ params, searchParams }: {
         {/* 1. Kasse */}
         <section id="kasse" className={`${card} scroll-mt-4`}>
           <h2 className={h2}>Kassenjournal</h2>
-          <p className={sub}>Bezahlte Buchungen nach Spieldatum und Zahlart, dazu Abos nach Zahlungsdatum. Guthaben-Zahlungen sind bereits bei der Aufladung eingenommen.</p>
+          <p className={sub}>Bezahlte Buchungen nach Zahlungsdatum und Zahlart, dazu Abos nach Zahlungsdatum. Guthaben-Zahlungen sind bereits bei der Aufladung eingenommen.</p>
           <div className="mt-4 grid grid-cols-2 gap-2.5 @min-[1024px]:grid-cols-4">
-            <Tile label="Einnahmen total" value={chf(yearTotal)} hint="Buchungen + Abos" />
+            <Tile label="Einnahmen total" value={chf(yearTotal)} hint="Buchungen + Abos + Aufladungen" />
             <Tile label="Offene Posten" value={chf(kasse.open)} hint="vor Ort / Rechnung unbezahlt" />
             <Tile label="Guthaben aufgeladen" value={chf(kasse.wallet.topUps)} hint={`genutzt ${chf(kasse.wallet.used)}`} />
             <Tile label="Guthaben-Saldo" value={chf(kasse.wallet.liability)} hint="Verbindlichkeit per heute" />

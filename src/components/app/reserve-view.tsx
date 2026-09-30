@@ -153,7 +153,7 @@ export function ReserveView({
 
   async function confirm() {
     if (paying) return;
-    if (until) return confirmSeries(until);
+    if (until !== null) return until ? confirmSeries(until) : void toast("Bitte ein Enddatum wählen.");
     setPaying(true);
     const res = await createBookingAction({
       clubSlug: tenant.slug,
