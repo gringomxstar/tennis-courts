@@ -73,19 +73,19 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
       ]}
     >
       {!paid && s?.invoiceIban && (
-      <div className="mt-6 rounded-[20px] bg-inset p-[18px] print:rounded-none print:border print:border-black/20 print:bg-white">
-        <div className="text-[13px] font-bold uppercase tracking-[.06em] text-muted-foreground print:text-black/60">
+      <div className="mt-6 rounded-[16px] bg-bg p-4 print:rounded-none print:border print:border-black/20 print:bg-white">
+        <div className="text-[12.5px] font-semibold text-ink-3 print:text-black/60">
           E-Banking Zahlungsinformationen
         </div>
         <div className="mt-3 grid grid-cols-[120px_1fr] gap-y-2 text-[15px]">
-          <span className="text-muted-foreground print:text-black/60">Bank</span>
+          <span className="text-ink-2 print:text-black/60">Bank</span>
           <span className="font-semibold">{s.invoiceBank || "–"}</span>
-          <span className="text-muted-foreground print:text-black/60">IBAN</span>
+          <span className="text-ink-2 print:text-black/60">IBAN</span>
           <span className="font-bold tracking-wide">{formatIban(s.invoiceIban)}</span>
-          <span className="text-muted-foreground print:text-black/60">Zugunsten von</span>
+          <span className="text-ink-2 print:text-black/60">Zugunsten von</span>
           <span className="font-semibold">{membership.tenant.name}</span>
-          <span className="text-muted-foreground print:text-black/60">Mitteilung</span>
-          <span className="font-bold text-clay-text print:text-black">{paymentReference}</span>
+          <span className="text-ink-2 print:text-black/60">Mitteilung</span>
+          <span className="font-bold text-brand-deep print:text-black">{paymentReference}</span>
         </div>
       </div>
       )}
@@ -140,7 +140,7 @@ async function BookingReceipt({ id }: { id: string }) {
   );
 }
 
-const label = "text-[13px] font-bold uppercase tracking-[.06em] text-muted-foreground print:text-black/60";
+const label = "text-[12.5px] font-semibold text-ink-3 print:text-black/60";
 
 // Shared markup: card on screen, plain white sheet on paper (header, buttons and chrome hidden).
 function InvoiceLayout(p: {
@@ -160,30 +160,30 @@ function InvoiceLayout(p: {
   children?: React.ReactNode;
 }) {
   return (
-    <div className="min-h-[100dvh] bg-background px-5 pb-16 pt-[66px] text-foreground lg:pt-12 print:min-h-0 print:bg-white print:p-0 print:text-black">
+    <div className="min-h-[100dvh] bg-bg px-5 pb-16 pt-10 text-ink sm:pt-16 print:min-h-0 print:bg-white print:p-0 print:text-black">
       <div className="mx-auto w-full max-w-[720px]">
         <div className="print:hidden">
-          <h1 className="text-[34px] font-bold tracking-[-.035em]">{p.title}</h1>
-          <div className="mt-0.5 text-[15px] text-muted-foreground">{p.subtitle}</div>
+          <h1 className="text-[28px] font-bold tracking-[-.03em] sm:text-[32px]">{p.title}</h1>
+          <div className="mt-1 text-[14px] text-ink-2">{p.subtitle}</div>
         </div>
 
-        <div className="mt-5 rounded-[26px] border border-border bg-card p-6 lg:p-10 print:mt-0 print:rounded-none print:border-0 print:bg-white print:p-0">
+        <div className="card mt-5 p-6 sm:p-9 print:mt-0 print:rounded-none print:bg-white print:p-0 print:shadow-none">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <div className="text-[24px] font-bold tracking-[-.03em]">{p.clubName}</div>
-              {p.clubAddress && <div className="mt-0.5 text-[14px] text-muted-foreground print:text-black/60">{p.clubAddress}</div>}
+              <div className="text-[20px] font-bold tracking-[-.02em]">{p.clubName}</div>
+              {p.clubAddress && <div className="mt-0.5 text-[14px] text-ink-2 print:text-black/60">{p.clubAddress}</div>}
             </div>
             <div className="text-right">
               <div className={label}>{p.docLabel}</div>
-              <div className="mt-0.5 text-[16px] font-semibold">#{p.number}</div>
+              <div className="mt-0.5 text-[15px] font-semibold">Nr. {p.number}</div>
             </div>
           </div>
 
-          <div className="mt-10 grid grid-cols-2 gap-6">
+          <div className="mt-8 grid grid-cols-2 gap-6">
             <div>
               <div className={label}>{p.toLabel}</div>
               <div className="mt-1.5 text-[16px] font-semibold">{p.toName}</div>
-              <div className="text-[14px] text-muted-foreground print:text-black/60">{p.toEmail}</div>
+              <div className="text-[14px] text-ink-2 print:text-black/60">{p.toEmail}</div>
             </div>
             <div className="flex flex-col gap-3 text-right">
               {p.meta.map(([k, v]) => (
@@ -195,7 +195,7 @@ function InvoiceLayout(p: {
             </div>
           </div>
 
-          <div className="mt-10 border-y border-border py-4 print:border-black/20">
+          <div className="mt-8 border-y border-line py-4 print:border-black/20">
             <div className={`flex justify-between ${label}`}>
               <span>Beschreibung</span>
               <span>Betrag</span>
@@ -206,20 +206,20 @@ function InvoiceLayout(p: {
             </div>
           </div>
 
-          <div className="mt-4 flex flex-col items-end gap-1 text-[14px] text-muted-foreground print:text-black/60">
+          <div className="mt-4 flex flex-col items-end gap-1 text-[14px] text-ink-2 print:text-black/60">
             {p.totals.map(([k, v]) => (
               <div key={k}>
                 {k}: {v}
               </div>
             ))}
-            <div className="mt-1 text-[24px] font-bold tracking-[-.03em] text-foreground print:text-black">Total: {p.amount}</div>
+            <div className="mt-1 text-[22px] font-bold tracking-[-.02em] text-ink print:text-black">Total: {p.amount}</div>
           </div>
 
           {p.children}
 
           <div className="mt-8 print:hidden">
             <PrintButton />
-            <Link href="/" className="mt-4 block text-center text-[15px] font-bold text-clay-text">
+            <Link href="/" className="mt-4 block text-center text-[15px] font-semibold text-brand-deep">
               Zurück zur Startseite
             </Link>
           </div>
