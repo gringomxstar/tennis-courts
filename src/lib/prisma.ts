@@ -12,7 +12,7 @@ function pooledUrl() {
   if (!raw) return undefined;
   try {
     const u = new URL(raw);
-    if (!u.searchParams.has("connection_limit")) u.searchParams.set("connection_limit", "10");
+    if (!u.searchParams.has("connection_limit")) u.searchParams.set("connection_limit", "3");
     return u.toString();
   } catch {
     return raw;
