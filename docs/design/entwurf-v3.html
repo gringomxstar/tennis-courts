@@ -93,7 +93,7 @@ body { background: var(--pg-bg); color: var(--pg-fg); font-family: "Outfit", -ap
 .heat .cl { font-size: 11px; color: var(--ink-3); text-align: center; }
 .heat .q { aspect-ratio: 1; border-radius: 6px; background: #eef3f1; } .heat .q.l1 { background: #cde8df } .heat .q.l2 { background: #7fc7ae } .heat .q.l3 { background: var(--brand-deep) } .heat .q.x { background: repeating-linear-gradient(135deg,#dfe6e3 0 3px,#f3f6f5 3px 6px) }
 .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12.5px; color: var(--ink-2); margin-top: 12px; }
-.legend i { display: inline-block; width: 12px; height: 12px; border-radius: 4px; vertical-align: -2px; margin-right: 6px; }
+.legend i { display: inline-block; width: 12px; height: 12px; border-radius: 4px; verticallign: -2px; margin-right: 6px; }
 .donut { display: grid; grid-template-columns: 120px 1fr; gap: 16px; align-items: center; }
 .donut svg { width: 120px; height: 120px; transform: rotate(-90deg); } .donut .c { position: relative; } .donut .c b { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 22px; font-weight: 700; letter-spacing: -.03em; } .donut .c b small { font-size: 11px; font-weight: 500; color: var(--ink-3); letter-spacing: 0; }
 .kvs { display: flex; flex-direction: column; gap: 8px; font-size: 13.5px; } .kvs div { display: flex; justify-content: space-between; gap: 10px; } .kvs span:last-child { font-weight: 600; }
@@ -152,7 +152,7 @@ body { background: var(--pg-bg); color: var(--pg-fg); font-family: "Outfit", -ap
 .search input { border: 0; outline: 0; background: transparent; flex: 1; color: var(--ink); min-width: 0; } .search svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 2.2; stroke-linecap: round; }
 table.t { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 14px; }
 .t th { text-align: left; font-size: 12.5px; color: var(--ink-3); font-weight: 600; padding: 8px 12px 12px; }
-.t td { padding: 9px 12px; vertical-align: middle; white-space: nowrap; border-top: 1px solid var(--line); }
+.t td { padding: 9px 12px; verticallign: middle; white-space: nowrap; border-top: 1px solid var(--line); }
 .t tr.sel td { background: var(--brand-tint); } .t tr.sel td:first-child { border-radius: 14px 0 0 14px; } .t tr.sel td:last-child { border-radius: 0 14px 14px 0; }
 .t td.name { font-weight: 600; } .t td.name .w { display: flex; align-items: center; gap: 10px; } .t td.name small { display: block; color: var(--ink-3); font-weight: 500; font-size: 12.5px; }
 .t td:first-child, .t th:first-child { width: 40px; padding-right: 0; } .t input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--brand-deep); }
@@ -177,7 +177,7 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 
 .lrow { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid var(--line); }
 .lrow .g { flex: 1; min-width: 0; } .lrow b { display: block; font-size: 15px; font-weight: 600; } .lrow small { display: block; color: var(--ink-3); font-size: 12.5px; }
 .lrow.tap { cursor: pointer; } .lrow .chev { color: var(--ink-3); font-size: 20px; font-weight: 500; }
-.lrow .g b .dot { margin-right: 6px; vertical-align: 1px; }
+.lrow .g b .dot { margin-right: 6px; verticallign: 1px; }
 .tm { width: 56px; flex: none; } .tm b { font-size: 18px; letter-spacing: -.02em; }
 .btn.danger { background: var(--bad-bg); color: var(--bad); box-shadow: none; }
 .btn.wide { width: 100%; height: 50px; font-size: 15.5px; }
@@ -238,7 +238,6 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 
 .app[data-taps] .tapn { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background: #ff3d7f; color: #fff; font-size: 12px; font-weight: 800; font-style: normal; box-shadow: 0 0 0 3px rgba(255,61,127,.25); flex: none; }
 .app[data-taps] .chip.pick { background: var(--brand-soft); color: var(--brand-deep); box-shadow: inset 0 0 0 2px var(--brand-deep); gap: 6px; padding-right: 5px; }
 /* phone variants of the calendar */
-.cal-list .vb, .app[data-cal="b"] .cal-list .va { display: none; } .app[data-cal="b"] .cal-list .vb { display: block; }
 /* overlays: bottom sheet on phone, dialog from 640 */
 .veil, .bs { display: none; }
 .app[data-bs] .veil { display: block; position: absolute; inset: 0; background: rgba(20,33,61,.42); z-index: 7; }
@@ -308,7 +307,7 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 
 <div class="bar">
   <h1>TC Marly Entwurf</h1>
   <div class="grp" id="wid"><button data-w="390">Handy 390</button><button data-w="1024">Laptop 1024</button><button aria-pressed="true" data-w="1440">Desktop 1440</button></div>
-  <div class="scr"><span>Mitglied</span><div class="grp"><button data-screen="start">Start</button><button data-screen="cal-a">Kalender A</button><button data-screen="cal-b">Kalender B</button><button data-screen="res-1">Buchen 1 Slot</button><button data-screen="res-2">Buchen 2 Sheet</button><button data-screen="res-3">Buchen 3 Bestätigt</button><button data-screen="book">Buchungen</button><button data-screen="detail">Buchungsdetail</button><button data-screen="profil">Profil</button><button data-screen="abos">Abos (Verlängern)</button><button data-screen="rechnung">Rechnung</button></div></div>
+  <div class="scr"><span>Mitglied</span><div class="grp"><button data-screen="start">Start</button><button data-screen="cal">Kalender</button><button data-screen="res-1">Buchen 1 Slot</button><button data-screen="res-2">Buchen 2 Sheet</button><button data-screen="res-3">Buchen 3 Bestätigt</button><button data-screen="book">Buchungen</button><button data-screen="detail">Buchungsdetail</button><button data-screen="profil">Profil</button><button data-screen="abos">Abos (Verlängern)</button><button data-screen="rechnung">Rechnung</button></div></div>
   <div class="scr"><span>Zugang</span><div class="grp"><button data-screen="entry">Einstieg</button><button data-screen="login">Login</button><button data-screen="abos-neu">Abo wählen (neu)</button><button data-screen="register">Registrieren</button><button data-screen="gast">Gast-Buchung</button></div></div>
   <div class="scr"><span>Verwaltung</span><div class="grp"><button data-screen="hub">Übersicht</button><button data-screen="heute">Heute</button><button data-screen="sperren">Sperren</button><button data-screen="mem">Mitglieder</button><button data-screen="stats">Statistik</button><button data-screen="settings">Einstellungen</button></div></div>
   <div class="note" id="note">Version 3 nach deinen Referenzen: Icon-Leiste, Pillen-Navigation, weisse Karten mit grossem Radius, Verlaufs-Karte in der Clubfarbe, Platz-Bildkarte, Heatmap, farbige Kalenderbalken. Schrift Outfit.</div>
@@ -339,7 +338,7 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 
     <div class="content">
       <!-- START -->
       <section class="screen" data-screen="start" data-on>
-        <div class="ph"><div><h1>Guten Abend, Alain</h1><div class="sub">Dienstag, 29. September. Plätze offen bis 22 Uhr, Flutlicht ab 19 Uhr gratis.</div></div><div class="grow"></div><button class="btn ghost hide-m">Diese Woche</button><button class="btn pri" data-go="cal-a"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>Reservieren</span></button></div>
+        <div class="ph"><div><h1>Guten Abend, Alain</h1><div class="sub">Dienstag, 29. September. Plätze offen bis 22 Uhr, Flutlicht ab 19 Uhr gratis.</div></div><div class="grow"></div><button class="btn ghost hide-m">Diese Woche</button><button class="btn pri" data-go="cal"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>Reservieren</span></button></div>
         <div class="g3">
           <div class="hero">
             <div class="k">Nächstes Spiel</div>
@@ -384,11 +383,10 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 
             </div>
             <div class="cal-list">
               <div class="days"><button><small>Di</small>29</button><button aria-pressed="true"><small>Mi</small>30</button><button><small>Do</small>1</button><button><small>Fr</small>2</button><button><small>Sa</small>3</button><button><small>So</small>4</button><button><small>Mo</small>5</button><button><small>Di</small>6</button></div>
-              <div class="va"><div class="card pad" id="list" style="margin-top:14px"></div><div class="legend" style="justify-content:center"><span>Tipp auf einen freien Platz, um zu reservieren</span></div></div>
               <div class="vb" style="margin-top:14px"><div class="seg" data-panes="vb-list,vb-grid"><button aria-pressed="true">Liste</button><button>Raster</button></div>
                 <div class="card pad courtrows" id="vb-list" style="margin-top:14px"></div>
                 <div class="card pad" id="vb-grid" style="margin-top:14px" hidden><div class="grid9" id="grid9"></div><div class="legend"><span><i style="background:var(--bg)"></i>frei</span><span><i style="background:var(--me)"></i>meine</span><span><i style="background:var(--mem)"></i>belegt</span><span><i style="background:var(--coach)"></i>Training</span></div></div>
-                <div class="legend" style="justify-content:center"><span>Tipp auf eine freie Stunde, um zu reservieren</span></div></div>
+                <div class="legend" style="justify-content:center"><span>Liste beginnt bei der aktuellen Stunde (18:15). Tipp auf eine freie Stunde reserviert.</span></div></div>
             </div>
           </div>
           <div class="card pad form-wrap"><div class="form" id="form"></div></div>
@@ -439,18 +437,18 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 
           </div>
           <div class="card pad stack">
             <button class="btn pri wide" data-go="login">Mitglied anmelden</button>
-            <button class="btn ghost wide" data-go="cal-a">Als Gast buchen</button>
+            <button class="btn ghost wide" data-go="cal">Als Gast buchen</button>
             <div class="center m3">Ohne Konto. Bezahlen mit Twint oder Karte.</div>
           </div>
           <div class="card pad"><div class="lst"><div class="lrow tap" data-go="abos-neu"><div class="g"><b>Mitglied werden</b><small>Abo wählen, dann Konto erstellen. Saison bis 31. März, ab CHF 60.</small></div><button class="btn sm">Mitglied werden</button></div></div></div>
-          <div class="card pad"><div class="ch"><h2>Jetzt frei</h2><span class="link" data-go="cal-a">Alle Plätze</span></div>
-            <div class="hscroll slots"><button class="card slot" data-go="cal-a"><small>Morgen</small><b>17:00</b><span><i class="dot d-sand"></i>Platz 2</span><small>Sand</small></button><button class="card slot" data-go="cal-a"><small>Morgen</small><b>18:00</b><span><i class="dot d-sand"></i>Platz 5</span><small>Sand</small></button><button class="card slot" data-go="cal-a"><small>Morgen</small><b>19:00</b><span><i class="dot d-hard"></i>Central</span><small>Allwetter</small></button><button class="card slot" data-go="cal-a"><small>Morgen</small><b>20:00</b><span><i class="dot d-padel"></i>Padel 1</span><small>Padel</small></button></div></div>
+          <div class="card pad"><div class="ch"><h2>Jetzt frei</h2><span class="link" data-go="cal">Alle Plätze</span></div>
+            <div class="hscroll slots"><button class="card slot" data-go="cal"><small>Morgen</small><b>17:00</b><span><i class="dot d-sand"></i>Platz 2</span><small>Sand</small></button><button class="card slot" data-go="cal"><small>Morgen</small><b>18:00</b><span><i class="dot d-sand"></i>Platz 5</span><small>Sand</small></button><button class="card slot" data-go="cal"><small>Morgen</small><b>19:00</b><span><i class="dot d-hard"></i>Central</span><small>Allwetter</small></button><button class="card slot" data-go="cal"><small>Morgen</small><b>20:00</b><span><i class="dot d-padel"></i>Padel 1</span><small>Padel</small></button></div></div>
         </div>
       </section>
 
       <!-- BUCHUNGEN -->
       <section class="screen" data-screen="book">
-        <div class="ph"><div><h1>Buchungen</h1><div class="sub">3 kommend, 34 in dieser Saison</div></div><div class="grow"></div><button class="btn pri" data-go="cal-a"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>Reservieren</span></button></div>
+        <div class="ph"><div><h1>Buchungen</h1><div class="sub">3 kommend, 34 in dieser Saison</div></div><div class="grow"></div><button class="btn pri" data-go="cal"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>Reservieren</span></button></div>
         <div class="seg" data-panes="bk-up,bk-past" style="max-width:360px"><button aria-pressed="true">Kommend</button><button>Vergangen</button></div>
         <div class="cols" id="bk-up">
           <div class="card pad"><div class="ch"><h2>Diese Woche</h2></div>
@@ -583,7 +581,7 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 
         <div class="auth">
           <div class="brandmark"><i>TC</i>TC Marly</div>
           <h1 style="font-size:32px">Als Gast buchen</h1>
-          <div class="card pad"><div class="lst"><div class="lrow"><div class="g"><b><i class="dot d-sand"></i>Platz 5, Mi 30.9.</b><small>18:00–19:00, Sand, Einzel</small></div><button class="btn sm" data-go="cal-a">Ändern</button></div></div></div>
+          <div class="card pad"><div class="lst"><div class="lrow"><div class="g"><b><i class="dot d-sand"></i>Platz 5, Mi 30.9.</b><small>18:00–19:00, Sand, Einzel</small></div><button class="btn sm" data-go="cal">Ändern</button></div></div></div>
           <div class="card pad stack">
             <label class="fld"><span>Name</span><input value="Petra Sommer"></label>
             <div class="row2"><label class="fld"><span>E-Mail</span><input type="email" value="petra.sommer@bluewin.ch"></label><label class="fld"><span>Handy</span><input type="tel" value="079 555 21 90"></label></div>
@@ -604,7 +602,7 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 
           <div class="card tile" data-go="sperren"><span class="ti"><svg viewBox="0 0 24 24"><path d="M4.9 4.9l14.2 14.2M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z"/></svg></span><b>2</b><span>Sperren</span><small>Platz 4 bis 10 Uhr</small></div>
           <div class="card tile" data-go="mem"><span class="ti"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></svg></span><b>142</b><span>Mitglieder</span><small style="color:var(--warn)">9 Zahlungen offen</small></div>
           <div class="card tile" data-go="stats"><span class="ti"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></span><b>38'420</b><span>Statistik</span><small>CHF Einnahmen 2026</small></div>
-          <div class="card tile" data-go="cal-a"><span class="ti"><svg viewBox="0 0 24 24"><path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/></svg></span><b>9</b><span>Kalender</span><small>alle Plätze</small></div>
+          <div class="card tile" data-go="cal"><span class="ti"><svg viewBox="0 0 24 24"><path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/></svg></span><b>9</b><span>Kalender</span><small>alle Plätze</small></div>
           <div class="card tile" data-go="settings"><span class="ti"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg></span><b style="font-size:20px">Regeln</b><span>Einstellungen</span><small>Plätze, Tarife, Branding</small></div>
         </div>
       </section>
@@ -782,10 +780,6 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 
   document.getElementById("heat").innerHTML = Hm; document.getElementById("heat2").innerHTML = Hm;
   // court illustration
   document.getElementById("court1").innerHTML = '<svg viewBox="0 0 400 240" preserveAspectRatio="xMidYMid slice"><g fill="none" stroke="rgba(255,255,255,.85)" stroke-width="3"><rect x="70" y="30" width="260" height="180"/><line x1="70" y1="52" x2="330" y2="52"/><line x1="70" y1="188" x2="330" y2="188"/><line x1="200" y1="30" x2="200" y2="210" stroke-width="5"/><rect x="118" y="52" width="164" height="136"/><line x1="118" y1="120" x2="282" y2="120"/></g></svg><span class="lbl"><i></i>Heute noch frei, Tipp bucht</span><div class="foot"><button class="chip" data-go="res-2"><b>18:00</b> Platz 5</button><button class="chip" data-go="res-2"><b>19:00</b> Platz 2</button><button class="chip" data-go="res-2"><b>20:00</b> Central</button></div>';
-  // phone hour list
-  var L = "";
-  [16,17,18,19,20,21].forEach(function (h) { L += '<div class="hourrow"><b>' + h + ':00</b><div class="courts">'; courts.forEach(function (c, i) { var b = map[i + ":" + h]; var cls = b === "skip" || (b && b[3] != "me") ? " taken" : b && b[3] == "me" ? " mine" : ""; var pk = i == 5 && h == 18; L += '<span class="chip' + cls + (pk ? ' pick' : '') + '"' + (cls ? '' : ' data-go="res-2"') + '>' + c[0] + (pk ? '<b class="tapn">2</b>' : '') + '</span>'; }); L += '</div></div>'; });
-  document.getElementById("list").innerHTML = L;
   var form = '<div class="ch" style="margin-bottom:4px"><h2>Reservieren</h2><span class="more">×</span></div>' +
     '<div class="when">Mi 30.9., 18:00<small><i class="dot d-sand"></i>Platz 5, Sand, 1 Stunde</small></div>' +
     '<div><span class="l">Spiel</span><div class="seg"><button aria-pressed="true">Einzel</button><button>Doppel</button></div></div>' +
@@ -808,7 +802,7 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 
   var VB = "", G = '<div></div>' + courts.map(function (c) { return '<div class="h">' + (c[0] == "Central" ? "C" : c[0] == "Padel 1" ? "P" : c[0].slice(-1)) + '</div>'; }).join("");
   courts.forEach(function (c, i) {
     VB += '<div class="cr"><div><span class="dot" style="background:' + col[c[1]] + '"></span><b>' + c[0] + '</b><small>' + tname[c[1]] + '</small></div><div class="hscroll">';
-    [17,18,19,20,21].forEach(function (h) { var b = map[i + ":" + h]; var cls = b === "skip" || (b && b[3] != "me") ? " taken" : b ? " mine" : ""; VB += '<span class="chip' + cls + '"' + (cls ? '' : ' data-go="res-2"') + '>' + h + ':00</span>'; });
+    [18,19,20,21].forEach(function (h) { var b = map[i + ":" + h]; var cls = b === "skip" || (b && b[3] != "me") ? " taken" : b ? " mine" : ""; var pk = i == 5 && h == 18; VB += '<span class="chip' + cls + (pk ? ' pick' : '') + '"' + (cls ? '' : ' data-go="res-2"') + '>' + h + ':00' + (pk ? '<b class="tapn">2</b>' : '') + '</span>'; });
     VB += '</div></div>';
   });
   [16,17,18,19,20,21].forEach(function (h) { G += '<div class="r">' + h + '</div>'; courts.forEach(function (c, i) { var b = map[i + ":" + h]; if (b === "skip") b = map[i + ":" + (h - 1)]; var k = !b ? "" : b[3] == "me" ? " me" : b[3] == "guest" ? " g" : b[3] == "coach" ? " co" : b[3] == "block" ? " bl" : " t"; G += '<div class="c' + k + '"' + (k ? '' : ' data-go="res-2"') + '></div>'; }); });
@@ -816,26 +810,25 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 
   document.getElementById("setcourts").innerHTML = courts.map(function (c, i) { return '<div class="lrow"><span class="dot" style="background:' + col[c[1]] + '"></span><div class="g"><b>' + c[0] + '</b><small>' + tname[c[1]] + (c[1] == "padel" ? "" : ", Flutlicht") + '</small></div><button class="sw" aria-pressed="' + (i != 4) + '" aria-label="' + c[0] + ' buchbar"></button></div>'; }).join("");
 
   // screen -> [section, nav, calendar variant, overlay, show taps]
-  var S = { start: ["start","start"], "cal-a": ["cal","cal","a"], "cal-b": ["cal","cal","b"],
-    "res-1": ["cal","cal","a","",1], "res-2": ["cal","cal","a","res",1], "res-3": ["cal","cal","a","ok",1],
+  var S = { start: ["start","start"], cal: ["cal","cal"],
+    "res-1": ["cal","cal","","",1], "res-2": ["cal","cal","","res",1], "res-3": ["cal","cal","","ok",1],
     book: ["book","book"], detail: ["book","book","","detail"], profil: ["profil","profil"], abos: ["abos","profil"], "abos-neu": ["abos","","","","",1], rechnung: ["rechnung","profil"],
     entry: ["entry",""], login: ["login",""], register: ["register",""], gast: ["gast",""],
     hub: ["hub","admin"], heute: ["heute","admin"], sperren: ["sperren","admin"], mem: ["mem","admin"], stats: ["stats","admin"], settings: ["settings","admin"] };
-  var home = { start: "start", cal: "cal-a", book: "book", profil: "profil", admin: "hub", settings: "settings" };
-  var back = { "res-2": "cal-a", "res-3": "cal-a", detail: "book" };
+  var home = { start: "start", cal: "cal", book: "book", profil: "profil", admin: "hub", settings: "settings" };
+  var back = { "res-2": "cal", "res-3": "cal", detail: "book" };
   var notes = {
     start: "Start: Platzkarte zeigt die nächsten freien Slots. Ein Tipp auf einen Slot öffnet direkt das Buchungs-Sheet: 2 Tipps bis zur Buchung. Angepasst: der runde Plus-Button trägt auf dem Handy jetzt den Text Reservieren.",
-    "cal-a": "Kalender Variante A (Vorschlag v3): Tagesleiste, Stunden mit Platz-Chips. Buchen: Kalender, Platz-Chip, Reservieren = 3 Tipps. Desktop: Raster mit Formular rechts (unverändert).",
-    "cal-b": "Kalender Variante B (heutige Idee im v3-Stil): pro Platz eine Zeile mit Stunden, umschaltbar auf Raster Plätze × Stunden. Buchen: Kalender, Stunde, Reservieren = 3 Tipps.",
-    "res-1": "Buchen, Schritt 1: Tipp 1 Kalender, Tipp 2 freier Platz (Platz 5, 18:00). Die pinken Zahlen sind nur Anmerkungen im Entwurf.",
+    cal: "Kalender (Handy wie heute): Tagesleiste, dann Liste (pro Platz eine Zeile mit Stunden, seitwärts scrollbar, ab der aktuellen Stunde) oder Raster (Plätze × Stunden). Buchen: Kalender, freie Stunde, Reservieren = 3 Tipps. Desktop: Raster mit Formular rechts (unverändert).",
+    "res-1": "Buchen, Schritt 1: Tipp 1 Kalender, Tipp 2 freie Stunde in der Liste (Platz 5, 18:00). Die pinken Zahlen sind nur Anmerkungen im Entwurf.",
     "res-2": "Buchen, Schritt 2: Sheet mit letztem Mitspieler vorausgewählt, Dauer, Preis-Split (Abo deckt den eigenen Anteil, Rest zahlt, wer bucht), Zahlart. Tipp 3 Reservieren.",
-    "res-3": "Buchen, Schritt 3: Bestätigung. Total 3 Tipps über den Kalender (A und B gleich), 2 Tipps über die Platzkarte auf Start. Anderer Mitspieler = 1 Tipp mehr.",
+    "res-3": "Buchen, Schritt 3: Bestätigung. Total 3 Tipps über den Kalender (Liste und Raster gleich), 2 Tipps über die Platzkarte auf Start. Anderer Mitspieler = 1 Tipp mehr.",
     book: "Buchungen: Kommend/Vergangen wie heute. Tipp auf eine Buchung öffnet das Detail. Serien mit Serie stornieren sieht nur, wer Trainer ist.",
     detail: "Buchungsdetail: Spieler mit Abo-Status, Preis, Stornieren direkt sichtbar.",
     profil: "Profil: heutige Reihenfolge (Guthaben, Abo, Daten, Design, Abmelden) bleibt, nur im v3-Stil. Neu: Rechnungen mit offenem Betrag.",
     abos: "Abos: heutige Struktur (Sportart, Für mich/Als Paar, Kaufleiste unten mit Auto-Verlängern) bleibt. Neu: abgelaufenes Abo ist vorausgewählt, ein Tipp verlängert.",
     rechnung: "Rechnung: Beleg mit Status, PDF und E-Mail, darunter weitere Belege. Offener Betrag direkt bezahlbar.",
-    entry: "Einstieg (abgemeldet), heutige Struktur: drei Wege, Mitglied anmelden (primär), Als Gast buchen (Kalender als Gast), Mitglied werden (Abo-Seite, dort Abo wählen, dann Konto erstellen und bezahlen). "Jetzt frei" scrollt seitwärts. Ohne Abo gibt es keine Mitglied-Buchung.",
+    entry: "Einstieg (abgemeldet), heutige Struktur: drei Wege, Mitglied anmelden (primär), Als Gast buchen (Kalender als Gast), Mitglied werden (Abo-Seite, dort Abo wählen, dann Konto erstellen und bezahlen). „Jetzt frei“ scrollt seitwärts. Ohne Abo gibt es keine Mitglied-Buchung.",
     login: "Login: heutige Struktur bleibt (E-Mail, Passwort, Anmelden, Registrieren). Gezeigt mit Fehlerzustand. Neu: Gast-Buchung ohne Konto.",
     "abos-neu": "Abo wählen (neu), abgemeldet von Mitglied werden: gleiche Karten ohne Abgelaufen-Hinweis, Saison Erwachsene Tennis vorausgewählt, ein Tipp auf Konto erstellen und bezahlen.",
     register: "Registrieren: vier Felder, eine Checkbox, ein Button. Kommt nach der Abo-Wahl (Mitglied werden), danach bezahlen.",
@@ -847,7 +840,7 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 
     stats: "Statistik: Jahr, vier Kennzahlen, Einnahmen pro Monat, Auslastung pro Platz, CSV-Export mit Text-Button.",
     settings: "Einstellungen: Regeln, Plätze, Tarife, Branding als Karten; Speichern-Leiste bleibt beim Scrollen sichtbar."
   };
-  var pn = { m: [["start","Start"],["cal-a","Kalender"],["book","Buchungen"],["profil","Profil"]], a: [["heute","Heute"],["mem","Mitglieder"],["sperren","Sperren"],["stats","Statistik"],["settings","Einstellungen"]] };
+  var pn = { m: [["start","Start"],["cal","Kalender"],["book","Buchungen"],["profil","Profil"]], a: [["heute","Heute"],["mem","Mitglieder"],["sperren","Sperren"],["stats","Statistik"],["settings","Einstellungen"]] };
   var frame = document.getElementById("frame"), app = document.getElementById("app"), cur = "start";
   function attr(k, v) { if (v) app.setAttribute(k, v); else app.removeAttribute(k); }
   function setScreen(s) {
@@ -857,7 +850,7 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 
     document.querySelectorAll(".scr button").forEach(function (b) { b.setAttribute("aria-pressed", b.dataset.screen == s); });
     document.querySelectorAll("[data-nav]").forEach(function (a) { if (a.dataset.nav == c[1] || (s == "settings" && a.dataset.nav == "settings")) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
     document.getElementById("pn").innerHTML = pn[c[1] == "admin" ? "a" : "m"].map(function (p) { var on = S[p[0]][0] == c[0] || (c[1] != "admin" && S[p[0]][1] == c[1]); return '<button' + (on ? ' aria-pressed="true"' : '') + ' data-go="' + p[0] + '"><span>' + p[1] + '</span></button>'; }).join("");
-    attr("data-cal", c[2]); attr("data-bs", c[3]); attr("data-taps", c[4] ? "1" : ""); attr("data-bare", c[1] ? "" : "1"); attr("data-abo", c[5] ? "neu" : "");
+    attr("data-bs", c[3]); attr("data-taps", c[4] ? "1" : ""); attr("data-bare", c[1] ? "" : "1"); attr("data-abo", c[5] ? "neu" : "");
     document.getElementById("note").textContent = notes[s] || notes[c[0]] || "";
   }
   function fit() { frame.style.zoom = Math.min(1, (document.documentElement.clientWidth - 32) / +frame.dataset.w); }
