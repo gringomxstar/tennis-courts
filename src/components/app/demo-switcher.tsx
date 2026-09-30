@@ -27,14 +27,15 @@ export function DemoSwitcher({ slug, personas, current }: { slug: string; person
 
   return (
     <>
-      <div className="fixed right-4 top-[max(12px,env(safe-area-inset-top))] z-40 flex items-center gap-2 lg:right-6 lg:top-4">
-        <span className="hidden text-[12px] text-muted-foreground sm:inline">Demo-Modus – Buchungen sind Testdaten.</span>
+      <div className="fixed right-4 top-[max(12px,env(safe-area-inset-top))] z-40 flex items-center gap-2 @min-[640px]:bottom-[132px] @min-[640px]:left-[22px] @min-[640px]:right-auto @min-[640px]:top-auto">
         <button
           type="button"
           onClick={() => setOpen(true)}
+          title="Rolle wechseln"
           className="relative h-[30px] rounded-full border border-border bg-glass px-3 text-[13px] before:absolute before:-inset-x-1 before:-inset-y-[7px] before:content-[''] font-bold text-clay-text backdrop-blur-[24px]"
         >
-          Demo · {personas.find((p) => p.email === current)?.label ?? "Konto"}
+          <span className="@min-[640px]:hidden">Demo · {personas.find((p) => p.email === current)?.label ?? "Konto"}</span>
+          <span className="hidden @min-[640px]:inline">Demo</span>
         </button>
       </div>
       <Sheet open={open} onOpenChange={setOpen} title="Rolle wechseln">
