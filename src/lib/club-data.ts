@@ -34,7 +34,7 @@ function publicBooking(b: Booking, showNames: boolean): Booking {
 }
 
 /** Everything the player screens need; the client derives local-time slots from the ISO data. */
-export async function loadClubData(slug: string, days = 8, opts: { admin?: boolean; members?: boolean } = {}) {
+export async function loadClubData(slug: string, days = 8, opts: { admin?: boolean; members?: boolean; coachDays?: number } = {}) {
   const ctx = await getTenantContext(slug);
   const { tenant, user } = ctx;
   after(() => syncPendingBookingPayments(tenant.id));
@@ -53,6 +53,14 @@ export async function loadClubData(slug: string, days = 8, opts: { admin?: boole
     user ? getUserWallet(tenant.id, user.id) : null,
     user ? getMemberContext(tenant.id, user.id) : null,
   ]);
+
+  // trainers browse further ahead than members: fetch the extra range only for them
+  if (member?.role === "COACH" && opts.coachDays && opts.coachDays > days) {
+    const far = new Date(from.getTime() + (opts.coachDays + 2) * 86_400_000).toISOString();
+    const [moreBookings, moreBlocks] = await Promise.all([getBookingsInRange(tenant.id, to.toISOString(), far), getBlocksInRange(tenant.id, to.toISOString(), far)]);
+    bookings.push(...moreBookings);
+    blocks.push(...moreBlocks);
+  }
 
   // DB role, not the JWT: a claimed guest account stays GUEST and sees no names
   // callers pass admin only after requireTenantAdmin

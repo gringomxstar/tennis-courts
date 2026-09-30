@@ -30,6 +30,7 @@ export function CalendarView({
   partners,
   wallet,
   windowDays,
+  horizon,
   guestRate,
   needPartner = false,
   planSports,
@@ -44,6 +45,8 @@ export function CalendarView({
   wallet: number;
   /** Booking window of the user's plan; the strip never shows more than 7 days. */
   windowDays: number | null;
+  /** Trainer/admin: days ahead that can be browsed (beats windowDays and the 7-day cap). */
+  horizon?: number;
   guestRate: boolean;
   needPartner?: boolean;
   planSports: SportType[] | null;
@@ -64,18 +67,20 @@ export function CalendarView({
     } catch {}
   };
   const [day, setDay] = useState(0);
+  const [weekMode, setWeekMode] = useState(false);
+  const [weekCourtId, setWeekCourtId] = useState<string | null>(null);
   const [filter, setFilter] = useState<"all" | SurfaceKind>("all");
   const open = tenant.settingsJson?.openingHour ?? 7;
   const close = tenant.settingsJson?.closingHour ?? 22;
   const weekHours = Array.from({ length: close - open }, (_, i) => open + i);
 
   const date = useMemo(() => (ready ? addDays(startOfToday(), day) : null), [ready, day]);
-  const days = ready ? Array.from({ length: Math.max(1, Math.min(7, windowDays ?? 7)) }, (_, i) => addDays(startOfToday(), i)) : [];
+  const days = ready ? Array.from({ length: horizon ?? Math.max(1, Math.min(7, windowDays ?? 7)) }, (_, i) => addDays(startOfToday(), i)) : [];
   // a running slot stays bookable for lateBookingMinutes after its start
   const bookableFrom = nowMs - (tenant.settingsJson?.lateBookingMinutes ?? 15) * 60_000;
 
-  const cell = (court: Court, h: number) => {
-    const start = atHour(date!, h);
+  const cell = (court: Court, h: number, dt: Date = date!) => {
+    const start = atHour(dt, h);
     return { start, state: slotState(court.id, start, 60, bookings, blocks, userId, bookableFrom) };
   };
   const blockLabel = (court: Court, start: Date) => {
@@ -89,7 +94,7 @@ export function CalendarView({
   };
 
   const dayButtons = (compact: boolean) => (
-    <div className={cn("flex px-5 @min-[640px]:px-0", compact ? "gap-1.5 pt-2.5" : "gap-2 pt-4")}>
+    <div className={cn("flex px-5 @min-[640px]:px-0", days.length > 7 && "no-scrollbar overflow-x-auto", compact ? "gap-1.5 pt-2.5" : "gap-2 pt-4")}>
       {days.map((d, i) => {
         const on = i === day;
         return (
@@ -101,6 +106,7 @@ export function CalendarView({
             className={cn(
               // v3 .days: white cards, the chosen day in ink
               "flex flex-1 flex-col items-center justify-center shadow-card transition-all ease-spring",
+              days.length > 7 && "min-w-[52px] flex-none",
               compact ? "h-[54px] rounded-[15px] duration-300" : "h-[66px] gap-0.5 rounded-[18px] duration-[350ms]",
               on ? "bg-ink text-card" : "bg-card text-ink"
             )}
@@ -139,14 +145,14 @@ export function CalendarView({
   const HOUR_MS = 3_600_000;
   const nowIdx = day === 0 ? now.getHours() - open : -1;
   const sel = sheet.slot;
-  const deskCell = (c: Court, h: number) => {
-    const { start, state } = cell(c, h);
+  const deskCell = (c: Court, h: number, dt: Date = date!) => {
+    const { start, state } = cell(c, h, dt);
     const l = courtLabel(c);
-    if (state === "past") return <div key={c.id} className="stripes h-14 rounded-[13px]" />;
+    if (state === "past") return <div key={`${c.id}${dt.getTime()}`} className="stripes h-14 rounded-[13px]" />;
     const b = state === "taken" || state === "mine" ? bookingAt(c.id, start, 60, bookings) : undefined;
     const bStart = b ? new Date(b.startsAt).getTime() : 0;
     // a longer booking is drawn once, from the cell it starts in; the cells below stay empty under it
-    if (b && bStart < start.getTime() && h > open && cell(c, h - 1).state === state) return <div key={c.id} className="h-14 rounded-[13px] bg-bg" />;
+    if (b && bStart < start.getTime() && h > open && cell(c, h - 1, dt).state === state) return <div key={`${c.id}${dt.getTime()}`} className="h-14 rounded-[13px] bg-bg" />;
     const rows = b ? Math.max(1, Math.min(close - h, Math.ceil((new Date(b.endsAt).getTime() - start.getTime()) / HOUR_MS))) : 1;
     const picked = state === "free" && sel?.court.id === c.id && sel.start.getTime() === start.getTime();
     const inert = state === "taken" && !admin;
@@ -158,7 +164,7 @@ export function CalendarView({
           : null;
     return (
       <button
-        key={c.id}
+        key={`${c.id}${dt.getTime()}`}
         type="button"
         disabled={inert}
         onClick={() => tap(c, start, state)}
@@ -185,14 +191,20 @@ export function CalendarView({
       </button>
     );
   };
+  const step = weekMode ? 7 : 1;
+  const mon = addDays(date ?? startOfToday(), -(((date ?? startOfToday()).getDay() + 6) % 7));
+  const weekCourt = shown.find((c) => c.id === weekCourtId) ?? shown[0];
+  const weekDates = Array.from({ length: 7 }, (_, i) => addDays(mon, i));
+  const dayIdx = (dt: Date) => Math.round((dt.getTime() - startOfToday().getTime()) / 86_400_000);
   const deskGrid = ready && date && (
     <div className="hidden flex-col gap-4 @min-[1024px]:flex">
       <div className="flex items-center gap-3 pt-2">
         <h1 className="text-[32px] font-semibold leading-[1.05] tracking-[-.02em]">Kalender</h1>
         <div className="flex-1" />
-        <button type="button" className="btn w-[42px] px-0" aria-label="Vortag" disabled={day === 0} onClick={() => setDay(day - 1)}>‹</button>
-        <span className="btn">{longDate(date)}</span>
-        <button type="button" className="btn w-[42px] px-0" aria-label="Folgetag" disabled={day >= days.length - 1} onClick={() => setDay(day + 1)}>›</button>
+        <LabeledSwitch left="Tag" right="Woche" label="Wochenansicht" on={weekMode} onChange={setWeekMode} />
+        <button type="button" className="btn w-[42px] px-0" aria-label={weekMode ? "Vorwoche" : "Vortag"} disabled={day === 0} onClick={() => setDay(Math.max(0, day - step))}>‹</button>
+        <span className="btn">{weekMode ? `${mon.toLocaleDateString("de-CH", { day: "numeric", month: "numeric" })} – ${addDays(mon, 6).toLocaleDateString("de-CH", { day: "numeric", month: "numeric" })}` : longDate(date)}</span>
+        <button type="button" className="btn w-[42px] px-0" aria-label={weekMode ? "Folgewoche" : "Folgetag"} disabled={day + step > days.length - 1 && (weekMode ? day >= days.length - 1 : true)} onClick={() => setDay(Math.min(days.length - 1, day + step))}>›</button>
         <button type="button" className="btn btn-ghost" disabled={day === 0} onClick={() => setDay(0)}>Heute</button>
       </div>
       <div className="flex flex-wrap gap-2">
@@ -203,8 +215,34 @@ export function CalendarView({
           </button>
         ))}
       </div>
+      {weekMode && shown.length > 1 && (
+        <select aria-label="Platz" className="h-10 w-full max-w-[280px] rounded-[14px] bg-card px-3 text-[15px] font-semibold shadow-card" value={weekCourt?.id} onChange={(e) => setWeekCourtId(e.target.value)}>
+          {shown.map((c) => (
+            <option key={c.id} value={c.id}>
+              {courtLabel(c).name}
+            </option>
+          ))}
+        </select>
+      )}
       {/* leave room for the right-hand booking panel (sheet.tsx, >= 1100) */}
       <div className={cn("card px-[22px] py-5", (sel || detail) && "min-[1100px]:mr-[376px]")}>
+        {weekMode && weekCourt ? (
+          <div className="relative grid gap-[5px]" style={{ gridTemplateColumns: "52px repeat(7, minmax(0, 1fr))" }}>
+            <div />
+            {weekDates.map((dt) => (
+              <div key={dt.getTime()} className={cn("flex h-[58px] flex-col items-center justify-center rounded-[14px] bg-bg", dayIdx(dt) === 0 && "bg-brand-deep text-white")}>
+                <small className="text-[11px] opacity-70">{WD[dt.getDay()]}</small>
+                <b className="text-[15px]">{dt.getDate()}.{dt.getMonth() + 1}.</b>
+              </div>
+            ))}
+            {weekHours.map((h) => (
+              <Fragment key={h}>
+                <div className="flex h-14 items-center justify-center rounded-[12px] text-[12.5px] font-semibold text-ink-2">{h}:00</div>
+                {weekDates.map((dt) => (dayIdx(dt) > days.length - 1 ? <div key={dt.getTime()} className="stripes h-14 rounded-[13px] opacity-50" /> : deskCell(weekCourt, h, dt)))}
+              </Fragment>
+            ))}
+          </div>
+        ) : (
         <div className="relative grid gap-[5px]" style={{ gridTemplateColumns: `52px repeat(${shown.length}, minmax(0, 1fr))` }}>
           <div />
           {shown.map((c) => {
@@ -231,6 +269,7 @@ export function CalendarView({
             </div>
           )}
         </div>
+        )}
         <div className="mt-3 flex flex-wrap gap-3.5 text-[12.5px] text-ink-2">
           {userId && <span className="flex items-center gap-1.5"><i className="inline-block h-3 w-3 rounded-[4px] bg-me" />Meine Buchung</span>}
           {(["MEMBER", "GUEST", "COACH"] as const).map((r) => (
