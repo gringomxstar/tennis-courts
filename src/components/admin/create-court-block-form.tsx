@@ -5,7 +5,12 @@ import { useRouter } from "next/navigation";
 import { Court, BlockReason, CourtBlock } from "@/types";
 import { createCourtBlockAction, updateCourtBlockAction } from "@/app/actions/booking";
 import { cn } from "@/lib/utils";
-import { Spinner } from "@/components/app/avatar";
+import { Dot, Spinner } from "@/components/app/avatar";
+import { courtColor, courtLabel, SURFACE_COLOR, SURFACE_LABEL, surfaceKind, type SurfaceKind } from "@/lib/courts";
+
+const Tick = () => (
+  <svg aria-hidden width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+);
 
 const label = "block truncate text-[13px] font-bold uppercase tracking-[.06em] text-muted-foreground";
 const input =
@@ -26,7 +31,7 @@ export function CreateCourtBlockForm({ clubSlug, courts, edit, onDone }: CreateC
   const todayStr = new Date().toLocaleDateString("sv-SE"); // local YYYY-MM-DD
   const from = edit ? new Date(edit.startsAt) : null;
   const to = edit ? new Date(edit.endsAt) : null;
-  const [courtIds, setCourtIds] = useState<string[]>(edit ? [edit.courtId] : courts.map((c) => c.id));
+  const [courtIds, setCourtIds] = useState<string[]>(edit ? [edit.courtId] : []);
   const [dateStr, setDateStr] = useState(from ? from.toLocaleDateString("sv-SE") : todayStr);
   const [endDateStr, setEndDateStr] = useState(from ? from.toLocaleDateString("sv-SE") : todayStr);
   const [startTime, setStartTime] = useState(from ? hm(from) : "08:00");
@@ -34,6 +39,12 @@ export function CreateCourtBlockForm({ clubSlug, courts, edit, onDone }: CreateC
   const [reason, setReason] = useState<BlockReason>(edit?.reason ?? "MAINTENANCE");
   const [description, setDescription] = useState(edit?.description ?? "");
   const all = courtIds.length === courts.length;
+  // quick picks by surface: rain and winter closures hit all clay courts at once
+  const kinds = (["clay", "hard", "padel"] as const).filter((k) => courts.some((c) => surfaceKind(c) === k));
+  const ofKind = (k: SurfaceKind) => courts.filter((c) => surfaceKind(c) === k).map((c) => c.id);
+  const kindOn = (k: SurfaceKind) => ofKind(k).every((id) => courtIds.includes(id));
+  const toggleKind = (k: SurfaceKind) =>
+    setCourtIds(kindOn(k) ? courtIds.filter((id) => !ofKind(k).includes(id)) : [...new Set([...courtIds, ...ofKind(k)])]);
   const toggleCourt = (id: string) =>
     edit ? setCourtIds([id]) : setCourtIds(courtIds.includes(id) ? courtIds.filter((x) => x !== id) : [...courtIds, id]);
   const [loading, setLoading] = useState(false);
@@ -100,15 +111,26 @@ export function CreateCourtBlockForm({ clubSlug, courts, edit, onDone }: CreateC
         <legend className={label}>{edit ? "Platz" : `Plätze (${courtIds.length})`}</legend>
         <div className="mt-1.5 flex flex-wrap gap-2">
           {!edit && (
-            <button type="button" aria-pressed={all} onClick={() => setCourtIds(all ? [] : courts.map((c) => c.id))} className="chip">
-              Alle
-            </button>
+            <>
+              <button type="button" aria-pressed={all} onClick={() => setCourtIds(all ? [] : courts.map((c) => c.id))} className="chip">
+                {all && <Tick />}Alle
+              </button>
+              {kinds.length > 1 &&
+                kinds.map((k) => (
+                  <button key={k} type="button" aria-pressed={kindOn(k)} onClick={() => toggleKind(k)} className="chip">
+                    {kindOn(k) ? <Tick /> : <Dot color={SURFACE_COLOR[k]} size={9} />}Alle {SURFACE_LABEL[k]}
+                  </button>
+                ))}
+            </>
           )}
+        </div>
+        <div className="mt-2 flex flex-wrap gap-2">
           {courts.map((court) => {
             const on = courtIds.includes(court.id);
             return (
               <button key={court.id} type="button" aria-pressed={on} onClick={() => toggleCourt(court.id)} className="chip">
-                {court.name}
+                {on ? <Tick /> : <Dot color={courtColor(court)} size={9} />}
+                {courtLabel(court).name}
               </button>
             );
           })}
