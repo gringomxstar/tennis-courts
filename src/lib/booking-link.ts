@@ -1,11 +1,11 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { authSecret } from "@/lib/secret";
 
 const appUrl = () => process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
 /** Unguessable per-booking token, so guests without an account can open their booking from the mail. */
-// same fallback as src/auth.ts
 const sign = (msg: string) =>
-  createHmac("sha256", process.env.AUTH_SECRET || "tennis-secret-jwt-key-32-chars-minimum-token")
+  createHmac("sha256", authSecret())
     .update(msg)
     .digest("base64url")
     .slice(0, 32);
@@ -58,6 +58,11 @@ export const bookingLink = (slug: string, bookingId: string) =>
  */
 export async function claimableByBooking(organizerId: string, bookingId: string) {
   const { prisma } = await import("@/lib/prisma");
+  // imported/invited members and Abo holders are real identities, never claimable by a booking token
+  const real = await prisma.user.count({
+    where: { id: organizerId, OR: [{ tenantUsers: { some: { role: { not: "GUEST" } } } }, { memberships: { some: {} } }] },
+  });
+  if (real) return false;
   const other = await prisma.booking.count({
     where: { organizerId, id: { not: bookingId }, status: { not: "CANCELLED" } },
   });

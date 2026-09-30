@@ -149,8 +149,14 @@ export async function createBookingAction(input: CreateBookingInput) {
       // Submitting an email is not proof of ownership: never attach an anonymous booking to
       // an existing real account (one with a passwordHash) — that would let anyone impersonate
       // a known member by typing their email. Only reuse a previously-created guest identity.
-      const existingUser = await prisma.user.findUnique({ where: { email: guestEmail } });
-      if (existingUser && existingUser.passwordHash) {
+      const existingUser = await prisma.user.findUnique({
+        where: { email: guestEmail },
+        include: { tenantUsers: { select: { role: true } }, _count: { select: { memberships: true } } },
+      });
+      // also imported/invited members that have no password yet
+      const isRealAccount =
+        existingUser && (existingUser.passwordHash || existingUser._count.memberships > 0 || existingUser.tenantUsers.some((tu) => tu.role !== "GUEST"));
+      if (existingUser && isRealAccount) {
         return {
           success: false,
           error: "Diese E-Mail-Adresse gehört zu einem bestehenden Konto. Bitte melde dich an, um zu buchen.",

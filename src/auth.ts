@@ -6,6 +6,7 @@ import { authConfig } from "./auth.config";
 import { prisma } from "@/lib/prisma";
 import { TenantRole } from "@/types";
 import { demoModeOn, isDemoEmail } from "@/lib/demo";
+import { authSecret } from "@/lib/secret";
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -16,20 +17,30 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
   callbacks: {
     ...authConfig.callbacks,
-    // Switching demo mode off must also end running demo sessions, not only new logins.
-    // Costs one query per 5 min, but only for the demo personas.
+    // Roles live in the JWT; re-read them from the DB every 5 min so a demoted/removed admin loses
+    // access soon, not after the session expires. Demo personas also end when demo mode is off.
     async jwt(params) {
       const token = await authConfig.callbacks!.jwt!(params);
-      if (!token || params.user || !isDemoEmail(token.email)) return token;
-      // re-check at most every 5 min instead of on every auth() call
-      const t = token as typeof token & { demoChk?: number };
-      if (t.demoChk && Date.now() - t.demoChk < 300_000) return token;
-      t.demoChk = Date.now();
-      const live = await prisma.tenantUser.findMany({
-        where: { user: { email: token.email! } },
-        select: { tenant: { select: { settingsJson: true } } },
-      });
-      return live.some((tu) => demoModeOn(tu.tenant.settingsJson)) ? token : null;
+      if (!token || params.user) return token;
+      const t = token as typeof token & { chk?: number };
+      if (t.chk && Date.now() - t.chk < 300_000) return token;
+      t.chk = Date.now();
+      try {
+        let live = await prisma.tenantUser.findMany({
+          where: { user: { email: token.email! } },
+          select: { tenantId: true, role: true, tenant: { select: { slug: true, settingsJson: true } } },
+        });
+        if (isDemoEmail(token.email)) {
+          live = live.filter((tu) => demoModeOn(tu.tenant.settingsJson));
+          if (!live.length) return null;
+        }
+        token.tenants = live.map((tu) => ({ tenantId: tu.tenantId, slug: tu.tenant.slug, role: tu.role as TenantRole }));
+        token.isPlatformAdmin = live.some((tu) => tu.role === "PLATFORM_ADMIN");
+        token.role = token.isPlatformAdmin ? "PLATFORM_ADMIN" : ((live[0]?.role as TenantRole) ?? "GUEST");
+      } catch (e) {
+        console.error("jwt refresh failed:", e); // DB blip: keep the session as is
+      }
+      return token;
     },
   },
   providers: [
@@ -65,9 +76,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           return null; // Falsches Passwort -> CredentialsSignin
         }
 
-        // Demo passwords are public (repo): only valid while a club of this persona runs demo mode
-        if (isDemoEmail(normalizedEmail) && !dbUser.tenantUsers.some((tu) => demoModeOn(tu.tenant.settingsJson))) {
-          return null; // Demo-Modus ist aus -> CredentialsSignin
+        // Demo passwords are public (repo): only valid while a club of this persona runs demo mode,
+        // and only for those clubs (a club with demo off must not open its admin role)
+        if (isDemoEmail(normalizedEmail)) {
+          dbUser.tenantUsers = dbUser.tenantUsers.filter((tu) => demoModeOn(tu.tenant.settingsJson));
+          if (!dbUser.tenantUsers.length) return null; // Demo-Modus ist aus -> CredentialsSignin
         }
 
         // Bestimme primäre Rolle & Tenants
@@ -94,5 +107,5 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   session: { strategy: "jwt" },
-  secret: process.env.AUTH_SECRET || "tennis-secret-jwt-key-32-chars-minimum-token",
+  secret: authSecret(),
 });
