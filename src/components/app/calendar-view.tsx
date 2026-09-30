@@ -400,7 +400,9 @@ export function CalendarView({
                     {weekHours.map((h) => {
                       const { start, state } = cell(c, h);
                       const inert = (state === "taken" && !admin) || state === "past";
-                      const taken = state === "taken" ? tint(bookingColor(bookingAt(c.id, start, 60, bookings), tenant.settingsJson), 16) : undefined;
+                      const bk = state === "taken" || state === "mine" ? bookingAt(c.id, start, 60, bookings) : undefined;
+                      // Kurse in ihrer Farbe (auch die eigenen), übrige belegte Kacheln als helle Tönung
+                      const taken = bk?.color ? { background: bk.color, color: "#fff" } : state === "taken" ? tint(bookingColor(bk, tenant.settingsJson), 16) : undefined;
                       return (
                         <button
                           key={h}
@@ -470,7 +472,7 @@ export function CalendarView({
                           disabled={inert}
                           onClick={() => tap(c, start, state)}
                           aria-label={`${l.name}, ${h}:00, ${STATE_LABEL[state]}${text && state === "taken" ? `, ${text}` : ""}`}
-                          style={state === "taken" ? { background: bookingColor(b, tenant.settingsJson), color: "#fff" } : undefined}
+                          style={b?.color ? { background: b.color, color: "#fff" } : state === "taken" ? { background: bookingColor(b, tenant.settingsJson), color: "#fff" } : undefined}
                           className={cn(
                             "box-border flex h-full w-full items-center rounded-[9px] px-2.5 text-left text-[14px] font-semibold leading-tight transition-transform duration-[250ms] ease-spring",
                             state === "free" && (marked.has(markKey(c, start)) ? "bg-brand-soft text-brand-deep shadow-[inset_0_0_0_2px_var(--brand-deep)]" : "bg-bg active:scale-[.94]"),
