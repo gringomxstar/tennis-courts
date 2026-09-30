@@ -5,9 +5,12 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 // Serverless: every instance opens its own pool, and prod + local dev share one DB whose
-// role has a low connection cap ("too many connections" → silent mockDb fallback).
-// ponytail: fixed small pool per instance; move to a pooled URL if traffic outgrows it.
+// role has a low connection cap (P2037 "too many connections", e.g. after several deploys in a row).
+// On Vercel the Prisma Postgres integration provides a pooled URL: all instances share one pool.
+// Elsewhere (local dev) fall back to the direct URL with a small fixed pool per process.
 function pooledUrl() {
+  const pooled = process.env.tcstor_PRISMA_DATABASE_URL;
+  if (pooled?.startsWith("prisma+postgres://") || pooled?.startsWith("prisma://")) return pooled;
   const raw = process.env.DATABASE_URL;
   if (!raw) return undefined;
   try {
