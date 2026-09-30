@@ -34,8 +34,10 @@
   /* club brand color; the layout overrides it from settingsJson.brandColor */
   --tennis-clay: #e25b36;
   --tennis-clay-hover: color-mix(in srgb, var(--tennis-clay) 85%, black);
+  /* fill behind white text: >= 4.5:1 for the default clay and the club teal */
+  --clay-fill: color-mix(in srgb, var(--tennis-clay) 86%, black);
   --floodlight: #f59e0b;
-  --surface-clay: #e25b36;
+  --surface-clay: #c9482a;
   --surface-hard: #64748b;
   --surface-padel: #2563eb;
 
@@ -129,7 +131,7 @@ body {
 @theme inline {
   --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, sans-serif;
   --font-heading: var(--font-sans);
-  --color-clay: var(--tennis-clay);
+  --color-clay: var(--clay-fill);
   --color-clay-hover: var(--tennis-clay-hover);
   --color-clay-text: var(--clay-text);
   --color-floodlight: var(--floodlight);

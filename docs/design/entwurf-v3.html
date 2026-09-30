@@ -1,0 +1,432 @@
+<title>TC Marly Entwurf</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap">
+<style>
+:root { --pg-bg: #dfe3e1; --pg-fg: #16201d; --pg-muted: #5f6b68; --pg-line: #c9d0cd; --pg-card: #fff; --pg-accent: #0f5c4f; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --pg-bg: #101413; --pg-fg: #e9ecea; --pg-muted: #96a09d; --pg-line: #26302e; --pg-card: #182120; --pg-accent: #5cc8bb; color-scheme: dark } }
+:root[data-theme="dark"] { --pg-bg: #101413; --pg-fg: #e9ecea; --pg-muted: #96a09d; --pg-line: #26302e; --pg-card: #182120; --pg-accent: #5cc8bb; color-scheme: dark }
+body { background: var(--pg-bg); color: var(--pg-fg); font-family: "Outfit", -apple-system, "Helvetica Neue", sans-serif; padding-inline: 16px; padding-block: 18px 60px; }
+.bar { display: flex; flex-wrap: wrap; gap: 10px 20px; align-items: center; max-width: 1480px; margin: 0 auto 14px; }
+.bar h1 { font-size: 17px; margin: 0; font-weight: 700; }
+.bar .grp { display: flex; gap: 2px; background: var(--pg-card); border: 1px solid var(--pg-line); border-radius: 999px; padding: 3px; }
+.bar button { font: inherit; font-size: 13px; font-weight: 600; border: 0; background: transparent; color: var(--pg-muted); padding: 6px 13px; border-radius: 999px; cursor: pointer; }
+.bar button[aria-pressed="true"] { background: var(--pg-accent); color: #fff; }
+.bar .note { font-size: 13px; color: var(--pg-muted); flex-basis: 100%; max-width: 72ch; }
+.stage { max-width: 1480px; margin: 0 auto; overflow-x: auto; }
+.frame { container-type: inline-size; container-name: app; width: 1440px; height: 900px; border-radius: 18px; overflow: hidden; box-shadow: 0 40px 80px -40px rgba(15,60,50,.5); }
+.frame[data-w="390"] { width: 390px; height: 844px; border-radius: 46px; border: 9px solid #111; }
+.frame[data-w="1024"] { width: 1024px; height: 768px; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important } }
+
+/* ================= APP ================= */
+.app {
+  --brand: #147a68; --brand-deep: #0f5c4f; --brand-dark: #0b433a; --brand-soft: #d6ece6; --brand-tint: #ecf5f2;
+  --bg: #e9efec; --card: #ffffff; --ink: #16201d; --ink-2: #4f5e5a; --ink-3: #8a9793; --line: #e6ecea;
+  --sand: #e0653a; --hard: #4c6b8a; --padel: #3a7bd5;
+  --guest: #f0a33a; --coach: #7c5cff; --me: #147a68; --mem: #38b58a; --block: #b9c3c0;
+  --ok: #1f8a5b; --ok-bg: #dcf3e8; --warn: #b5680c; --warn-bg: #fdefd6; --bad: #c9432f; --bad-bg: #fde3df; --navy: #14213d;
+  --sh: 0 10px 30px -12px rgba(15,60,50,.16), 0 2px 6px rgba(15,60,50,.04); --sh-lg: 0 24px 50px -24px rgba(15,60,50,.35);
+  --r: 24px; --r-s: 16px;
+  box-sizing: border-box; grid-template-rows: minmax(0, 1fr); width: 100%; height: 100%; background: var(--bg); color: var(--ink); font-family: "Outfit", -apple-system, "Helvetica Neue", sans-serif; font-size: 14.5px; line-height: 1.4; font-variant-numeric: tabular-nums;
+  display: grid; grid-template-columns: 1fr; position: relative; overflow: hidden; padding: 16px; gap: 16px; }
+.app * { box-sizing: border-box; } .app button, .app input { font: inherit; color: inherit; } .app a { color: inherit; text-decoration: none; }
+.app h1, .app h2, .app h3 { margin: 0; font-weight: 600; letter-spacing: -.02em; text-wrap: balance; }
+.card { background: var(--card); border-radius: var(--r); box-shadow: var(--sh); }
+.rail { display: none; }
+.main { display: flex; flex-direction: column; min-width: 0; min-height: 0; gap: 14px; }
+.topbar { display: none; }
+.content { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 16px; padding-bottom: 8px; }
+.ph { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.ph h1 { font-size: 32px; line-height: 1.05; } .ph .sub { color: var(--ink-3); font-size: 14px; margin-top: 4px; }
+.ph .grow { flex: 1; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 42px; padding: 0 18px; border-radius: 999px; border: 0; background: var(--card); color: var(--ink); font-weight: 600; font-size: 14px; cursor: pointer; white-space: nowrap; box-shadow: var(--sh); transition: transform .15s, box-shadow .15s; }
+.btn:hover { transform: translateY(-1px); } .btn:active { transform: translateY(1px); }
+.btn.pri { background: var(--brand-deep); color: #fff; } .btn.dark { background: var(--ink); color: #fff; } .btn.icon { width: 42px; padding: 0; } .btn.ghost { box-shadow: none; background: var(--bg); }
+.btn svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.pills { display: inline-flex; gap: 4px; background: var(--card); border-radius: 999px; padding: 4px; box-shadow: var(--sh); }
+.pills button { border: 0; background: transparent; color: var(--ink-2); font-weight: 600; font-size: 14px; padding: 8px 16px; border-radius: 999px; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; }
+.pills button[aria-pressed="true"] { background: var(--brand-deep); color: #fff; }
+.pills button svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.chip { display: inline-flex; align-items: center; gap: 7px; height: 36px; padding: 0 14px; border-radius: 999px; background: var(--card); box-shadow: var(--sh); font-size: 13.5px; font-weight: 600; color: var(--ink-2); cursor: pointer; border: 0; white-space: nowrap; }
+.chip[aria-pressed="true"] { background: var(--ink); color: #fff; }
+.dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; flex: none; } .d-sand { background: var(--sand) } .d-hard { background: var(--hard) } .d-padel { background: var(--padel) }
+.av { width: 36px; height: 36px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex: none; color: #fff; }
+.av.a1 { background: linear-gradient(135deg,#f6b26b,#e0653a) } .av.a2 { background: linear-gradient(135deg,#7fd0b8,#147a68) } .av.a3 { background: linear-gradient(135deg,#9db4ff,#3a7bd5) } .av.a4 { background: linear-gradient(135deg,#c9b1ff,#7c5cff) } .av.a5 { background: linear-gradient(135deg,#ffb3a7,#c9432f) } .av.a6 { background: linear-gradient(135deg,#ffd57a,#f0a33a) }
+.pill { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 999px; font-size: 12.5px; font-weight: 600; white-space: nowrap; }
+.pill i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.p-ok { background: var(--ok-bg); color: var(--ok); } .p-warn { background: var(--warn-bg); color: var(--warn); } .p-bad { background: var(--bad-bg); color: var(--bad); } .p-coach { background: #ebe6ff; color: var(--coach); } .p-off { background: #edf1f0; color: var(--ink-2); }
+.ch { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; } .ch h2 { font-size: 17px; }
+.ch .more { width: 34px; height: 34px; border-radius: 50%; background: var(--bg); display: inline-flex; align-items: center; justify-content: center; color: var(--ink-2); flex: none; }
+.ch .more svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 2.2; stroke-linecap: round; }
+.trend { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 600; color: var(--ok); } .trend.down { color: var(--bad); }
+.tabs { display: none; }
+.screen { display: none; } .screen[data-on] { display: flex; flex-direction: column; gap: 16px; }
+
+/* court illustration */
+.court { position: relative; border-radius: var(--r); overflow: hidden; background: radial-gradient(120% 90% at 20% 0%, #f08a5f 0%, #d95a2f 45%, #b8441f 100%); color: #fff; min-height: 240px; box-shadow: var(--sh); }
+.court svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.court .lbl { position: absolute; top: 16px; left: 16px; display: inline-flex; align-items: center; gap: 8px; background: rgba(255,255,255,.18); backdrop-filter: blur(10px); border-radius: 999px; padding: 7px 12px 7px 8px; font-size: 13px; font-weight: 600; }
+.court .lbl i { width: 22px; height: 22px; border-radius: 50%; background: #fff; display: inline-block; }
+.court .foot { position: absolute; left: 16px; right: 16px; bottom: 16px; display: flex; gap: 8px; flex-wrap: wrap; }
+.court .foot .chip { background: rgba(255,255,255,.92); box-shadow: none; color: var(--ink); height: 38px; }
+.court .foot .chip b { font-size: 15px; }
+
+/* ---------- START ---------- */
+.g3 { display: grid; grid-template-columns: 1.15fr 1fr 1fr; gap: 16px; }
+.g2 { display: grid; grid-template-columns: 1.5fr 1fr; gap: 16px; }
+.hero { border-radius: var(--r); padding: 24px; color: #fff; background: linear-gradient(135deg, #1a8a75 0%, #0f5c4f 60%, #0b433a 100%); box-shadow: var(--sh-lg); display: flex; flex-direction: column; gap: 14px; position: relative; overflow: hidden; }
+.hero::after { content: ""; position: absolute; right: -60px; top: -60px; width: 220px; height: 220px; border-radius: 50%; background: rgba(255,255,255,.08); }
+.hero .k { font-size: 14px; opacity: .8; font-weight: 500; }
+.hero .big { font-size: 60px; font-weight: 700; letter-spacing: -.04em; line-height: 1; }
+.hero .big small { font-size: 18px; font-weight: 500; letter-spacing: 0; opacity: .85; margin-left: 10px; }
+.hero .meta { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 500; }
+.hero .meta .avs { display: inline-flex; } .hero .meta .avs .av { width: 30px; height: 30px; font-size: 10.5px; margin-left: -8px; border: 2px solid #0f5c4f; } .hero .meta .avs .av:first-child { margin-left: 0; }
+.hero .act { display: flex; gap: 8px; margin-top: auto; flex-wrap: wrap; }
+.hero .act .btn { box-shadow: none; } .hero .act .btn.w { background: #fff; color: var(--brand-dark); } .hero .act .btn.t { background: rgba(255,255,255,.14); color: #fff; }
+.pad { padding: 20px 22px; }
+.sess { display: flex; flex-direction: column; gap: 6px; }
+.sess .it { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 16px; background: var(--bg); }
+.sess .it b { display: block; font-size: 14.5px; font-weight: 600; } .sess .it small { color: var(--ink-3); font-size: 12.5px; }
+.sess .it .g { flex: 1; min-width: 0; }
+.heat { display: grid; grid-template-columns: 64px repeat(15, 1fr); gap: 5px; align-items: center; }
+.heat .rl { font-size: 12.5px; font-weight: 600; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.heat .cl { font-size: 11px; color: var(--ink-3); text-align: center; }
+.heat .q { aspect-ratio: 1; border-radius: 6px; background: #eef3f1; } .heat .q.l1 { background: #cde8df } .heat .q.l2 { background: #7fc7ae } .heat .q.l3 { background: var(--brand-deep) } .heat .q.x { background: repeating-linear-gradient(135deg,#dfe6e3 0 3px,#f3f6f5 3px 6px) }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12.5px; color: var(--ink-2); margin-top: 12px; }
+.legend i { display: inline-block; width: 12px; height: 12px; border-radius: 4px; vertical-align: -2px; margin-right: 6px; }
+.donut { display: grid; grid-template-columns: 120px 1fr; gap: 16px; align-items: center; }
+.donut svg { width: 120px; height: 120px; transform: rotate(-90deg); } .donut .c { position: relative; } .donut .c b { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 22px; font-weight: 700; letter-spacing: -.03em; } .donut .c b small { font-size: 11px; font-weight: 500; color: var(--ink-3); letter-spacing: 0; }
+.kvs { display: flex; flex-direction: column; gap: 8px; font-size: 13.5px; } .kvs div { display: flex; justify-content: space-between; gap: 10px; } .kvs span:last-child { font-weight: 600; }
+
+/* ---------- KALENDER (grid: courts as columns, hours as rows) ---------- */
+.cal { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px; align-items: start; }
+.tlwrap { position: relative; }
+.tl { display: grid; grid-template-columns: 52px repeat(9, minmax(0, 1fr)); gap: 5px; }
+.tl .hd { height: 58px; border-radius: 14px; background: var(--bg); display: flex; align-items: center; gap: 8px; padding: 0 8px; min-width: 0; }
+.tl .hd .ic { width: 30px; height: 30px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; color: #fff; font-size: 10.5px; font-weight: 700; flex: none; }
+.tl .hd b { display: block; font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .tl .hd small { color: var(--ink-3); font-size: 11px; display: block; }
+.tl .hr { height: 56px; display: flex; align-items: center; justify-content: center; font-size: 12.5px; font-weight: 600; color: var(--ink-2); border-radius: 12px; }
+.tl .hr.now { background: var(--brand-deep); color: #fff; }
+.tl .cell { height: 56px; border-radius: 13px; background: var(--bg); position: relative; cursor: pointer; }
+.tl .cell:hover { background: var(--brand-soft); }
+.tl .cell.past { background: repeating-linear-gradient(135deg,#dfe6e3 0 4px,#eef2f0 4px 8px); cursor: default; }
+.tl .cell.sel { background: var(--brand-soft); box-shadow: inset 0 0 0 2px var(--brand-deep); }
+.tl .cell.sel::after { content: "+ Reservieren"; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: var(--brand-deep); }
+.tl .ev { position: absolute; inset: 0; border-radius: 13px; display: flex; align-items: center; gap: 7px; padding: 0 9px; color: #fff; font-size: 12px; font-weight: 600; overflow: hidden; box-shadow: 0 8px 18px -10px rgba(0,0,0,.35); z-index: 1; }
+.tl .cell.span2 .ev { bottom: calc(-100% - 5px); }
+.tl .ev i { width: 24px; height: 24px; border-radius: 50%; background: rgba(255,255,255,.22); display: inline-flex; align-items: center; justify-content: center; flex: none; } .tl .ev i svg { width: 13px; height: 13px; stroke: #fff; fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.tl .ev .tx { min-width: 0; line-height: 1.2; } .tl .ev .tx span { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .tl .ev .tx small { display: block; font-size: 11px; opacity: .8; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ev.me { background: var(--me) } .ev.mem { background: var(--mem) } .ev.guest { background: var(--guest) } .ev.coach { background: var(--coach) } .ev.block { background: var(--block); color: var(--ink) } .ev.block i { background: rgba(0,0,0,.08) } .ev.block i svg { stroke: var(--ink) }
+.nowline { position: absolute; left: 57px; right: 0; height: 0; border-top: 2px dashed var(--brand-deep); pointer-events: none; z-index: 2; }
+.nowline::before { content: "18:15"; position: absolute; left: -52px; top: -10px; font-size: 11px; font-weight: 700; color: var(--brand-deep); background: var(--card); padding: 0 3px; }
+/* form */
+.form { display: flex; flex-direction: column; gap: 16px; }
+.form .when { font-size: 28px; font-weight: 700; letter-spacing: -.03em; line-height: 1.05; } .form .when small { display: flex; align-items: center; gap: 7px; font-size: 13.5px; color: var(--ink-2); font-weight: 500; margin-top: 6px; letter-spacing: 0; }
+.form .l { font-size: 13px; font-weight: 600; color: var(--ink-2); display: block; margin-bottom: 7px; }
+.seg { display: flex; background: var(--bg); border-radius: 999px; padding: 4px; }
+.seg button { flex: 1; border: 0; background: transparent; color: var(--ink-2); font-weight: 600; font-size: 13.5px; padding: 8px 0; border-radius: 999px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--card); color: var(--ink); box-shadow: var(--sh); }
+.people { display: flex; flex-wrap: wrap; gap: 7px; }
+.people .chip { height: 38px; padding: 0 12px 0 4px; box-shadow: none; background: var(--bg); } .people .chip .av { width: 30px; height: 30px; font-size: 10.5px; } .people .chip[aria-pressed="true"] { background: var(--ink); color: #fff; } .people .chip.add { padding: 0 14px; color: var(--brand-deep); }
+.sum { background: var(--bg); border-radius: 16px; padding: 14px; display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; font-size: 14px; } .sum b { font-weight: 600; } .sum .n { grid-column: 1 / -1; font-size: 12.5px; color: var(--ink-3); }
+.form .btn.pri { height: 50px; font-size: 15.5px; }
+/* phone list */
+.cal-list { display: none; }
+.days { display: flex; gap: 8px; overflow-x: auto; padding: 2px 0 4px; scrollbar-width: none; }
+.days button { flex: none; width: 52px; height: 66px; border-radius: 18px; border: 0; background: var(--card); box-shadow: var(--sh); font-weight: 700; font-size: 18px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
+.days button small { font-size: 11.5px; color: var(--ink-3); font-weight: 600; } .days button[aria-pressed="true"] { background: var(--ink); color: #fff; } .days button[aria-pressed="true"] small { color: rgba(255,255,255,.7); }
+.hourrow { display: grid; grid-template-columns: 54px 1fr; gap: 10px; padding: 12px 0; border-top: 1px solid var(--line); align-items: start; } .hourrow:first-child { border-top: 0; }
+.hourrow b { font-size: 17px; letter-spacing: -.02em; padding-top: 6px; }
+.courts { display: flex; flex-wrap: wrap; gap: 6px; }
+.courts .chip { height: 34px; padding: 0 11px; box-shadow: none; background: var(--bg); } .courts .chip.taken { color: var(--ink-3); text-decoration: line-through; opacity: .7; } .courts .chip.mine { background: var(--brand-deep); color: #fff; }
+.sheet, .scrim { display: none; }
+
+/* ---------- MITGLIEDER ---------- */
+.kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+.kpi { padding: 20px 22px; display: flex; flex-direction: column; gap: 10px; }
+.kpi .k { display: flex; justify-content: space-between; align-items: center; color: var(--ink-2); font-size: 14px; font-weight: 500; }
+.kpi b { font-size: 36px; font-weight: 700; letter-spacing: -.04em; line-height: 1; }
+.kpi.grad { background: linear-gradient(135deg, #1a8a75 0%, #0f5c4f 70%); color: #fff; } .kpi.grad .k, .kpi.grad .trend { color: rgba(255,255,255,.85); }
+.mem { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px; align-items: start; }
+.tools { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
+.search { display: flex; align-items: center; gap: 8px; height: 42px; padding: 0 16px; border-radius: 999px; background: var(--bg); color: var(--ink-3); flex: 1; min-width: 200px; max-width: 340px; }
+.search input { border: 0; outline: 0; background: transparent; flex: 1; color: var(--ink); min-width: 0; } .search svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 2.2; stroke-linecap: round; }
+table.t { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 14px; }
+.t th { text-align: left; font-size: 12.5px; color: var(--ink-3); font-weight: 600; padding: 8px 12px 12px; }
+.t td { padding: 9px 12px; vertical-align: middle; white-space: nowrap; border-top: 1px solid var(--line); }
+.t tr.sel td { background: var(--brand-tint); } .t tr.sel td:first-child { border-radius: 14px 0 0 14px; } .t tr.sel td:last-child { border-radius: 0 14px 14px 0; }
+.t td.name { font-weight: 600; } .t td.name .w { display: flex; align-items: center; gap: 10px; } .t td.name small { display: block; color: var(--ink-3); font-weight: 500; font-size: 12.5px; }
+.t td:first-child, .t th:first-child { width: 40px; padding-right: 0; } .t input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--brand-deep); }
+.t .muted { color: var(--ink-2); }
+.mem-list { display: none; }
+.bulk { display: flex; align-items: center; gap: 10px; padding: 8px 8px 8px 20px; background: var(--ink); color: #fff; border-radius: 999px; font-size: 14px; font-weight: 600; margin-top: 14px; flex-wrap: wrap; }
+.bulk .btn { height: 36px; background: rgba(255,255,255,.12); color: #fff; box-shadow: none; font-size: 13px; }
+.detail .dh { display: flex; align-items: center; gap: 12px; padding-bottom: 14px; }
+.detail .dh .av { width: 48px; height: 48px; font-size: 15px; } .detail .dh b { font-size: 17px; display: block; } .detail .dh span { color: var(--ink-3); font-size: 13px; }
+.detail .kv { display: grid; grid-template-columns: 1fr auto; gap: 10px 14px; padding: 14px 0; border-top: 1px solid var(--line); font-size: 14px; } .detail .kv span:nth-child(odd) { color: var(--ink-3); } .detail .kv span:nth-child(even) { text-align: right; font-weight: 600; }
+.detail .acts { display: flex; gap: 8px; flex-wrap: wrap; } .detail .acts .btn { height: 38px; font-size: 13.5px; box-shadow: none; background: var(--bg); }
+.bars { display: flex; align-items: flex-end; gap: 8px; height: 110px; margin-top: 8px; }
+.bars div { flex: 1; border-radius: 8px 8px 4px 4px; background: #f3d9a4; position: relative; } .bars div.hi { background: var(--brand-deep); }
+.bars div span { position: absolute; top: -22px; left: 50%; transform: translateX(-50%); font-size: 11.5px; color: var(--ink-3); font-weight: 600; }
+.bars-x { display: flex; gap: 8px; margin-top: 6px; } .bars-x span { flex: 1; text-align: center; font-size: 11.5px; color: var(--ink-3); }
+
+/* ---------- from 640: rail + topbar ---------- */
+@container app (min-width: 640px) {
+  .app { grid-template-columns: 72px 1fr; }
+  .rail { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 14px 0; }
+  .rail .logo { width: 44px; height: 44px; border-radius: 14px; background: var(--brand-deep); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px; letter-spacing: -.04em; margin-bottom: 14px; }
+  .rail a { width: 44px; height: 44px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; color: var(--ink-2); }
+  .rail a svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+  .rail a[aria-current] { background: var(--brand-deep); color: #fff; box-shadow: 0 8px 18px -8px rgba(15,92,79,.6); }
+  .rail .sep { width: 28px; height: 1px; background: var(--line); margin: 6px 0; }
+  .rail .bottom { margin-top: auto; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .topbar { display: flex; align-items: center; gap: 10px; }
+  .topbar .grow { flex: 1; }
+  .topbar .search { max-width: 300px; background: var(--card); box-shadow: var(--sh); }
+  .ph .btn.pri span { display: inline; }
+}
+@container app (max-width: 1099px) {
+  .cal, .mem { grid-template-columns: 1fr; } .form-wrap, .detail { display: none; }
+  .g3 { grid-template-columns: 1fr 1fr; } .g3 > :first-child { grid-column: 1 / -1; } .g2 { grid-template-columns: 1fr; }
+  .kpis { grid-template-columns: repeat(2, 1fr); }
+  .topbar .pills button span { display: none; } .topbar .pills button { padding: 8px 12px; }
+  .heat { grid-template-columns: 56px repeat(15, 1fr); gap: 3px; }
+}
+/* ---------- phone ---------- */
+@container app (max-width: 639px) {
+  .app { grid-template-columns: 1fr; padding: 0; gap: 0; }
+  .rail, .topbar { display: none; } .tabs { display: flex; }
+  .content { padding: 54px 16px 110px; gap: 14px; }
+  .ph h1 { font-size: 28px; } .ph .btn.pri span, .ph .hide-m, .ph .grow { display: none; } .ph > div:first-child { flex: 1; min-width: 0; } .ph .btn.pri { width: 44px; padding: 0; }
+  .ph .btn.icon.hide-m { display: none; }
+  .hero { padding: 20px; background: linear-gradient(160deg, #1f2f52 0%, #14213d 60%, #0f182c 100%); } .hero .big { font-size: 54px; } .hero .act .btn.w { background: #38b58a; color: #fff; flex: 1; } .hero .meta .avs .av { border-color: #14213d; }
+  .g3, .g2 { grid-template-columns: 1fr; gap: 14px; }
+  .court { min-height: 200px; }
+  .heat { grid-template-columns: 50px repeat(15, 1fr); gap: 3px; } .heat .q { border-radius: 4px; } .heat .cl:nth-child(2n) { visibility: hidden; }
+  .cal-wrap, .legend.cal-leg, .filters .hide-m { display: none; } .cal-list { display: block; } .filters { flex-wrap: nowrap !important; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+  .app[data-sheet] .scrim { display: block; position: absolute; inset: 0; background: rgba(20,33,61,.4); z-index: 5; }
+  .app[data-sheet] .sheet { display: block; position: absolute; inset: auto 0 0 0; z-index: 6; background: var(--card); border-radius: 30px 30px 0 0; box-shadow: 0 -20px 50px -20px rgba(20,33,61,.5); }
+  .sheet::before { content: ""; display: block; width: 40px; height: 5px; border-radius: 3px; background: #d8dedb; margin: 10px auto 0; }
+  .sheet .form { padding: 12px 20px calc(18px + 74px); }
+  .kpis { grid-template-columns: repeat(2, 1fr); gap: 10px; } .kpi { padding: 16px; } .kpi b { font-size: 28px; }
+  table.t, .bulk { display: none; } .mem-list { display: block; }
+  .tools .search { max-width: none; min-width: 0; flex-basis: 100%; } .tools .chip.hide-m, .tools .seg { display: none; }
+  .mrow { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid var(--line); } .mrow:first-child { border-top: 0; }
+  .mrow .g { flex: 1; min-width: 0; } .mrow b { display: block; font-size: 15px; font-weight: 600; } .mrow small { color: var(--ink-3); font-size: 12.5px; }
+  .tabs { position: absolute; left: 50%; transform: translateX(-50%); bottom: 16px; gap: 2px; padding: 6px; border-radius: 999px; background: rgba(22,32,29,.94); box-shadow: 0 16px 40px -14px rgba(22,32,29,.6); backdrop-filter: blur(20px); z-index: 5; }
+  .tabs a { display: flex; align-items: center; gap: 7px; height: 46px; padding: 0 13px; border-radius: 999px; color: rgba(255,255,255,.6); font-weight: 600; font-size: 14px; }
+  .tabs a svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .tabs a span { display: none; } .tabs a[aria-current] { background: #38b58a; color: #fff; } .tabs a[aria-current] span { display: inline; }
+}
+@container app (min-width: 640px) { .scrim, .sheet { display: none !important; } }
+</style>
+
+<div class="bar">
+  <h1>TC Marly Entwurf</h1>
+  <div class="grp" id="scr"><button aria-pressed="true" data-screen="start">Start</button><button data-screen="cal">Kalender</button><button data-screen="mem">Mitglieder</button></div>
+  <div class="grp" id="wid"><button data-w="390">Handy 390</button><button data-w="1024">Laptop 1024</button><button aria-pressed="true" data-w="1440">Desktop 1440</button></div>
+  <div class="note">Version 3 nach deinen Referenzen: Icon-Leiste, Pillen-Navigation, weisse Karten mit grossem Radius, Verlaufs-Karte in der Clubfarbe, Platz-Bildkarte, Heatmap, farbige Kalenderbalken. Schrift Outfit.</div>
+</div>
+
+<div class="stage"><div class="frame" id="frame" data-w="1440"><div class="app" id="app">
+
+  <nav class="rail card" aria-label="Navigation">
+    <div class="logo">TC</div>
+    <a href="#" data-nav="start" title="Start"><svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg></a>
+    <a href="#" data-nav="cal" title="Kalender"><svg viewBox="0 0 24 24"><path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/></svg></a>
+    <a href="#" title="Buchungen"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg></a>
+    <a href="#" title="Profil"><svg viewBox="0 0 24 24"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/></svg></a>
+    <div class="sep"></div>
+    <a href="#" data-nav="mem" title="Verwaltung"><svg viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg></a>
+    <div class="bottom"><a href="#" title="Einstellungen"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></a><span class="av a2">AJ</span></div>
+  </nav>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="pills" id="pn"></div>
+      <div class="grow"></div>
+      <label class="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input placeholder="Mitglied, Platz oder Buchung suchen"></label>
+      <button class="btn icon" aria-label="Mitteilungen"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0"/></svg></button>
+      <span class="av a2" style="width:42px;height:42px">AJ</span>
+    </div>
+
+    <div class="content">
+      <!-- START -->
+      <section class="screen" data-screen="start" data-on>
+        <div class="ph"><div><h1>Guten Abend, Alain</h1><div class="sub">Dienstag, 29. September. Plätze offen bis 22 Uhr, Flutlicht ab 19 Uhr gratis.</div></div><div class="grow"></div><button class="btn ghost hide-m">Diese Woche</button><button class="btn pri"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>Reservieren</span></button></div>
+        <div class="g3">
+          <div class="hero">
+            <div class="k">Nächstes Spiel</div>
+            <div class="big">17:00<small>Morgen, Mi 30.9.</small></div>
+            <div class="meta"><span class="avs"><span class="av a2">AJ</span><span class="av a1">MB</span></span>Platz 2, Sand, Einzel mit Marc Bühler</div>
+            <div class="act"><button class="btn w">Details</button><button class="btn t">Verschieben</button><button class="btn t">Stornieren</button></div>
+          </div>
+          <div class="court" id="court1"></div>
+          <div class="card pad">
+            <div class="ch"><h2>Kommende Buchungen</h2><span class="more"><svg viewBox="0 0 24 24"><path d="M7 17 17 7M8 7h9v9"/></svg></span></div>
+            <div class="sess">
+              <div class="it"><span class="av a1">MB</span><div class="g"><b>Mi 30.9., 17:00</b><small>Platz 2, Einzel mit Marc B.</small></div><span class="pill p-ok"><i></i>Abo</span></div>
+              <div class="it"><span class="av a3">AK</span><div class="g"><b>Sa 3.10., 10:00</b><small>Padel 1, Doppel, 4 Spieler</small></div><span class="pill p-warn"><i></i>CHF 12</span></div>
+              <div class="it"><span class="av a1">MB</span><div class="g"><b>Di 6.10., 12:00</b><small>Platz 2, jede Woche</small></div><span class="pill p-ok"><i></i>Abo</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="g2">
+          <div class="card pad">
+            <div class="ch"><h2>Wann ist heute frei?</h2><div class="pills" style="box-shadow:none;background:var(--bg)"><button aria-pressed="true">Heute</button><button>Morgen</button></div></div>
+            <div class="heat" id="heat"></div>
+            <div class="legend"><span><i style="background:#eef3f1"></i>frei</span><span><i style="background:#7fc7ae"></i>belegt</span><span><i style="background:var(--brand-deep)"></i>meine Buchung</span><span><i style="background:repeating-linear-gradient(135deg,#dfe6e3 0 3px,#f3f6f5 3px 6px)"></i>gesperrt oder vorbei</span></div>
+          </div>
+          <div class="card pad">
+            <div class="ch"><h2>Mein Abo</h2><span class="more"><svg viewBox="0 0 24 24"><path d="M7 17 17 7M8 7h9v9"/></svg></span></div>
+            <div class="donut">
+              <div class="c"><svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="50" fill="none" stroke="#eef3f1" stroke-width="14"/><circle cx="60" cy="60" r="50" fill="none" stroke="#0f5c4f" stroke-width="14" stroke-linecap="round" stroke-dasharray="197 314"/></svg><b>34<small>Spiele</small></b></div>
+              <div class="kvs"><div><span>Saison Erwachsene</span><span class="pill p-ok">aktiv</span></div><div><span>Gültig bis</span><span>31.3.2027</span></div><div><span>Guthaben</span><span>CHF 40.00</span></div><div><span>Diner Tennis</span><span>Mi, Fr</span></div></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- KALENDER -->
+      <section class="screen" data-screen="cal">
+        <div class="ph"><h1>Kalender</h1><div class="grow"></div><button class="btn icon hide-m" aria-label="Vortag">‹</button><button class="btn"><svg viewBox="0 0 24 24"><path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/></svg>Mi, 30. September</button><button class="btn icon hide-m" aria-label="Folgetag">›</button><button class="btn ghost hide-m">Heute</button><button class="btn pri"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>Reservieren</span></button></div>
+        <div class="filters" style="display:flex;gap:8px;flex-wrap:wrap"><button class="chip" aria-pressed="true">Alle Plätze</button><button class="chip"><i class="dot d-sand"></i>Sand</button><button class="chip"><i class="dot d-hard"></i>Allwetter</button><button class="chip"><i class="dot d-padel"></i>Padel</button><span style="flex:1"></span><button class="chip hide-m">Nur freie</button><button class="chip hide-m">Tag</button><button class="chip hide-m">Woche</button></div>
+        <div class="cal">
+          <div style="min-width:0">
+            <div class="card pad cal-wrap"><div class="tlwrap"><div class="tl" id="tl"></div></div>
+              <div class="legend cal-leg"><span><i style="background:var(--me)"></i>Meine Buchung</span><span><i style="background:var(--mem)"></i>Mitglieder</span><span><i style="background:var(--guest)"></i>Gast</span><span><i style="background:var(--coach)"></i>Training</span><span><i style="background:var(--block)"></i>Gesperrt</span></div>
+            </div>
+            <div class="cal-list">
+              <div class="days"><button><small>Di</small>29</button><button aria-pressed="true"><small>Mi</small>30</button><button><small>Do</small>1</button><button><small>Fr</small>2</button><button><small>Sa</small>3</button><button><small>So</small>4</button><button><small>Mo</small>5</button><button><small>Di</small>6</button></div>
+              <div class="card pad" id="list" style="margin-top:14px"></div><div class="legend" style="justify-content:center"><span>Tipp auf einen freien Platz, um zu reservieren</span></div>
+            </div>
+          </div>
+          <div class="card pad form-wrap"><div class="form" id="form"></div></div>
+        </div>
+      </section>
+
+      <!-- MITGLIEDER -->
+      <section class="screen" data-screen="mem">
+        <div class="ph"><h1>Mitglieder</h1><div class="grow"></div><button class="btn hide-m">CSV importieren</button><button class="btn hide-m">Exportieren</button><button class="btn pri"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>Mitglied</span></button></div>
+        <div class="kpis">
+          <div class="card kpi grad"><div class="k">Abo aktiv <span class="more" style="background:rgba(255,255,255,.16);color:#fff"><svg viewBox="0 0 24 24"><path d="M7 17 17 7M8 7h9v9"/></svg></span></div><b>118</b><span class="trend">↗ 12 mehr als letzte Saison</span></div>
+          <div class="card kpi"><div class="k">Mitglieder</div><b>142</b><span class="trend">↗ 6 neu diesen Monat</span></div>
+          <div class="card kpi"><div class="k">Zahlung offen</div><b style="color:var(--warn)">9</b><span class="trend down">CHF 3'240 ausstehend</span></div>
+          <div class="card kpi"><div class="k">Abo abgelaufen</div><b>15</b><span class="trend" style="color:var(--ink-3)">Erinnerung senden</span></div>
+        </div>
+        <div class="mem">
+          <div style="min-width:0">
+            <div class="card pad">
+              <div class="tools"><label class="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input placeholder="Name oder E-Mail"></label><div class="seg" style="width:auto"><button aria-pressed="true" style="padding:8px 14px">Alle</button><button style="padding:8px 14px">Aktiv</button><button style="padding:8px 14px">Offen</button><button style="padding:8px 14px">Abgelaufen</button></div><button class="chip hide-m">Trainer</button><button class="chip hide-m">Junioren</button></div>
+              <div style="overflow:auto"><table class="t" id="tbl"></table></div>
+              <div class="mem-list" id="mlist"></div>
+            </div>
+            <div class="bulk"><span>2 ausgewählt</span><button class="btn">Als bezahlt markieren</button><button class="btn">Abo verlängern</button><button class="btn">E-Mail</button><span style="flex:1"></span><button class="btn">Aufheben</button></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:16px" class="detail">
+            <div class="card pad">
+              <div class="dh"><span class="av a1">MB</span><div><b>Marc Bühler</b><span>marc.buehler@bluewin.ch</span></div></div>
+              <div class="kv"><span>Abo</span><span>Saison Erwachsene</span><span>Gültig bis</span><span>31.3.2027</span><span>Zahlung</span><span>CHF 450, Twint</span><span>Jahrgang</span><span>1988</span><span>Buchungen 2026</span><span>34</span></div>
+              <div class="acts"><button class="btn">Bearbeiten</button><button class="btn">Abo verlängern</button></div>
+            </div>
+            <div class="card pad">
+              <div class="ch"><h2>Belegung diese Woche</h2></div>
+              <div class="bars"><div style="height:45%"></div><div style="height:58%"></div><div style="height:70%"></div><div style="height:52%"></div><div class="hi" style="height:100%"><span>163 h</span></div><div style="height:82%"></div><div style="height:64%"></div></div>
+              <div class="bars-x"><span>Mo</span><span>Di</span><span>Mi</span><span>Do</span><span>Fr</span><span>Sa</span><span>So</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <div class="scrim"></div>
+  <div class="sheet"><div class="form" id="form-m"></div></div>
+
+  <nav class="tabs" aria-label="Navigation">
+    <a href="#" data-nav="start"><svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg><span>Start</span></a>
+    <a href="#" data-nav="cal"><svg viewBox="0 0 24 24"><path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/></svg><span>Kalender</span></a>
+    <a href="#"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg><span>Buchungen</span></a>
+    <a href="#"><svg viewBox="0 0 24 24"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/></svg><span>Profil</span></a>
+    <a href="#" data-nav="mem"><svg viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg><span>Verwaltung</span></a>
+  </nav>
+
+</div></div></div>
+
+<script>
+(function () {
+  var courts = [["Central","hard"],["Platz 1","hard"],["Platz 2","sand"],["Platz 3","sand"],["Platz 4","sand"],["Platz 5","sand"],["Platz 6","sand"],["Platz 7","sand"],["Padel 1","padel"]];
+  var tname = { sand: "Sand", hard: "Allwetter", padel: "Padel" }, col = { sand: "var(--sand)", hard: "var(--hard)", padel: "var(--padel)" };
+  var hours = []; for (var h = 7; h <= 21; h++) hours.push(h);
+  var ic = { me: '<path d="M20 6 9 17l-5-5"/>', mem: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/>', guest: '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/>', coach: '<path d="M12 2v4M4.9 7.9l2.9 2.9M19.1 7.9l-2.9 2.9M12 22a7 7 0 1 0 0-14 7 7 0 0 0 0 14z"/>', block: '<path d="M4.9 4.9l14.2 14.2M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z"/>' };
+  var bk = [
+    [2,17,1,"me","Alain · Marc","Abo"], [0,9,2,"coach","Training U14","Leo Frei"], [0,11,1,"mem","Sara · Nina",""],
+    [1,10,1,"mem","Tobias · Jan",""], [1,18,1,"guest","Petra Sommer","Gast"], [3,12,1,"mem","Anna + Gast","Diner"],
+    [4,8,2,"block","Platzpflege",""], [5,19,1,"mem","Luca · Elia",""], [6,20,1,"mem","Clubmeisterschaft","R2"],
+    [7,14,2,"coach","Training Erwachsene","Leo Frei"], [8,10,1,"mem","Doppel Anna, Luca, Sara, Tom",""], [8,17,1,"guest","Familie Roth","Gast"], [3,18,1,"mem","Sven · Kai",""], [2,20,1,"mem","Mia · Lea",""]
+  ];
+  var map = {}; bk.forEach(function (b) { map[b[0] + ":" + b[1]] = b; if (b[2] == 2) map[b[0] + ":" + (b[1] + 1)] = "skip"; });
+  var svgi = function (k) { return '<i><svg viewBox="0 0 24 24">' + ic[k] + '</svg></i>'; };
+
+  // timeline: header row of courts, then one row per hour
+  var H = '<div></div>';
+  courts.forEach(function (c) { H += '<div class="hd"><span class="dot" style="background:' + col[c[1]] + ';border-radius:3px"></span><div style="min-width:0"><b>' + c[0] + '</b><small>' + tname[c[1]] + '</small></div></div>'; });
+  hours.forEach(function (h) {
+    H += '<div class="hr' + (h == 18 ? ' now' : '') + '">' + h + ':00</div>';
+    courts.forEach(function (c, i) {
+      var b = map[i + ":" + h], cls = "cell" + (h < 8 ? " past" : "") + (i == 5 && h == 18 ? " sel" : "") + (b && b !== "skip" && b[2] == 2 ? " span2" : "");
+      H += '<div class="' + cls + '">' + (b && b !== "skip" ? '<div class="ev ' + b[3] + '">' + (b[2] == 2 ? svgi(b[3]) : '') + '<div class="tx"><span>' + b[4] + '</span>' + (b[5] ? '<small>' + b[5] + '</small>' : '') + '</div></div>' : '') + '</div>';
+    });
+  });
+  H += '<div class="nowline" style="top:' + (58 + 5 + 11 * 61 + 14) + 'px"></div>';
+  document.getElementById("tl").innerHTML = H;
+  // heatmap (start): rows = courts, cols = hours
+  var Hm = '<div></div>' + hours.map(function (h) { return '<div class="cl">' + h + '</div>'; }).join("");
+  courts.forEach(function (c, i) { Hm += '<div class="rl">' + c[0] + '</div>'; hours.forEach(function (h) { var b = map[i + ":" + h]; var cls = h < 8 ? "x" : b === "skip" ? "l2" : b ? (b[3] == "me" ? "l3" : b[3] == "block" ? "x" : "l2") : ""; Hm += '<div class="q ' + cls + '"></div>'; }); });
+  document.getElementById("heat").innerHTML = Hm;
+  // court illustration
+  document.getElementById("court1").innerHTML = '<svg viewBox="0 0 400 240" preserveAspectRatio="xMidYMid slice"><g fill="none" stroke="rgba(255,255,255,.85)" stroke-width="3"><rect x="70" y="30" width="260" height="180"/><line x1="70" y1="52" x2="330" y2="52"/><line x1="70" y1="188" x2="330" y2="188"/><line x1="200" y1="30" x2="200" y2="210" stroke-width="5"/><rect x="118" y="52" width="164" height="136"/><line x1="118" y1="120" x2="282" y2="120"/></g></svg><span class="lbl"><i></i>Platz 2, Sand</span><div class="foot"><span class="chip"><b>18:00</b> Platz 5</span><span class="chip"><b>19:00</b> Platz 2</span><span class="chip"><b>20:00</b> Central</span></div>';
+  // phone hour list
+  var L = "";
+  [16,17,18,19,20,21].forEach(function (h) { L += '<div class="hourrow"><b>' + h + ':00</b><div class="courts">'; courts.forEach(function (c, i) { var b = map[i + ":" + h]; var cls = b === "skip" || (b && b[3] != "me") ? " taken" : b && b[3] == "me" ? " mine" : ""; L += '<span class="chip' + cls + '">' + c[0] + '</span>'; }); L += '</div></div>'; });
+  document.getElementById("list").innerHTML = L;
+  var form = '<div class="ch" style="margin-bottom:4px"><h2>Reservieren</h2><span class="more">×</span></div>' +
+    '<div class="when">Mi 30.9., 18:00<small><i class="dot d-sand"></i>Platz 5, Sand, 1 Stunde</small></div>' +
+    '<div><span class="l">Spiel</span><div class="seg"><button aria-pressed="true">Einzel</button><button>Doppel</button></div></div>' +
+    '<div><span class="l">Dauer</span><div class="seg"><button aria-pressed="true">1 Stunde</button><button>2 Stunden</button></div></div>' +
+    '<div><span class="l">Mitspieler</span><div class="people"><span class="chip" aria-pressed="true"><span class="av a1">MB</span>Marc</span><span class="chip"><span class="av a3">AK</span>Anna</span><span class="chip"><span class="av a4">LP</span>Luca</span><span class="chip add">+ Suchen</span><span class="chip add">+ Gast</span></div></div>' +
+    '<div class="sum"><span>Dein Anteil</span><b>inbegriffen</b><span>Anteil Marc</span><b>inbegriffen</b><span class="n">Beide haben ein Saison-Abo. Flutlicht ab 19 Uhr kostet nichts.</span></div>' +
+    '<button class="btn pri">Platz 5 reservieren</button>';
+  document.getElementById("form").innerHTML = form; document.getElementById("form-m").innerHTML = form;
+  var members = [["Marc Bühler","marc.buehler@bluewin.ch","Saison Erwachsene","31.3.2027","ok","Twint",1,"a1"],["Anna Keller","anna.keller@gmx.ch","Saison Erwachsene","31.3.2027","ok","Karte",0,"a3"],["Leo Frei","leo.frei@tcmarly.ch","Trainer","","coach","",0,"a4"],["Sara Kunz","sara.kunz@hispeed.ch","Paar-Abo","31.3.2027","warn","CHF 780 offen",0,"a5"],["Tobias Meier","tobias.meier@sunrise.ch","Saison Erwachsene","31.3.2026","bad","abgelaufen",0,"a2"],["Nina Roth","nina.roth@bluewin.ch","Junior U18","31.3.2027","ok","Rechnung",1,"a6"],["Luca Pini","luca.pini@gmail.com","Saison Erwachsene","31.3.2027","ok","Twint",0,"a4"],["Elia Wyss","elia.wyss@unifr.ch","Student","31.3.2027","warn","Ausweis fehlt",0,"a3"],["Mia Steiner","mia.steiner@bluewin.ch","Saison Erwachsene","31.3.2027","ok","Karte",0,"a1"],["Jan Furrer","jan.furrer@gmx.ch","Paar-Abo","31.3.2027","ok","Twint",0,"a2"],["Kai Lang","kai.lang@sunrise.ch","Saison Erwachsene","31.3.2026","bad","abgelaufen",0,"a5"],["Petra Sommer","petra.sommer@bluewin.ch","Senior 65+","31.3.2027","ok","Rechnung",0,"a6"]];
+  var pill = { ok: '<span class="pill p-ok"><i></i>aktiv</span>', warn: '<span class="pill p-warn"><i></i>offen</span>', bad: '<span class="pill p-bad"><i></i>abgelaufen</span>', coach: '<span class="pill p-coach"><i></i>Trainer</span>' };
+  var T = '<thead><tr><th><input type="checkbox" aria-label="Alle"></th><th>Name</th><th>Abo</th><th>Gültig bis</th><th>Status</th><th>Zahlung</th></tr></thead><tbody>', M = "";
+  members.forEach(function (m) {
+    var ini = m[0].split(" ").map(function (s) { return s[0]; }).join("");
+    T += '<tr' + (m[6] ? ' class="sel"' : '') + '><td><input type="checkbox"' + (m[6] ? ' checked' : '') + '></td><td class="name"><div class="w"><span class="av ' + m[7] + '">' + ini + '</span><div>' + m[0] + '<small>' + m[1] + '</small></div></div></td><td>' + m[2] + '</td><td>' + (m[3] || "–") + '</td><td>' + pill[m[4]] + '</td><td class="muted">' + (m[5] || "–") + '</td></tr>';
+    M += '<div class="mrow"><span class="av ' + m[7] + '">' + ini + '</span><div class="g"><b>' + m[0] + '</b><small>' + m[2] + (m[5] ? ", " + m[5] : "") + '</small></div>' + pill[m[4]] + '</div>';
+  });
+  document.getElementById("tbl").innerHTML = T + '</tbody>'; document.getElementById("mlist").innerHTML = M;
+
+  var pn = { start: [["start","Start"],["cal","Kalender"],["",'Buchungen'],["",'Profil']], cal: [["start","Start"],["cal","Kalender"],["",'Buchungen'],["",'Profil']], mem: [["",'Heute'],["mem","Mitglieder"],["",'Sperren'],["",'Statistik'],["",'Einstellungen']] };
+  var frame = document.getElementById("frame");
+  function setScreen(s) {
+    document.querySelectorAll(".screen").forEach(function (el) { if (el.dataset.screen == s) el.setAttribute("data-on", ""); else el.removeAttribute("data-on"); });
+    document.querySelectorAll("#scr button").forEach(function (b) { b.setAttribute("aria-pressed", b.dataset.screen == s); });
+    document.querySelectorAll("[data-nav]").forEach(function (a) { if (a.dataset.nav == s) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
+    document.getElementById("pn").innerHTML = pn[s].map(function (p) { return '<button' + (p[0] == s ? ' aria-pressed="true"' : '') + (p[0] ? ' data-go="' + p[0] + '"' : '') + '><span>' + p[1] + '</span></button>'; }).join("");
+    document.getElementById("app").removeAttribute("data-sheet");
+  }
+  function fit() { frame.style.zoom = Math.min(1, (document.documentElement.clientWidth - 32) / +frame.dataset.w); }
+  function setW(w) { frame.dataset.w = w; document.querySelectorAll("#wid button").forEach(function (b) { b.setAttribute("aria-pressed", b.dataset.w == w); }); fit(); try { localStorage.setItem("tcm-w", w); } catch (e) {} }
+  document.getElementById("scr").addEventListener("click", function (e) { var b = e.target.closest("button"); if (b) setScreen(b.dataset.screen); });
+  document.getElementById("wid").addEventListener("click", function (e) { var b = e.target.closest("button"); if (b) setW(b.dataset.w); });
+  document.getElementById("pn").addEventListener("click", function (e) { var b = e.target.closest("button"); if (b && b.dataset.go) setScreen(b.dataset.go); });
+  document.querySelectorAll("[data-nav]").forEach(function (a) { a.addEventListener("click", function (e) { e.preventDefault(); setScreen(a.dataset.nav); }); });
+  document.getElementById("list").addEventListener("click", function (e) { var c = e.target.closest(".chip"); if (c && !c.classList.contains("taken")) document.getElementById("app").setAttribute("data-sheet", ""); });
+  document.querySelector(".scrim").addEventListener("click", function () { document.getElementById("app").removeAttribute("data-sheet"); });
+  document.getElementById("form-m").addEventListener("click", function (e) { if (e.target.closest(".more")) document.getElementById("app").removeAttribute("data-sheet"); });
+  window.addEventListener("resize", fit);
+  var w0 = "1440"; try { w0 = localStorage.getItem("tcm-w") || w0; } catch (e) {}
+  setW(w0); setScreen("start");
+})();
+</script>

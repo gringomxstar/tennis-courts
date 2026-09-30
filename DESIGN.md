@@ -7,8 +7,10 @@ Values are the prototype's theme object `t`, for light and `.dark`.
 - **Surfaces**: `bg-background` (t.bg), `bg-card`, `bg-inset` (wells, segmented tracks, disabled slots), `bg-acc` (avatars, busy cells), `bg-sheet`, `bg-glass` (tab bar and footers with a 24px backdrop blur).
 - **Text**: `text-foreground`, `text-muted-foreground`, `text-clay-text` (links and secondary actions).
 - **Brand**: `bg-clay` `#e25b36`, used for active tabs, selected days, "deins" slots and primary actions.
-- **Surface colours** come from `courtColor()` in `src/lib/courts.ts`: Sand = clay, Allwetter = `#64748b`, Padel = `#2563eb`. They tint the next-game card, the Reservieren header and the booking button, plus the dots.
+- **Surface colours** come from `courtColor()` in `src/lib/courts.ts`: Sand = clay, Allwetter = `#64748b`, Padel = `#2563eb`. They tint the next-game card, the Reservieren header and the dots (which court). The primary action button is always the club brand colour (`bg-clay`), never the surface colour, so the action reads as one consistent colour per club.
 - **Other tokens**: `bg-seg-on` / `text-seg-on-fg` / `text-seg-off-fg` (segmented controls), `bg-track-off` (switch off), `bg-free-tint` and `border-free-border` (free slots), `bg-paid-bg` / `text-paid-fg`, `shadow-elevation`.
+- **Fills behind white text** use `bg-clay`, which maps to `--clay-fill` (brand at 86% towards black, at least 4.5:1 for the default clay and the club teal). `--tennis-clay` stays the raw brand for dots, rings and shadows. `--surface-clay` is `#c9482a` (was `#e25b36`) so the white text on court cards reaches 4.5:1; a deliberate deviation from the prototype (2026-09-29, contrast).
+- **Reserve page**: from `lg` (1024px) two columns with the total/pay card in the left column; below that one column with a fixed bottom bar (safe-area aware). Tap targets are at least 44px. Verified at 360, 390, 430, 768, 1024, 1180, 1440, 1920, light and dark.
 - **Motion**: `ease-spring` `cubic-bezier(.34,1.56,.64,1)` for controls and tabs, `ease-sheet` for the bottom sheet. Both overshoot on purpose, as in the prototype.
 - **Type**: system SF stack with tabular numerals everywhere. Sizes, radii and tracking are the prototype's literal px values, written as arbitrary Tailwind values.
 
