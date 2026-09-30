@@ -1,13 +1,22 @@
 import { cn } from "@/lib/utils";
 
+/** v3 .av.a1–a6 gradients; the initials pick one so a person keeps their color. */
+const GRAD = [
+  "linear-gradient(135deg,#f6b26b,#e0653a)",
+  "linear-gradient(135deg,#7fd0b8,#147a68)",
+  "linear-gradient(135deg,#9db4ff,#3a7bd5)",
+  "linear-gradient(135deg,#c9b1ff,#7c5cff)",
+  "linear-gradient(135deg,#ffb3a7,#c9432f)",
+  "linear-gradient(135deg,#ffd57a,#f0a33a)",
+];
+export const avatarBg = (ini: string) => GRAD[[...ini].reduce((n, c) => n + c.charCodeAt(0), 0) % GRAD.length];
+
 export function Avatar({ ini, className }: { ini: string; className?: string }) {
   return (
     <div
       aria-hidden
-      className={cn(
-        "flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-full bg-acc text-[14px] font-bold",
-        className
-      )}
+      className={cn("flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-full text-[14px] font-bold text-white", className)}
+      style={{ background: avatarBg(ini) }}
     >
       {ini}
     </div>

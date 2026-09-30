@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { Avatar, Spinner } from "@/components/app/avatar";
 import { Sheet } from "@/components/app/sheet";
@@ -131,7 +131,9 @@ export function AdminMembers({ slug, tenantId, members, plans }: { slug: string;
   const [reminded, setReminded] = useState<string[]>([]);
   const [paid, setPaid] = useState<string[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
-  const [q, setQ] = useState("");
+  // the topbar search lands here with ?q=
+  const sp = useSearchParams();
+  const [q, setQ] = useState(sp.get("q") ?? "");
   const [filter, setFilter] = useState<FilterId>("all");
   const [sel, setSel] = useState<string[]>([]);
   const filters = useMemo(() => filtersFor(plans), [plans]);

@@ -1,8 +1,11 @@
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
+import { Outfit } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { Toaster } from "@/components/ui/sonner";
+
+const outfit = Outfit({ subsets: ["latin"], variable: "--font-outfit" });
 
 export const metadata: Metadata = {
   title: "TC Marly",
@@ -14,8 +17,8 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#fbfbfd" },
-    { media: "(prefers-color-scheme: dark)", color: "#0b0f17" },
+    { media: "(prefers-color-scheme: light)", color: "#e9efec" },
+    { media: "(prefers-color-scheme: dark)", color: "#101413" },
   ],
   viewportFit: "cover",
 };
@@ -26,7 +29,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="de" className={cn("h-full antialiased", "font-sans")} suppressHydrationWarning>
+    <html lang="de" className={cn("h-full antialiased font-sans", outfit.variable)} suppressHydrationWarning>
       <head>
         <Script id="theme-script" strategy="beforeInteractive">
           {`
