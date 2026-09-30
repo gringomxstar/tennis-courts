@@ -3,6 +3,8 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
+import sandplatz from "@/assets/sandplatz.webp";
 import { BookingSheet } from "@/components/app/booking-sheet";
 import { Avatar, Dot } from "@/components/app/avatar";
 import { useSheetSlot } from "@/components/app/use-sheet-slot";
@@ -239,10 +241,8 @@ export function HomeView({
           )}
 
           <div className="relative min-h-[200px] overflow-hidden rounded-[24px] bg-[radial-gradient(120%_90%_at_20%_0%,#f08a5f_0%,#d95a2f_45%,#b8441f_100%)] text-white shadow-card @min-[640px]:min-h-[240px]">
-            <svg aria-hidden viewBox="0 0 400 240" preserveAspectRatio="xMidYMid slice" className="absolute inset-0 h-full w-full">
-              <g fill="none" stroke="rgba(255,255,255,.85)" strokeWidth="3"><rect x="70" y="30" width="260" height="180" /><line x1="70" y1="52" x2="330" y2="52" /><line x1="70" y1="188" x2="330" y2="188" /><line x1="200" y1="30" x2="200" y2="210" strokeWidth="5" /><rect x="118" y="52" width="164" height="136" /><line x1="118" y1="120" x2="282" y2="120" /></g>
-            </svg>
-            <span className="absolute left-4 top-4 rounded-full bg-white/[.18] px-3 py-1.5 text-[13px] font-semibold backdrop-blur-md">Jetzt frei, Tipp bucht</span>
+            <Image src={sandplatz} alt="" fill priority placeholder="blur" sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw" className="object-cover" />
+            <span className="absolute left-4 top-4 rounded-full bg-white/[.18] px-3 py-1.5 text-[13px] font-semibold backdrop-blur-md">Jetzt frei</span>
             <div className="no-scrollbar absolute inset-x-4 bottom-4 flex flex-nowrap gap-2 overflow-x-auto">
               {data?.quick.map((q) => (
                 <button
