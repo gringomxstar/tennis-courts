@@ -16,32 +16,27 @@ const P = {
   users: "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75",
 };
 
-export function TabBar({ slug, clubName, logoUrl, anon = false }: { slug: string; clubName: string; logoUrl?: string | null; anon?: boolean }) {
+export function TabBar({ slug, clubName, logoUrl, anon = false, canAdmin = false }: { slug: string; clubName: string; logoUrl?: string | null; anon?: boolean; canAdmin?: boolean }) {
   const path = usePathname();
   const base = `/c/${slug}`;
-  const admin = path.startsWith(`${base}/admin`);
-  const tabs: [string, string, string][] = admin
+  const tabs: [string, string, string][] = anon
     ? [
-        [`${base}/admin`, "Heute", P.shield],
-        [`${base}/admin/calendar`, "Kalender", P.cal],
-        [`${base}/admin/blocks`, "Sperren", P.ban],
-        [`${base}/admin/members`, "Mitglieder", P.users],
-        [`${base}/admin/profile`, "Mehr", P.more],
+        [base, "Start", P.home],
+        [`${base}/calendar`, "Kalender", P.cal],
+        [`${base}/abos`, "Abos", P.ticket],
+        [`${base}/profile`, "Anmelden", P.user],
       ]
-    : anon
-      ? [
-          [base, "Start", P.home],
-          [`${base}/calendar`, "Kalender", P.cal],
-          [`${base}/abos`, "Abos", P.ticket],
-          [`${base}/profile`, "Anmelden", P.user],
-        ]
-      : [
-          [base, "Start", P.home],
-          [`${base}/calendar`, "Kalender", P.cal],
-          [`${base}/bookings`, "Buchungen", P.book],
-          [`${base}/profile`, "Profil", P.user],
-        ];
-  // longest matching prefix wins, so /admin doesn't swallow /admin/blocks
+    : [
+        [base, "Start", P.home],
+        [`${base}/calendar`, "Kalender", P.cal],
+        [`${base}/bookings`, "Buchungen", P.book],
+        [`${base}/profile`, "Profil", P.user],
+        ...(canAdmin ? [[`${base}/admin`, "Verwaltung", P.shield] as [string, string, string]] : []),
+      ];
+  const subs = canAdmin && !anon
+    ? [["today", "Heute"], ["members", "Mitglieder"], ["blocks", "Sperren"], ["stats", "Statistik"], ["settings", "Einstellungen"]]
+    : [];
+  // prefix match: /admin/* lights Verwaltung
   const active = tabs
     .map(([href]) => href)
     .filter((href) => path === href || path.startsWith(href + "/"))
@@ -87,6 +82,25 @@ export function TabBar({ slug, clubName, logoUrl, anon = false }: { slug: string
               </Link>
             );
           })}
+          {subs.length > 0 && (
+            <>
+              <div className="mb-1 mt-6 hidden px-4 text-[12px] font-bold uppercase tracking-[.08em] text-muted-foreground lg:block">Verwaltung</div>
+              {subs.map(([k, label]) => {
+                const href = `${base}/admin/${k}`;
+                const on = path === href || path.startsWith(href + "/");
+                return (
+                  <Link
+                    key={k}
+                    href={href}
+                    aria-current={on ? "page" : undefined}
+                    className={cn("hidden h-[44px] items-center rounded-full px-4 text-[14px] font-bold lg:flex", on ? "bg-clay text-white" : "text-muted-foreground")}
+                  >
+                    {label}
+                  </Link>
+                );
+              })}
+            </>
+          )}
         </div>
       </nav>
     </>

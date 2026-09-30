@@ -61,7 +61,6 @@ export default async function ProfilePage({
       slug={ctx.tenant.slug}
       clubName={ctx.tenant.name}
       user={ctx.user && { name: ctx.user.name || ctx.user.email }}
-      canAdmin={ctx.isTenantAdmin}
       admin={false}
       openRegister={register === "1"}
       next={next?.startsWith("/") && !next.startsWith("//") && !next.startsWith("/\\") ? next : undefined}

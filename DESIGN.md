@@ -15,7 +15,7 @@ Values are the prototype's theme object `t`, for light and `.dark`.
 - **Type**: system SF stack with tabular numerals everywhere. Sizes, radii and tracking are the prototype's literal px values, written as arbitrary Tailwind values.
 
 ## Primitives (`src/components/app/`)
-- `tab-bar.tsx`: floating glass pill; the active tab expands its label. It becomes a sidebar from `lg`. Tabs are routes, and `/c/<slug>/admin/*` switches to the admin tab set.
+- `tab-bar.tsx`: floating glass pill; the active tab expands its label. It becomes a sidebar from `lg`. Tabs are routes; logged-in users get Start · Kalender · Buchungen · Profil, plus Verwaltung (`/admin/*`, with sub-links in the desktop sidebar) for club admins.
 - `sheet.tsx`: bottom sheet on Radix Dialog. Mount and unmount use tw-animate enter/exit, never `forceMount`, because Radix's inline `pointer-events:auto` on the overlay would block the page.
 - `segmented.tsx`, `switch.tsx` (`SwitchKnob` inside a `<button aria-pressed>`), `avatar.tsx` (Avatar, Dot, Chevron, Spinner).
 - `booking-sheet.tsx`: the two-tap booking flow, used by Start and Kalender.
@@ -33,5 +33,5 @@ Values are the prototype's theme object `t`, for light and `.dark`.
   - Raster: exactly 2 courts per phone screen (`w-[calc((min(100vw,640px)-56px)/2)]`, swipe for more), 62px rows, 16px slot text, 18/14px court header, 15px hour labels; desktop columns `min-w-[200px]`.
   - Liste: 58px / 18px slot buttons, larger day buttons and chips.
   - Free slots show no text (tint only; "frei" stays in the aria-label). Taken slots show "Max M. / Anna B." to club members only, "Belegt" to everyone else.
-- Anonymous tab bar: Start · Kalender · Abos · Anmelden.
+- Guest tab bar: Start · Kalender · Abos · Anmelden (logged-in tab set: see `tab-bar.tsx` above).
 - `/abos` replaces `/membership` (which now redirects).
