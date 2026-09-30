@@ -18,9 +18,31 @@ Quelle: `entwurf-v3.html` in diesem Ordner (identisch mit dem Artifact, das Alai
 - < 1100px: Seitenpanels (Formular, Detail) werden zum Sheet/Dialog; 3-Spalten-Raster wird 2-spaltig.
 
 ## Screens im Entwurf
-- **Start:** Hero-Karte (Verlauf, Uhrzeit 60px, Avatare, drei Aktionen), Platzkarte (Linienzeichnung, freie Slots als Chips; im Produkt optional Clubfoto), Kommende Buchungen (Avatar-Liste), Heatmap „Wann ist heute frei?" (Plätze × Stunden), Abo-Donut.
-- **Kalender:** Raster Plätze als Spalten, Stunden als Zeilen, Zellen 56px rund, Buchungen als farbige Blöcke (Icon nur bei 2 Stunden), aktuelle Stunde als dunkle Pille, gestrichelte Jetzt-Linie, ausgewählte Zelle mit „+ Reservieren", Formular rechts (320px). Handy: Tagesleiste, Stundenliste mit Platz-Chips, Tipp öffnet Sheet.
-- **Mitglieder:** vier Kennzahl-Karten (eine im Verlauf), Tabelle mit Farb-Avataren und Status-Pills, Sammelaktions-Pille dunkel, Detailkarte + Balkendiagramm rechts. Handy: 2×2 Kennzahlen, Suche, Liste.
+Umschalter oben in drei Gruppen (Mitglied, Zugang, Verwaltung), jede Seite bei 390 vollständig, bei 1024/1440 fliessen die Karten um. Sheets sind auf dem Handy unten, ab 640px ein Dialog in der Mitte. Pinke Zahlen in den Buchen-Screens sind Tipp-Zähler (nur Entwurf).
 
-## Nicht im Entwurf, gleiche Sprache
-Buchungen, Profil, Abos, Login/Register, Gast-Buchung, Heute, Sperren, Statistik, Einstellungen, Rechnung: dieselben Karten, Pillen, Chips und Tabellen. Dark Mode: gleiche Tokens invertiert (Grund `#101413`, Karte `#182120`).
+**Mitglied**
+- **Start:** Hero-Karte (Verlauf, Uhrzeit 60px, Avatare, drei Aktionen), Platzkarte mit freien Slots als Buttons (Tipp öffnet direkt das Buchungs-Sheet), Kommende Buchungen, Heatmap, Abo-Donut. Plus-Button trägt auf dem Handy jetzt Text („Reservieren“).
+- **Kalender** (Desktop bleibt: Raster Plätze × Stunden, Formular rechts 320px). Handy wie heute: Tagesleiste, Umschalter Liste/Raster. Liste = pro Platz eine Zeile mit Stunden-Chips, seitwärts scrollbar, beginnt bei der aktuellen Stunde; Raster = 9 Plätze × Stunden. Tipp auf freie Stunde öffnet das Buchungs-Sheet. (Variante A mit Stundenliste und Platz-Chips verworfen.)
+- **Buchen in 3 Zuständen:** 1 Slot gewählt, 2 Sheet (Dauer, Mitspieler mit letztem vorausgewählt, Preis-Split „Abo deckt eigenen Anteil, Rest zahlt, wer bucht“; keine Zahlart-Wahl im Formular, die kommt in Stripe Checkout), 3 Bestätigung.
+  - **Tipps:** über den Kalender 3 (Kalender → freie Stunde → Reservieren), in Liste und Raster gleich. Über die Platzkarte auf Start 2. Anderen Mitspieler wählen = +1.
+- **Buchungen:** Kommend/Vergangen, Tipp öffnet **Buchungsdetail**-Sheet (Spieler mit Abo-Status, Preis, Stornieren). Serien mit „Serie stornieren“ nur für Trainer.
+- **Profil** (heutige Reihenfolge): Guthaben-Karte im Verlauf mit Aufladen, Abo, Daten, Rechnungen, Schalter, Abmelden.
+- **Abos** wie die heutige Seite /abos: Sportart Tennis/Padel/Beides, Für mich/Als Paar, **Jahrgang** schlägt das passende Abo vor (Rahmen „passt zu dir“), Gast-Vergleich, drei Hauptkarten (Junioren, Erwachsene, Senioren) mit CHF pro Saison und Leistungen, Weitere Tarife (Kinder, Junge Erwachsene, Studierende, Abo Soleil, Rollstuhltennis), Info-Kacheln. Pro Karte ein Button „Bezahlen · CHF X“, danach Stripe Checkout. Kein Auto-Verlängern (entschieden 30.09.2026): Abos werden immer einmalig bezahlt, vor dem 31. März geht eine Erinnerungs-Mail raus. Zwei Zustände: **Verlängern** (Mitglied, Hinweis Abo abgelaufen, letztes Abo markiert) und **Abo wählen (neu)** (von „Mitglied werden“, ohne Hinweis; Bezahlen führt zuerst zu Registrieren).
+- **Rechnung:** Beleg mit Status, PDF/E-Mail, weitere Belege, offener Betrag direkt bezahlbar.
+
+**Zugang** (ohne Navigation): **Einstieg** (abgemeldet, heutige Struktur: Mitglied anmelden primär, Als Gast buchen, Mitglied werden → Abo-Seite, dort Abo wählen, dann Registrieren und bezahlen; „Jetzt frei“ als seitwärts scrollende Slot-Reihe; ohne Abo keine Mitglied-Buchung), **Login** (mit Fehlerzustand, Gast-Button), **Registrieren**, **Gast-Buchung** (Slot, Name/E-Mail/Handy, Preis-Split, Button „Bezahlen · CHF 30“; Twint oder Karte erst in Stripe Checkout).
+
+**Verwaltung**
+- **Übersicht (/admin):** Kacheln pro Bereich mit der wichtigsten Zahl.
+- **Heute:** Regen-Schalter „alle Sandplätze sperren“ zuoberst, vier Kennzahlen, Belegungs-Heatmap, nächste Buchungen.
+- **Sperren:** Formular (Grund, Plätze, Von/Bis, Wiederholen, Warnung zu betroffenen Buchungen) und Liste aktiv/geplant.
+- **Mitglieder:** vier Kennzahl-Karten, Tabelle mit Farb-Avataren und Status-Pills, Sammelaktions-Pille, Detailkarte + Balkendiagramm. Handy: 2×2 Kennzahlen, Suche, Liste.
+- **Statistik:** Jahr-Pillen, vier Kennzahlen, Einnahmen pro Monat, Auslastung pro Platz, „CSV exportieren“ als Text-Button.
+- **Einstellungen:** Regeln, Plätze, Tarife, Branding als Karten, Speichern-Leiste dunkel und sticky (Handy über der Navigation).
+
+## Regeln aus der Abnahme
+- Klarheit vor Optik, so wenig Tipps wie nötig. Hauptaktion ohne Scrollen sichtbar, Aktionen immer mit Text, keine Box in der Box.
+- Leere und Fehlerzustände zeigen, wo sie zählen (kein Abo, falsches Passwort, betroffene Buchungen beim Sperren).
+
+## Noch nicht im Entwurf
+Dark Mode: gleiche Tokens invertiert (Grund `#101413`, Karte `#182120`).

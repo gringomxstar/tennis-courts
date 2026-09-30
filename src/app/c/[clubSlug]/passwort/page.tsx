@@ -18,14 +18,14 @@ export default async function PasswordPage({
 
   if (!user || !valid) {
     return (
-      <div className="px-5 pt-[66px] lg:max-w-[560px] lg:pt-12">
-        <h1 className="text-[34px] font-bold leading-[1.05] tracking-[-.035em]">Link abgelaufen oder bereits benutzt</h1>
-        <p className="mt-2 text-[16px] text-muted-foreground">
-          Fordere einfach einen neuen an: unter Profil, &laquo;Passwort vergessen?&raquo;.
+      <div className="mx-auto flex w-full max-w-[420px] flex-col gap-4 px-5 pb-8 pt-[60px] @min-[640px]:px-0 @min-[640px]:pt-2">
+        <h1 className="text-[28px] font-bold leading-[1.1] tracking-[-.03em]">Link abgelaufen oder bereits benutzt</h1>
+        <p className="text-[16px] text-ink-2">
+          Fordere einfach einen neuen an: unter Profil, Passwort vergessen.
         </p>
         <Link
           href={`/c/${clubSlug}/profile`}
-          className="mt-6 flex h-[56px] w-full items-center justify-center rounded-[18px] bg-clay text-[17px] font-bold text-white"
+          className="btn btn-pri h-[54px] w-full text-[16px]"
         >
           Neuen Link anfordern
         </Link>
@@ -34,9 +34,9 @@ export default async function PasswordPage({
   }
 
   return (
-    <div className="px-5 pt-[66px] lg:max-w-[560px] lg:pt-12">
-      <h1 className="text-[34px] font-bold tracking-[-.035em]">Passwort setzen</h1>
-      <p className="mt-0.5 text-[16px] text-muted-foreground">
+    <div className="mx-auto flex w-full max-w-[420px] flex-col gap-4 px-5 pb-8 pt-[60px] @min-[640px]:px-0 @min-[640px]:pt-2">
+      <h1 className="text-[28px] font-bold tracking-[-.03em]">Passwort setzen</h1>
+      <p className="text-[15px] text-ink-2">
         Hallo {user.firstName}, noch ein Passwort, dann bist du drin.
       </p>
       <SetPasswordForm slug={clubSlug} u={user.id} e={String(exp)} t={t!} email={user.email} />

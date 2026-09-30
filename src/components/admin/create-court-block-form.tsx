@@ -8,10 +8,8 @@ import { cn } from "@/lib/utils";
 import { Spinner } from "@/components/app/avatar";
 
 const label = "block truncate text-[13px] font-bold uppercase tracking-[.06em] text-muted-foreground";
-const chip = (on: boolean) =>
-  cn("rounded-full border px-3.5 py-2 text-[14px] font-semibold transition-colors", on ? "border-clay bg-clay text-white" : "border-border bg-inset text-foreground");
 const input =
-  "mt-1.5 h-[50px] w-full min-w-0 rounded-[15px] border border-border bg-inset px-4 text-[16px] text-foreground outline-none placeholder:text-muted-foreground focus-visible:border-clay";
+  "mt-1.5 h-[50px] w-full min-w-0 rounded-[14px] border border-transparent bg-bg px-4 text-[16px] text-foreground outline-none placeholder:text-muted-foreground focus-visible:border-clay";
 
 interface CreateCourtBlockFormProps {
   clubSlug: string;
@@ -102,14 +100,14 @@ export function CreateCourtBlockForm({ clubSlug, courts, edit, onDone }: CreateC
         <legend className={label}>{edit ? "Platz" : `Plätze (${courtIds.length})`}</legend>
         <div className="mt-1.5 flex flex-wrap gap-2">
           {!edit && (
-            <button type="button" aria-pressed={all} onClick={() => setCourtIds(all ? [] : courts.map((c) => c.id))} className={chip(all)}>
+            <button type="button" aria-pressed={all} onClick={() => setCourtIds(all ? [] : courts.map((c) => c.id))} className="chip">
               Alle
             </button>
           )}
           {courts.map((court) => {
             const on = courtIds.includes(court.id);
             return (
-              <button key={court.id} type="button" aria-pressed={on} onClick={() => toggleCourt(court.id)} className={chip(on)}>
+              <button key={court.id} type="button" aria-pressed={on} onClick={() => toggleCourt(court.id)} className="chip">
                 {court.name}
               </button>
             );
@@ -175,7 +173,7 @@ export function CreateCourtBlockForm({ clubSlug, courts, edit, onDone }: CreateC
       <button
         type="submit"
         disabled={loading}
-        className="mt-1 flex h-[54px] w-full items-center justify-center gap-2.5 rounded-[17px] bg-clay text-[17px] font-bold text-white active:scale-[.97] disabled:opacity-70"
+        className="mt-1 btn btn-pri !h-[50px] w-full active:scale-[.97] disabled:opacity-70"
       >
         {loading && <Spinner />}
         {edit ? "Änderungen speichern" : "Platzsperre aktivieren"}

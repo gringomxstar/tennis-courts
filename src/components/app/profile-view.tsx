@@ -8,13 +8,13 @@ import { loginWithCredentials, logoutAction, registerUserAction, requestPassword
 import { topUpWalletAction } from "@/app/actions/booking";
 import { updateProfileAction } from "@/app/actions/profile";
 import { SwitchKnob } from "@/components/app/switch";
-import { Spinner } from "@/components/app/avatar";
+import { Avatar, Chevron, Spinner } from "@/components/app/avatar";
 import { initials } from "@/lib/courts";
 
-const card = "rounded-[26px] border border-border bg-card";
-const label = "text-[13px] font-bold uppercase tracking-[.06em] text-muted-foreground";
-const input = "h-[50px] rounded-[15px] border border-border bg-inset px-4 text-[16px] text-foreground outline-none";
-const row = "flex w-full items-center gap-3.5 rounded-[22px] border border-border bg-card px-5 py-4 text-left";
+const label = "text-[13px] font-bold uppercase tracking-[.06em] text-ink-3";
+const fld = "h-12 w-full min-w-0 rounded-[14px] bg-bg px-4 text-[15px] text-ink outline-none focus:shadow-[inset_0_0_0_2px_var(--brand-deep)]";
+const row = "flex w-full items-center gap-3.5 py-3.5 text-left";
+const rows = "divide-y divide-line";
 const fmt = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(2));
 
 const subscribeTheme = (cb: () => void) => {
@@ -115,236 +115,223 @@ export function ProfileView({
     } catch {}
   }
 
+  const authError = authState && "error" in authState ? authState.error : undefined;
+  const chev = <Chevron />;
+  const topupBtn = "btn h-11 flex-1 justify-center shadow-none";
+
   return (
-    <>
-      <div className="flex items-center gap-3.5 px-5 pt-[66px] lg:pt-12">
-        <div
-          aria-hidden
-          className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-[linear-gradient(135deg,var(--tennis-clay),var(--tennis-clay-hover))] text-[22px] font-bold text-white"
-        >
-          {me.ini}
-        </div>
+    <div className="mx-auto flex w-full max-w-[420px] flex-col gap-4 px-5 pb-8 pt-[60px] @min-[640px]:px-0 @min-[640px]:pt-2 @min-[1024px]:max-w-none">
+      <div className="flex items-center gap-3.5">
+        <Avatar ini={me.ini} className="h-14 w-14 text-[18px]" />
         <div>
-          <h1 className="text-[26px] font-bold tracking-[-.03em]">{me.name}</h1>
-          <div className="text-[15px] text-muted-foreground">{me.sub}</div>
+          <h1 className="text-[26px] font-bold leading-tight tracking-[-.03em]">{me.name}</h1>
+          <div className="text-[14px] text-ink-2">{me.sub}</div>
         </div>
       </div>
 
       {!user && (
-        <>
-          <form action={authAction} className={`${card} mx-5 mt-4 p-5 lg:max-w-[480px]`}>
-            <h2 className="text-[22px] font-bold tracking-[-.02em]">{register ? (next?.includes("/abos") ? "Konto erstellen, dann Abo zahlen." : "Konto erstellen") : "Anmelden"}</h2>
-            <input type="hidden" name="callbackUrl" value={next ?? `/c/${slug}`} />
+        <div className="mx-auto flex w-full max-w-[420px] flex-col gap-4">
+          <form action={authAction} className="card flex flex-col gap-3.5 p-5">
+            <h2 className="text-[22px] font-bold tracking-[-.02em]">{register ? (next?.includes("/abos") ? "Konto erstellen, dann Abo zahlen" : "Konto erstellen") : "Anmelden"}</h2>
+            <input type="hidden" name="callbackUrl" value={next ?? (register ? `/c/${slug}/abos` : `/c/${slug}`)} />
             <input type="hidden" name="tenantSlug" value={slug} />
-            <div className="mt-[14px] flex flex-col gap-2.5">
-              {register && (
-                <input name="name" required defaultValue={authState?.name} autoComplete="name" aria-label="Vor- und Nachname" placeholder="Vor- und Nachname" className={input} />
-              )}
-              <input name="email" type="email" required defaultValue={authState?.email} autoComplete="email" aria-label="E-Mail" placeholder="E-Mail" className={input} />
-              <input
-                name="password"
-                type="password"
-                required
-                autoComplete={register ? "new-password" : "current-password"}
-                aria-label="Passwort"
-                placeholder="Passwort"
-                className={input}
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={authPending}
-              className="mt-[14px] flex h-[54px] w-full items-center justify-center rounded-[17px] bg-clay text-[17px] font-bold text-white"
-            >
-              {register ? "Registrieren" : "Anmelden"}
-            </button>
-            <button
-              type="button"
-              onClick={() => setRegister(!register)}
-              className="mt-3 w-full text-center text-[15px] font-semibold text-clay-text"
-            >
-              {register ? "Schon Mitglied? Anmelden" : "Neu hier? Registrieren"}
+            {authError && (
+              <div role="alert" className="rounded-[14px] bg-bad-bg px-4 py-3 text-[14px] font-semibold text-bad">
+                {authError}
+              </div>
+            )}
+            {register && (
+              <label className="flex flex-col gap-1.5 text-[13px] font-semibold text-ink-2">
+                Vor- und Nachname
+                <input name="name" required defaultValue={authState?.name} autoComplete="name" className={fld} />
+              </label>
+            )}
+            <label className="flex flex-col gap-1.5 text-[13px] font-semibold text-ink-2">
+              E-Mail
+              <input name="email" type="email" required defaultValue={authState?.email} autoComplete="email" className={`${fld} ${authError && !register ? "shadow-[inset_0_0_0_2px_var(--bad)]" : ""}`} />
+            </label>
+            <label className="flex flex-col gap-1.5 text-[13px] font-semibold text-ink-2">
+              Passwort
+              <input name="password" type="password" required autoComplete={register ? "new-password" : "current-password"} className={`${fld} ${authError && !register ? "shadow-[inset_0_0_0_2px_var(--bad)]" : ""}`} />
+            </label>
+            <button type="submit" disabled={authPending} className="btn btn-pri h-[54px] w-full text-[16px]">
+              {authPending && <Spinner />}
+              {register ? (next?.includes("/abos") ? "Konto erstellen und bezahlen" : "Konto erstellen") : "Anmelden"}
             </button>
             {!register && !forgot && (
-              <button type="button" onClick={() => setForgot(true)} className="mt-2 w-full text-center text-[15px] font-semibold text-muted-foreground">
+              <button type="button" onClick={() => setForgot(true)} className="text-center text-[14px] font-semibold text-ink-2">
                 Konto aktivieren / Passwort vergessen?
               </button>
             )}
           </form>
           {!register && forgot && (
-            <form action={linkAction} className={`${card} mx-5 mt-3 p-5 lg:max-w-[480px]`}>
-              <div className={label}>Konto aktivieren / Passwort vergessen</div>
+            <form action={linkAction} className="card flex flex-col gap-3 p-5">
+              <div className={label}>Passwort vergessen</div>
               {linkState?.ok ? (
-                <div role="status" className="mt-2 text-[15px] leading-[1.45] text-muted-foreground">
+                <div role="status" className="text-[15px] leading-[1.45] text-ink-2">
                   Falls ein Konto existiert, haben wir dir einen Link geschickt.
                 </div>
               ) : (
                 <>
                   <input type="hidden" name="tenantSlug" value={slug} />
-                  <input name="email" type="email" required autoComplete="email" aria-label="E-Mail" placeholder="E-Mail" className={`${input} mt-3 w-full`} />
-                  {linkState?.error && <div className="mt-2 text-[14px] font-semibold text-clay-text">{linkState.error}</div>}
-                  <button
-                    type="submit"
-                    disabled={linkPending}
-                    className="mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-[15px] bg-inset text-[16px] font-bold text-clay-text"
-                  >
-                    {linkPending && <Spinner />}Link senden
+                  <input name="email" type="email" required autoComplete="email" aria-label="E-Mail" placeholder="E-Mail" className={fld} />
+                  {linkState?.error && <div role="alert" className="text-[14px] font-semibold text-bad">{linkState.error}</div>}
+                  <button type="submit" disabled={linkPending} className="btn h-12 w-full">
+                    Link senden
                   </button>
                 </>
               )}
             </form>
           )}
-          <div className="mx-5 mt-3 rounded-[22px] bg-inset px-[18px] py-4 text-[15px] leading-[1.45] text-muted-foreground lg:max-w-[480px]">
-            Als Gast zahlst du pro Platz online. Mit einem Abo ist Spielen inklusive.
-          </div>
-        </>
-      )}
-
-      <div className="lg:grid lg:grid-cols-2">
-      {member && (
-        <>
-          <div className={`${card} mx-5 mt-4 p-5`}>
-            <div className="flex items-baseline justify-between">
-              <div className={label}>Guthaben</div>
-              <div className="flex items-center gap-[5px] text-[13px] font-semibold text-muted-foreground">
-                <svg aria-hidden width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="8" cy="8" r="6" />
-                  <path d="M18.09 10.37A6 6 0 1 1 10.34 18M7 6h1v4" />
-                </svg>
-                für Buchungen &amp; Extras
-              </div>
-            </div>
-            <div className="mt-1 text-[52px] font-bold leading-[1.1] tracking-[-.045em]">
-              <span className="text-[22px] tracking-normal text-muted-foreground">CHF </span>
-              {fmt(wallet)}
-            </div>
-            <div className="mt-[14px] flex gap-2">
-              {[20, 50, 100].map((v) => (
-                <button
-                  key={v}
-                  type="button"
-                  aria-label={`CHF ${v} aufladen`}
-                  onClick={() => topUp(v)}
-                  disabled={topping !== null}
-                  className="flex h-11 flex-1 items-center justify-center gap-2 rounded-[14px] bg-inset text-[15px] font-bold active:scale-[.94]"
-                >
-                  {topping === v && <Spinner />}+ {v}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="px-5 pt-3 lg:flex lg:pt-4">
-            <Link href={`/c/${slug}/abos`} className={`${card} flex w-full items-center gap-3.5 p-5 text-left`}>
-              <div className="flex-1">
-                <div className={label}>Abo</div>
-                <div className="mt-[3px] text-[22px] font-bold tracking-[-.02em]">{membership?.name ?? "Kein Abo"}</div>
-                {membership && (
-                  <div className="mt-px text-[14px] text-muted-foreground">
-                    {membership.validity} · CHF {fmt(membership.price)}
-                  </div>
-                )}
-              </div>
-              <div className="rounded-[12px] bg-inset px-[14px] py-[9px] text-[14px] font-bold text-clay-text">{membership ? "Ändern" : "Ansehen"}</div>
-            </Link>
-          </div>
-        </>
-      )}
-
-      {profile && (
-        <div className="px-5 pt-3">
-          {editing ? (
-            <form action={profileAction} className={`${card} p-5`}>
-              <div className={label}>Meine Daten</div>
-              <div className="mt-3 flex flex-col gap-2.5">
-                <div className="flex gap-2.5">
-                  <input name="firstName" required defaultValue={profile.firstName} aria-label="Vorname" placeholder="Vorname" autoComplete="given-name" className={`${input} min-w-0 flex-1`} />
-                  <input name="lastName" required defaultValue={profile.lastName} aria-label="Nachname" placeholder="Nachname" autoComplete="family-name" className={`${input} min-w-0 flex-1`} />
-                </div>
-                <input name="phone" type="tel" defaultValue={profile.phone} aria-label="Telefon" placeholder="Telefon" autoComplete="tel" className={input} />
-              </div>
-              <div className="mt-3 flex gap-2">
-                <button type="button" onClick={() => setEditing(false)} className="h-12 flex-1 rounded-[15px] bg-inset text-[16px] font-bold">
-                  Abbrechen
-                </button>
-                <button type="submit" disabled={profilePending} className="flex h-12 flex-1 items-center justify-center gap-2 rounded-[15px] bg-clay text-[16px] font-bold text-white">
-                  {profilePending && <Spinner />}Speichern
-                </button>
-              </div>
-            </form>
-          ) : (
-            <button type="button" onClick={() => setEditing(true)} className={row}>
-              <span className="flex-1">
-                <span className="block text-[17px] font-semibold">Meine Daten</span>
-                <span className="block text-[14px] text-muted-foreground">
-                  {`${profile.firstName} ${profile.lastName}`.trim()}
-                  {profile.phone ? ` · ${profile.phone}` : ""}
-                </span>
-              </span>
-              <span className="text-[14px] font-bold text-clay-text">Bearbeiten</span>
+          <div className="text-center text-[14px] text-ink-2">
+            {register ? "Schon ein Konto? " : "Noch kein Konto? "}
+            <button type="button" onClick={() => setRegister(!register)} className="font-semibold text-brand-deep">
+              {register ? "Anmelden" : "Registrieren"}
             </button>
-          )}
-        </div>
-      )}
-
-      {clubs.length > 1 && (
-        <div className="px-5 pt-3">
-          <div className={`${card} p-5`}>
-            <div className={label}>Club wechseln</div>
-            <div className="mt-2.5 flex flex-col gap-2">
-              {clubs.map((c) => (
-                <button
-                  key={c.slug}
-                  type="button"
-                  aria-current={c.slug === slug}
-                  onClick={() => router.push(`/c/${c.slug}`)}
-                  className={`flex h-12 items-center justify-between rounded-[15px] px-4 text-[16px] font-semibold ${c.slug === slug ? "bg-clay text-white" : "bg-inset"}`}
-                >
-                  {c.name}
-                  {c.slug === slug && <span className="text-[13px] font-bold">Aktiv</span>}
-                </button>
-              ))}
-            </div>
           </div>
+          <div className="text-center text-[14px] text-ink-2">Als Gast zahlst du pro Platz online. Mit einem Abo ist Spielen inklusive.</div>
         </div>
       )}
-
-      {(support.email || support.phone) && (
-        <div className="px-5 pt-3">
-          <div className={`${card} p-5`}>
-            <div className={label}>Hilfe &amp; Kontakt</div>
-            <div className="mt-1 text-[15px] text-muted-foreground">Fragen zu Buchungen oder deinem Abo? Der Club hilft dir weiter.</div>
-            <div className="mt-3 flex gap-2">
-              {support.email && (
-                <a href={`mailto:${support.email}`} className="flex h-12 flex-1 items-center justify-center rounded-[15px] bg-inset text-[15px] font-bold text-clay-text">
-                  E-Mail
-                </a>
-              )}
-              {support.phone && (
-                <a href={`tel:${support.phone.replace(/\s+/g, "")}`} className="flex h-12 flex-1 items-center justify-center rounded-[15px] bg-inset text-[15px] font-bold text-clay-text">
-                  Anrufen
-                </a>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div className="px-5 pt-3">
-        <button type="button" aria-pressed={dark} onClick={toggleDark} className={row}>
-          <span className="flex-1 text-[17px] font-semibold">{dark ? "Nocturne · Dunkel" : "Tag · Hell"}</span>
-          <SwitchKnob on={dark} />
-        </button>
-      </div>
 
       {user && (
-        <form action={logoutAction} className="px-5 pt-3">
-          <button type="submit" className={row}>
-            <span className="flex-1 text-[17px] font-semibold text-muted-foreground">Abmelden</span>
-          </button>
-        </form>
+        <div className="grid items-start gap-4 @min-[640px]:grid-cols-2">
+          <div className="flex flex-col gap-4">
+            {member && (
+              <>
+                <div className="flex flex-col gap-3.5 rounded-[24px] bg-[linear-gradient(135deg,#1a8a75,#0f5c4f_60%,#0b433a)] p-5 text-white shadow-[var(--sh-lg)]">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <h2 className="text-[17px] font-bold">Guthaben</h2>
+                    <span className="text-[13px] opacity-80">für Buchungen und Gäste</span>
+                  </div>
+                  <div className="text-[48px] font-bold leading-none tracking-[-.04em]">
+                    <small className="mr-1.5 text-[18px] font-medium opacity-80">CHF</small>
+                    {fmt(wallet)}
+                  </div>
+                  <div className="flex gap-2">
+                    {[20, 50, 100].map((v) => (
+                      <button
+                        key={v}
+                        type="button"
+                        aria-label={`CHF ${v} aufladen`}
+                        onClick={() => topUp(v)}
+                        disabled={topping !== null}
+                        className={`${topupBtn} ${v === 100 ? "text-brand-dark" : "bg-white/15 text-white"}`}
+                      >
+                        {topping === v && <Spinner />}+ {v}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="card p-5">
+                  <div className="flex items-center justify-between gap-3">
+                    <h2 className="text-[17px] font-bold">Mein Abo</h2>
+                    {membership && <span className="pill bg-ok-bg text-ok">aktiv</span>}
+                  </div>
+                  <div className="mt-2 flex items-center gap-3">
+                    <div className="min-w-0 flex-1">
+                      <b className="block text-[16px]">{membership?.name ?? "Kein Abo"}</b>
+                      {membership && (
+                        <small className="text-[13.5px] text-ink-2">
+                          {membership.validity}, CHF {fmt(membership.price)}
+                        </small>
+                      )}
+                    </div>
+                    <Link href={`/c/${slug}/abos`} className="btn h-9 text-[13.5px]">
+                      {membership ? "Ändern" : "Abo wählen"}
+                    </Link>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+
+          <div className="card p-5">
+            <div className={rows}>
+              {profile &&
+                (editing ? (
+                  <form action={profileAction} className="flex flex-col gap-2.5 pb-4">
+                    <div className={label}>Meine Daten</div>
+                    <div className="flex gap-2.5">
+                      <input name="firstName" required defaultValue={profile.firstName} aria-label="Vorname" placeholder="Vorname" autoComplete="given-name" className={fld} />
+                      <input name="lastName" required defaultValue={profile.lastName} aria-label="Nachname" placeholder="Nachname" autoComplete="family-name" className={fld} />
+                    </div>
+                    <input name="phone" type="tel" defaultValue={profile.phone} aria-label="Telefon" placeholder="Telefon" autoComplete="tel" className={fld} />
+                    <div className="flex gap-2">
+                      <button type="button" onClick={() => setEditing(false)} className="btn btn-ghost h-11 flex-1">
+                        Abbrechen
+                      </button>
+                      <button type="submit" disabled={profilePending} className="btn btn-pri h-11 flex-1">
+                        {profilePending && <Spinner />}Speichern
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  <button type="button" onClick={() => setEditing(true)} className={row}>
+                    <span className="min-w-0 flex-1">
+                      <b className="block text-[16px] font-semibold">Meine Daten</b>
+                      <small className="block truncate text-[13.5px] text-ink-2">
+                        {`${profile.firstName} ${profile.lastName}`.trim()}
+                        {profile.phone ? `, ${profile.phone}` : ""}
+                      </small>
+                    </span>
+                    <span className="text-[14px] font-semibold text-brand-deep">Bearbeiten</span>
+                  </button>
+                ))}
+              {clubs.length > 1 && (
+                <div className="py-3.5">
+                  <div className={label}>Club wechseln</div>
+                  <div className="mt-2.5 flex flex-col gap-2">
+                    {clubs.map((c) => (
+                      <button
+                        key={c.slug}
+                        type="button"
+                        aria-current={c.slug === slug}
+                        onClick={() => router.push(`/c/${c.slug}`)}
+                        className={`flex h-12 items-center justify-between rounded-[14px] px-4 text-[15px] font-semibold ${c.slug === slug ? "bg-brand-deep text-white" : "bg-bg"}`}
+                      >
+                        {c.name}
+                        {c.slug === slug && <span className="text-[13px] font-bold">Aktiv</span>}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {(support.email || support.phone) && (
+                <div className="py-3.5">
+                  <b className="block text-[16px] font-semibold">Hilfe und Kontakt</b>
+                  <small className="block text-[13.5px] text-ink-2">Fragen zu Buchungen oder deinem Abo? Der Club hilft dir weiter.</small>
+                  <div className="mt-3 flex gap-2">
+                    {support.email && (
+                      <a href={`mailto:${support.email}`} className="btn btn-ghost h-11 flex-1">
+                        E-Mail
+                      </a>
+                    )}
+                    {support.phone && (
+                      <a href={`tel:${support.phone.replace(/\s+/g, "")}`} className="btn btn-ghost h-11 flex-1">
+                        Anrufen
+                      </a>
+                    )}
+                  </div>
+                </div>
+              )}
+              <button type="button" aria-pressed={dark} onClick={toggleDark} className={row}>
+                <span className="min-w-0 flex-1">
+                  <b className="block text-[16px] font-semibold">Dunkles Design</b>
+                  <small className="block text-[13.5px] text-ink-2">{dark ? "Nocturne, dunkel" : "Tag, hell"}</small>
+                </span>
+                <SwitchKnob on={dark} />
+              </button>
+              <form action={logoutAction}>
+                <button type="submit" className={row}>
+                  <b className="flex-1 text-[16px] font-semibold text-bad">Abmelden</b>
+                  {chev}
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
       )}
-      </div>
-    </>
+    </div>
   );
 }

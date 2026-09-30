@@ -81,7 +81,7 @@ export function BrandingForm({ clubSlug, clubName, color: initialColor, logo: in
   }
 
   return (
-    <section className="rounded-[26px] border border-border bg-card p-5">
+    <section className="card p-5">
       <h2 className="text-[22px] font-bold tracking-[-.02em]">Clubfarbe & Logo</h2>
       <p className="mt-1 text-[15px] leading-[1.4] text-muted-foreground">Die Farbe gilt für Buttons, freie Slots und Markierungen in der ganzen App.</p>
 
@@ -152,7 +152,7 @@ export function BrandingForm({ clubSlug, clubName, color: initialColor, logo: in
         type="button"
         onClick={save}
         disabled={busy}
-        className="mt-5 flex h-[54px] w-full items-center justify-center gap-2.5 rounded-[17px] bg-clay text-[17px] font-bold text-white active:scale-[.97] disabled:opacity-60"
+        className="mt-5 btn btn-pri !h-[50px] w-full active:scale-[.97] disabled:opacity-60"
       >
         {busy && <Spinner />}
         Speichern

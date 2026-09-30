@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { computeBookingCost, needsFloodlight } from "../src/lib/pricing";
+import { computeBookingCost, needsFloodlight, settleBooking } from "../src/lib/pricing";
 
 const outdoor = { sportType: "TENNIS" as const, isIndoor: false, hourlyRate: 30 };
 const hall = { sportType: "TENNIS" as const, isIndoor: true, hourlyRate: 45 };
@@ -55,3 +55,14 @@ assert.equal(computeBookingCost({ ...base, court: padel, players: [null], settin
 assert.equal(computeBookingCost({ ...base, court: padel, players: [null], settings: rules, start: at(15), now: at(14).getTime() }).total, 44);
 assert.equal(computeBookingCost({ ...base, court: outdoor, players: [ABO], settings: rules, start: at(9), now: far }).total, 0);
 console.log("price rules ok");
+
+// Owner's payment rule (2026-09-30): the wallet pays when it covers the total, otherwise all of it goes to Stripe.
+const rich = settleBooking(40, 30);
+assert.equal(rich.method, "WALLET", "wallet 40 covers 30: paid from the wallet");
+assert.equal(rich.walletAfter, 10, "wallet 10 afterwards");
+assert.equal(rich.checkout, 0, "nothing to pay in Stripe");
+const short = settleBooking(10, 30);
+assert.equal(short.method, "ONLINE", "wallet 10 does not cover 30: Stripe checkout");
+assert.equal(short.checkout, 30, "Stripe charges the full 30");
+assert.equal(short.walletAfter, 10, "wallet unchanged");
+console.log("payment rule ok");

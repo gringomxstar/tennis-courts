@@ -202,7 +202,7 @@ export function ClubSettingsForm({
   };
 
   return (
-    <section className="rounded-[26px] border border-border bg-card p-5">
+    <section className="card p-5">
       <h2 className="text-[22px] font-bold tracking-[-.02em]">Buchungsregeln &amp; Preise</h2>
       <p className="mt-1 text-[15px] leading-[1.4] text-muted-foreground">
         Öffnungszeiten, Storno-Frist, Fairplay-Regeln, Doppel und Gebühren.
@@ -241,7 +241,7 @@ export function ClubSettingsForm({
               ))}
             </select>
           </label>
-          <label className="col-span-2 block sm:col-span-1">
+          <label className="col-span-2 block @min-[640px]:col-span-1">
             <span className={label}>Slot-Dauer (Einzel)</span>
             <select
               id="slotDurationMinutes"
@@ -254,7 +254,7 @@ export function ClubSettingsForm({
               <option value={90}>90 Minuten (1.5 Stunden)</option>
             </select>
           </label>
-          <label className="col-span-2 block sm:col-span-1">
+          <label className="col-span-2 block @min-[640px]:col-span-1">
             <span className={label}>Storno-Frist</span>
             <span className="flex items-center gap-2.5">
               <input
@@ -412,7 +412,7 @@ export function ClubSettingsForm({
                     );
                   })}
                 </div>
-                <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                <div className="mt-2 grid grid-cols-2 gap-2 @min-[640px]:grid-cols-4">
                   {(
                     [
                       ["fromHour", "Ab Uhr"],
@@ -444,7 +444,7 @@ export function ClubSettingsForm({
 
         <div className={well}>
           <h3 className="text-[17px] font-bold tracking-[-.01em]">Gebühren &amp; Stundensätze (CHF)</h3>
-          <div className="mt-3 grid grid-cols-2 gap-4 sm:grid-cols-3">
+          <div className="mt-3 grid grid-cols-2 gap-4 @min-[640px]:grid-cols-3">
             {(
               [
                 ["ballMachineFee", "Ballmaschine", ballMachineFee, setBallMachineFee],
@@ -526,11 +526,11 @@ export function ClubSettingsForm({
         />
 
         {/* stays in view above the floating tab bar while scrolling through the long form */}
-        <div className="sticky bottom-[calc(max(10px,env(safe-area-inset-bottom))+84px)] z-10 lg:bottom-4">
+        <div className="sticky bottom-[calc(max(10px,env(safe-area-inset-bottom))+84px)] z-10 @min-[640px]:bottom-4">
           <button
             type="submit"
             disabled={loading}
-            className="flex h-[54px] w-full items-center justify-center gap-2.5 rounded-[17px] bg-clay text-[17px] font-bold text-white shadow-[0_10px_30px_-8px_rgba(0,0,0,.35)] active:scale-[.97] disabled:opacity-70"
+            className="btn !h-[50px] w-full !bg-ink text-white shadow-lift disabled:opacity-70"
           >
             {loading && <Spinner />}
             {loading ? "Wird gespeichert…" : "Einstellungen speichern"}

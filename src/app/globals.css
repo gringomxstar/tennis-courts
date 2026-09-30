@@ -6,53 +6,85 @@
 
 @variant dark (&:where(.dark, .dark *));
 
-/* Tokens are taken 1:1 from the Claude Design prototype "TC Marly App" (theme object `t`). */
+/* Design v3 tokens (docs/design/README.md, `.app { … }` in entwurf-v3.html). The legacy shadcn/prototype names
+   below map onto them so pages not yet ported keep working. */
 :root {
-  --background: #fbfbfd;
-  --foreground: #0f172a;
+  /* club brand color; the club layout overrides --tennis-clay from settingsJson.brandColor, the shades derive from it */
+  --tennis-clay: #147a68;
+  --brand: var(--tennis-clay);
+  --brand-deep: color-mix(in srgb, var(--brand) 75%, black);
+  --brand-dark: color-mix(in srgb, var(--brand) 55%, black);
+  --brand-soft: color-mix(in srgb, var(--brand) 17%, white);
+  --brand-tint: color-mix(in srgb, var(--brand) 8%, white);
+
+  --bg: #e9efec;
   --card: #ffffff;
-  --card-foreground: #0f172a;
-  --popover: #ffffff;
-  --popover-foreground: #0f172a;
-  --inset: #f0f2f6;
-  --acc: #e8ebf1;
+  --ink: #16201d;
+  --ink-2: #4f5e5a;
+  --ink-3: #8a9793;
+  --line: #e6ecea;
+  --sand: #e0653a;
+  --hard: #4c6b8a;
+  --padel: #3a7bd5;
+  --me: var(--brand);
+  --mem: #38b58a;
+  --guest: #f0a33a;
+  --coach: #7c5cff;
+  --block: #b9c3c0;
+  --ok: #1f8a5b;
+  --ok-bg: #dcf3e8;
+  --warn: #b5680c;
+  --warn-bg: #fdefd6;
+  --bad: #c9432f;
+  --bad-bg: #fde3df;
+  --navy: #14213d;
+  --go: #38b58a;
+  --sh: 0 10px 30px -12px rgba(15, 60, 50, 0.16), 0 2px 6px rgba(15, 60, 50, 0.04);
+  --sh-lg: 0 24px 50px -24px rgba(15, 60, 50, 0.35);
+  --stripes: repeating-linear-gradient(135deg, #dfe6e3 0 4px, #eef2f0 4px 8px);
+
+  /* legacy names */
+  --background: var(--bg);
+  --foreground: var(--ink);
+  --card-foreground: var(--ink);
+  --popover: var(--card);
+  --popover-foreground: var(--ink);
+  --inset: #f3f6f5; /* legacy fills; lighter than --bg so they still show on the page background */
+  --acc: #edf1f0;
   --glass: rgba(255, 255, 255, 0.8);
-  --sheet: #f6f7fa;
-  --clay-text: color-mix(in srgb, var(--tennis-clay) 85%, black);
-  --elevation: 0 16px 40px rgba(15, 23, 42, 0.16);
-  --top-mask: linear-gradient(#fbfbfd 55%, rgba(251, 251, 253, 0));
-  --seg-on: #ffffff;
-  --seg-on-fg: #0f172a;
-  --seg-off-fg: #64748b;
-  --track-off: #cbd5e1;
-  --bar-blocked: #cbd5e1;
-  --paid-bg: #d1fae5;
-  --paid-fg: #065f46;
-  --free-tint: color-mix(in srgb, var(--tennis-clay) 8%, transparent);
-  --free-border: color-mix(in srgb, var(--tennis-clay) 55%, transparent);
-
-  /* club brand color; the layout overrides it from settingsJson.brandColor */
-  --tennis-clay: #e25b36;
-  --tennis-clay-hover: color-mix(in srgb, var(--tennis-clay) 85%, black);
-  /* fill behind white text: >= 4.5:1 for the default clay and the club teal */
-  --clay-fill: color-mix(in srgb, var(--tennis-clay) 86%, black);
+  --sheet: var(--card);
+  --clay-text: var(--brand-deep);
+  --elevation: var(--sh-lg);
+  --top-mask: linear-gradient(#e9efec 55%, rgba(233, 239, 236, 0));
+  --seg-on: var(--card);
+  --seg-on-fg: var(--ink);
+  --seg-off-fg: var(--ink-2);
+  --track-off: #d3dbd8;
+  --bar-blocked: var(--block);
+  --paid-bg: var(--ok-bg);
+  --paid-fg: var(--ok);
+  --free-tint: var(--brand-tint);
+  --free-border: var(--brand-soft);
+  --tennis-clay-hover: var(--brand-dark);
+  /* fill behind white text */
+  --clay-fill: var(--brand-deep);
   --floodlight: #f59e0b;
-  --surface-clay: #c9482a;
-  --surface-hard: #64748b;
-  --surface-padel: #2563eb;
+  --surface-clay: var(--sand);
+  --surface-hard: var(--hard);
+  --surface-padel: var(--padel);
 
-  --primary: var(--tennis-clay);
+  --primary: var(--brand-deep);
   --primary-foreground: #ffffff;
-  --secondary: var(--inset);
-  --secondary-foreground: var(--foreground);
-  --muted: var(--inset);
-  --muted-foreground: #5b6678;
-  --accent: var(--acc);
-  --accent-foreground: var(--foreground);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: rgba(15, 23, 42, 0.09);
-  --input: rgba(15, 23, 42, 0.09);
-  --ring: var(--tennis-clay);
+  --secondary: var(--bg);
+  --secondary-foreground: var(--ink);
+  --muted: var(--bg);
+  --muted-foreground: var(--ink-2);
+  --accent: var(--brand-tint);
+  --accent-foreground: var(--ink);
+  --destructive: var(--bad);
+  --border: var(--line);
+  --input: var(--line);
+  --ring: var(--brand-deep);
   --radius: 0.625rem;
 
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -60,35 +92,29 @@
   --ease-push: cubic-bezier(0.32, 1.15, 0.5, 1);
 }
 
+/* README "Noch nicht im Entwurf": dark = same tokens inverted */
 .dark {
-  --background: #0b0f17;
-  --foreground: #f3f4f6;
-  --card: #141a26;
-  --card-foreground: #f3f4f6;
-  --popover: #141a26;
-  --popover-foreground: #f3f4f6;
-  --inset: #101522;
-  --acc: #1c2536;
-  --glass: rgba(20, 26, 38, 0.78);
-  --sheet: #0f1521;
-  --clay-text: color-mix(in srgb, var(--tennis-clay) 85%, white);
-  --elevation: 0 16px 40px rgba(0, 0, 0, 0.55);
-  --top-mask: linear-gradient(#0b0f17 55%, rgba(11, 15, 23, 0));
-  --seg-on: #1c2536;
-  --seg-on-fg: #f3f4f6;
-  --seg-off-fg: #9ca3af;
-  --track-off: #334155;
-  --bar-blocked: #334155;
-  --paid-bg: rgba(16, 185, 129, 0.16);
-  --paid-fg: #6ee7b7;
-  --free-tint: color-mix(in srgb, var(--tennis-clay) 10%, transparent);
-  --free-border: color-mix(in srgb, var(--tennis-clay) 50%, transparent);
-  --tennis-clay-hover: color-mix(in srgb, var(--tennis-clay) 85%, white);
-
-  --muted-foreground: #9ca3af;
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: rgba(255, 255, 255, 0.09);
-  --input: rgba(255, 255, 255, 0.09);
+  --bg: #101413;
+  --card: #182120;
+  --ink: #e9ecea;
+  --ink-2: #96a09d;
+  --ink-3: #75807d;
+  --line: #26302e;
+  --brand-deep: color-mix(in srgb, var(--brand) 80%, white);
+  --brand-soft: color-mix(in srgb, var(--brand) 30%, var(--card));
+  --brand-tint: color-mix(in srgb, var(--brand) 14%, var(--card));
+  --stripes: repeating-linear-gradient(135deg, #1d2624 0 4px, #151c1b 4px 8px);
+  --inset: #1d2624;
+  --acc: #222c2a;
+  --glass: rgba(24, 33, 32, 0.78);
+  --top-mask: linear-gradient(#101413 55%, rgba(16, 20, 19, 0));
+  --track-off: #34403d;
+  --ok-bg: rgba(31, 138, 91, 0.2);
+  --warn-bg: rgba(181, 104, 12, 0.2);
+  --bad-bg: rgba(201, 67, 47, 0.2);
+  --sh: 0 10px 30px -12px rgba(0, 0, 0, 0.5);
+  --sh-lg: 0 24px 50px -24px rgba(0, 0, 0, 0.7);
+  --clay-fill: var(--brand);
 }
 
 /* a sideways swipe that hits the end of a scroller must not trigger browser back/forward */
@@ -99,7 +125,6 @@ body {
 
 body {
   background-color: var(--background);
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, sans-serif;
   font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -129,7 +154,31 @@ body {
 }
 
 @theme inline {
-  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+  --font-sans: var(--font-outfit), -apple-system, "Helvetica Neue", sans-serif;
+  --color-bg: var(--bg);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-line: var(--line);
+  --color-brand: var(--brand);
+  --color-brand-deep: var(--brand-deep);
+  --color-brand-dark: var(--brand-dark);
+  --color-brand-soft: var(--brand-soft);
+  --color-brand-tint: var(--brand-tint);
+  --color-me: var(--me);
+  --color-mem: var(--mem);
+  --color-guest: var(--guest);
+  --color-coach: var(--coach);
+  --color-block: var(--block);
+  --color-ok: var(--ok);
+  --color-ok-bg: var(--ok-bg);
+  --color-warn: var(--warn);
+  --color-warn-bg: var(--warn-bg);
+  --color-bad: var(--bad);
+  --color-bad-bg: var(--bad-bg);
+  --color-go: var(--go);
+  --shadow-card: var(--sh);
+  --shadow-lift: var(--sh-lg);
   --font-heading: var(--font-sans);
   --color-clay: var(--clay-fill);
   --color-clay-hover: var(--tennis-clay-hover);
@@ -192,4 +241,78 @@ body {
   html {
     @apply font-sans;
   }
+}
+
+/* v3 building blocks, in the components layer so Tailwind utilities override them (entwurf-v3.html .card / .btn / .chip / .pill / .sum); segments and switches live in segmented.tsx / switch.tsx */
+@layer components {
+.card {
+  background: var(--card);
+  border-radius: 24px;
+  box-shadow: var(--sh);
+}
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 42px;
+  padding: 0 18px;
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--ink);
+  font-weight: 600;
+  font-size: 14px;
+  white-space: nowrap;
+  box-shadow: var(--sh);
+  transition: transform 0.15s, box-shadow 0.15s;
+  &:active:not(:disabled) { transform: translateY(1px); }
+  &:disabled { opacity: 0.5; }
+}
+.btn-pri {
+  background: var(--brand-deep);
+  color: #fff;
+}
+.btn-ghost {
+  background: var(--bg);
+  box-shadow: none;
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: var(--card);
+  box-shadow: var(--sh);
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink-2);
+  white-space: nowrap;
+  flex: none;
+  &[aria-pressed="true"] { background: var(--ink); color: var(--card); }
+}
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.sum {
+  background: var(--bg);
+  border-radius: 16px;
+  padding: 14px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px 12px;
+  font-size: 14px;
+}
+.stripes {
+  background: var(--stripes);
+}
 }

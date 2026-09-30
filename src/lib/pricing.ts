@@ -88,8 +88,7 @@ export function computeBookingCost(i: BookingCostInput): BookingCost {
     full = Math.max(0, full * (1 + pct / 100));
   }
   const players = i.players.length ? i.players : [null];
-  // the hall is never part of an Abo
-  const covered = (p: SportType[] | null | undefined) => !i.court.isIndoor && Boolean(p?.includes(i.court.sportType));
+  const covered = (p: SportType[] | null | undefined) => aboCovers(i.court, p);
   let payers = players.filter((p) => !covered(p)).length;
   // Diner Tennis: an Abo holder brings one player free
   if (covered(players[0]) && payers > 0 && isDinerSlot(s, i.start)) payers--;
@@ -100,21 +99,38 @@ export function computeBookingCost(i: BookingCostInput): BookingCost {
   return { court, share: roundRappen(share), payers, ballMachine, lighting, total: roundRappen(court + ballMachine + lighting) };
 }
 
-/** Payment choices shown before booking; the first one is the default. */
+/** Does an Abo for these sports cover its holder's share on this court? The hall is never part of an Abo. */
+export function aboCovers(court: Pick<Court, "isIndoor" | "sportType">, sports: SportType[] | null | undefined) {
+  return !court.isIndoor && Boolean(sports?.includes(court.sportType));
+}
+
+/**
+ * Owner's rule (30.09.2026): the wallet pays automatically when it covers the whole total, otherwise
+ * the full amount goes to Stripe Checkout and the wallet stays untouched. Never a split, never a choice.
+ */
+export function settleBooking(wallet: number, total: number) {
+  return wallet >= total
+    ? { method: "WALLET" as const, walletAfter: roundRappen(wallet - total), checkout: 0 }
+    : { method: "ONLINE" as const, walletAfter: wallet, checkout: total };
+}
+
+/**
+ * Payment options before booking. The first one is automatic (wallet or Stripe, see settleBooking);
+ * more entries only when the club enabled "vor Ort" or "Rechnung".
+ */
 export function payOptions(
   settings: TenantSettings | null | undefined,
   o: { isAnon: boolean; wallet: number; total: number }
 ): [PaymentMethod, string][] {
-  const opts: [PaymentMethod, string][] = [];
-  if (!o.isAnon && o.wallet >= o.total) opts.push(["WALLET", "Guthaben"]);
-  opts.push(["ONLINE", "Online"]);
+  const auto = o.isAnon ? "ONLINE" : settleBooking(o.wallet, o.total).method;
+  const opts: [PaymentMethod, string][] = [[auto, auto === "WALLET" ? "Guthaben" : "Online"]];
   if (settings?.payOnSite) opts.push(["ON_SITE", "Vor Ort"]);
   if (!o.isAnon && settings?.payByInvoice) opts.push(["INVOICE", "Rechnung"]);
   return opts;
 }
 
 export function payButtonLabel(method: PaymentMethod, total: number) {
-  if (method === "ONLINE") return `Bezahlen · CHF ${total}`;
-  if (method === "WALLET") return `Buchen · CHF ${total} Guthaben`;
-  return `Buchen · CHF ${total} ${method === "ON_SITE" ? "vor Ort" : "auf Rechnung"}`;
+  if (total <= 0) return "Reservieren";
+  if (method === "ONLINE" || method === "WALLET") return `Bezahlen · CHF ${total}`;
+  return `Reservieren · CHF ${total} ${method === "ON_SITE" ? "vor Ort" : "auf Rechnung"}`;
 }

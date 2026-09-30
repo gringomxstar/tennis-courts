@@ -77,17 +77,17 @@ export function CourtsManager({ clubSlug, courts }: { clubSlug: string; courts: 
   }
 
   return (
-    <section className="rounded-[26px] border border-border bg-card p-5">
+    <section className="card p-5">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 className="text-[22px] font-bold tracking-[-.02em]">Plätze ({courts.length})</h2>
           <p className="mt-1 text-[15px] leading-[1.4] text-muted-foreground">Antippen zum Bearbeiten.</p>
         </div>
-        <button type="button" onClick={() => open()} className="shrink-0 rounded-full bg-clay px-4 py-2.5 text-[14px] font-bold text-white">
+        <button type="button" onClick={() => open()} className="btn btn-pri !h-9 shrink-0">
           + Platz
         </button>
       </div>
-      <div className="mt-5 overflow-hidden rounded-[22px] border border-border">
+      <div className="mt-5 overflow-hidden">
         {courts.map((court) => (
           <button
             key={court.id}
@@ -174,7 +174,7 @@ export function CourtsManager({ clubSlug, courts }: { clubSlug: string; courts: 
               type="button"
               onClick={save}
               disabled={busy}
-              className="mt-1 flex h-[58px] w-full items-center justify-center gap-2.5 rounded-[20px] bg-clay text-[18px] font-bold text-white active:scale-[.97] disabled:opacity-60"
+              className="mt-1 btn btn-pri !h-[50px] w-full active:scale-[.97] disabled:opacity-60"
             >
               {busy && <Spinner />}
               {edit.id ? "Speichern" : "Platz anlegen"}

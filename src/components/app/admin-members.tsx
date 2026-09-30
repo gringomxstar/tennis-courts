@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { Avatar, Spinner } from "@/components/app/avatar";
 import { Sheet } from "@/components/app/sheet";
@@ -40,6 +40,8 @@ export interface MemberRow {
   renewalOpen: boolean;
   /** manual money decisions about this member, newest first (audit log) */
   history: { at: string; text: string; by: string }[];
+  /** hours played per weekday Mo–So, current week */
+  week: number[];
 }
 
 export interface PlanOption {
@@ -131,7 +133,9 @@ export function AdminMembers({ slug, tenantId, members, plans }: { slug: string;
   const [reminded, setReminded] = useState<string[]>([]);
   const [paid, setPaid] = useState<string[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
-  const [q, setQ] = useState("");
+  // the topbar search lands here with ?q=
+  const sp = useSearchParams();
+  const [q, setQ] = useState(sp.get("q") ?? "");
   const [filter, setFilter] = useState<FilterId>("all");
   const [sel, setSel] = useState<string[]>([]);
   const filters = useMemo(() => filtersFor(plans), [plans]);
@@ -192,160 +196,194 @@ export function AdminMembers({ slug, tenantId, members, plans }: { slug: string;
     router.refresh();
   }
 
+  const [detail, setDetail] = useState<string | null>(null);
+  const cur = members.find((m) => m.id === detail) ?? null;
+  // wide screens show the detail card next to the table; narrower ones open the sheet
+  const openMember = (m: MemberRow) => (window.matchMedia("(min-width: 1100px)").matches ? setDetail(m.id) : setEditing(m));
+  const kpi = (id: FilterId, label: string, value: number, sub: string, cls = "") => (
+    <button type="button" onClick={() => setFilter(id)} className={cn("card flex flex-col gap-2.5 p-4 text-left @min-[640px]:px-[22px] @min-[640px]:py-5", cls)}>
+      <span className="text-[14px] font-medium opacity-85">{label}</span>
+      <b className="text-[28px] font-bold leading-none tracking-[-.04em] @min-[640px]:text-[36px]">{value}</b>
+      <span className="text-[13px] font-semibold opacity-85">{sub}</span>
+    </button>
+  );
+  const statusPill = (m: MemberRow, isPaid: boolean) => {
+    const d = daysLeft(m);
+    const [t, c] =
+      !m.planId && m.planStatus !== "EXPIRED" ? ["Kein Abo", "bg-bg text-ink-2"]
+      : unpaid(m) && !isPaid ? ["Offen", "bg-warn-bg text-warn"]
+      : m.planStatus === "EXPIRED" || (d !== null && d < 0 && !m.renewedUntil) ? ["Abgelaufen", "bg-bad-bg text-bad"]
+      : ["Aktiv", "bg-ok-bg text-ok"];
+    return <span className={cn("pill", c)}>{t}</span>;
+  };
+
   return (
-    <>
-      <div className="flex gap-2.5 px-5 pt-4">
-        <input
-          type="search"
-          aria-label="Mitglieder suchen"
-          placeholder={`Suchen in ${members.length} Mitgliedern`}
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          className="h-[50px] min-w-0 flex-1 rounded-[15px] border border-border bg-inset px-4 text-[16px] text-foreground outline-none placeholder:text-muted-foreground focus-visible:border-clay lg:max-w-[480px]"
-        />
-        <button type="button" onClick={() => setEditing("new")} className="h-[50px] shrink-0 rounded-[15px] bg-clay px-4 text-[15px] font-bold text-white">
-          + Mitglied
-        </button>
-        <button type="button" onClick={() => downloadCsv(shown)} className="hidden h-[50px] shrink-0 rounded-[15px] border border-border px-4 text-[15px] font-bold sm:block">
-          Export
-        </button>
-      </div>
-      <div className="no-scrollbar flex gap-2 overflow-x-auto px-5 pt-3">
-        {filters.map(([id, label, t]) => {
-          const on = filter === id;
-          return (
-            <button
-              key={id}
-              type="button"
-              aria-pressed={on}
-              onClick={() => setFilter(id)}
-              className={cn(
-                "flex-none rounded-full border px-4 py-2 text-[14px] font-semibold",
-                on ? "border-foreground bg-foreground text-background" : "border-border text-foreground"
-              )}
-            >
-              {label} <span className="opacity-60">{members.filter(t).length}</span>
-            </button>
-          );
-        })}
+    <div className="flex flex-col gap-3.5 px-5 pt-3 @min-[640px]:gap-4 @min-[640px]:px-0 @min-[640px]:pt-0">
+      <div className="grid grid-cols-2 gap-2.5 @min-[640px]:gap-4 @min-[1024px]:grid-cols-4">
+        {kpi("abo", "Abo aktiv", members.filter((m) => m.planStatus === "ACTIVE").length, `von ${members.length} Mitgliedern`, "bg-[linear-gradient(135deg,#1a8a75,#0f5c4f_70%)] text-white")}
+        {kpi("all", "Mitglieder", members.length, `${members.filter((m) => !m.planId).length} ohne Abo`)}
+        {kpi("open", "Zahlung offen", members.filter(unpaid).length, "Rechnung noch nicht bezahlt")}
+        {kpi("soon", "Läuft ab", members.filter(filters.find(([id]) => id === "soon")![2]).length, "in 30 Tagen oder abgelaufen")}
       </div>
       <MemberSheet slug={slug} plans={plans} member={editing} onClose={() => setEditing(null)} />
-      {/* desktop: scannable table; mobile: the same rows stack as cards */}
-      <div className={cn("flex flex-col gap-2 px-5 pt-3 lg:mx-5 lg:mt-3 lg:gap-0 lg:overflow-hidden lg:rounded-[20px] lg:border lg:border-border lg:bg-card lg:px-0 lg:pt-0", picked.length > 0 && "mb-24")}>
-        <div className="hidden grid-cols-[24px_minmax(0,2.2fr)_minmax(0,1.6fr)_minmax(0,1.4fr)_150px] gap-4 border-b border-border px-5 py-3 text-[12px] font-bold uppercase tracking-[.06em] text-muted-foreground lg:grid">
-          <input
-            type="checkbox"
-            aria-label="Alle angezeigten auswählen"
-            checked={allOn}
-            onChange={() => setSel(allOn ? [] : shown.map((m) => m.id))}
-            className="h-[18px] w-[18px] accent-clay"
-          />
-          <span>Mitglied</span>
-          <span>Abo</span>
-          <span>Gültigkeit</span>
-          <span className="text-right">Zahlung</span>
-        </div>
-        {!shown.length && <div className="py-6 text-center text-[15px] text-muted-foreground">Niemand gefunden</div>}
-        {shown.map((m) => {
-          const isPaid = m.state === "paid" || paid.includes(m.id);
-          const sent = reminded.includes(m.id);
-          const role = m.role !== "MEMBER" ? ROLES.find(([r]) => r === m.role)?.[1] : null;
-          const warn = checks(m, plans);
-          return (
-            <div
-              key={m.id}
-              className="flex items-center gap-3 rounded-[20px] border border-border bg-card px-4 py-3 lg:grid lg:grid-cols-[24px_minmax(0,2.2fr)_minmax(0,1.6fr)_minmax(0,1.4fr)_150px] lg:gap-4 lg:rounded-none lg:border-0 lg:border-b lg:px-5 lg:last:border-b-0 lg:hover:bg-inset/50"
-            >
-              <input
-                type="checkbox"
-                aria-label={`${m.name} auswählen`}
-                checked={sel.includes(m.id)}
-                onChange={() => toggle(m.id)}
-                className="h-[18px] w-[18px] shrink-0 accent-clay"
-              />
-              <button type="button" onClick={() => setEditing(m)} aria-label={`${m.name} bearbeiten`} className="flex min-w-0 flex-1 items-center gap-3 text-left">
-                <Avatar ini={initials(m.name)} />
-                <span className="min-w-0 flex-1">
-                  <span className="flex items-center gap-2">
-                    <span className="truncate text-[16px] font-bold underline-offset-2 hover:underline">{m.name}</span>
-                    {role && <span className="shrink-0 rounded-full bg-inset px-2 py-0.5 text-[11px] font-bold uppercase tracking-[.04em] text-muted-foreground">{role}</span>}
-                    {warn.length > 0 && (
-                      <span title={warn.join(" · ")} className="shrink-0 rounded-full bg-amber-100 max-sm:hidden px-2 py-0.5 text-[11px] font-bold text-amber-800">
-                        {warn.length === 1 ? warn[0] : `${warn.length} prüfen`}
-                      </span>
-                    )}
-                  </span>
-                  <span className="block truncate text-[13px] text-muted-foreground">{m.email}</span>
-                  {/* mobile: Abo + validity under the name */}
-                  <span className="block truncate text-[13px] lg:hidden">
-                    {m.planId ? <><b className="font-semibold">{m.plan}</b> · <Validity m={m} /></> : <span className="text-muted-foreground">Kein Abo</span>}
-                    {warn.length > 0 && <span className="font-semibold text-amber-700 sm:hidden"> · ⚠ {warn[0]}</span>}
-                  </span>
-                </span>
-              </button>
-              <div className="hidden min-w-0 lg:block">
-                {m.planId ? (
-                  <>
-                    <div className="truncate text-[15px] font-semibold">{m.plan}</div>
-                    {m.pricePaid != null && <div className="text-[13px] text-muted-foreground">CHF {m.pricePaid}</div>}
-                  </>
-                ) : (
-                  <span className="text-[15px] text-muted-foreground">Kein Abo</span>
-                )}
-              </div>
-              <div className="hidden text-[14px] lg:block">
-                <Validity m={m} />
-                {m.planId && m.planStart && <div className="text-[12px] text-muted-foreground">seit {date(m.planStart)}</div>}
-              </div>
-              <div className="shrink-0 lg:flex lg:justify-end">
-                {m.renewalOpen && !paid.includes(m.id) ? (
-                  <button type="button" onClick={() => markPaid(m)} disabled={busy === m.id} aria-label={`Verlängerung von ${m.name} als bezahlt markieren`} className={cn(pill, "bg-clay text-white")}>
-                    Bezahlt markieren
-                  </button>
-                ) : isPaid ? (
-                  <span className={cn(pill, "bg-paid-bg text-paid-fg")}>Bezahlt</span>
-                ) : m.state === "invoice" ? (
-                  <button
-                    type="button"
-                    onClick={() => markPaid(m)}
-                    disabled={busy === m.id}
-                    aria-label={`Rechnung von ${m.name} als bezahlt markieren`}
-                    className={cn(pill, "bg-clay text-white")}
-                  >
-                    Bezahlt markieren
-                  </button>
-                ) : m.role === "CLUB_ADMIN" || m.role === "COACH" ? null : sent ? (
-                  <span className={cn(pill, "bg-inset text-muted-foreground")}>Gesendet</span>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => remind(m)}
-                    disabled={busy === m.id}
-                    aria-label={`Zahlungserinnerung an ${m.name} senden`}
-                    className={cn(pill, "border border-border text-foreground")}
-                  >
-                    Erinnern
-                  </button>
-                )}
-              </div>
+      <div className="grid items-start gap-4 @min-[1100px]:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="min-w-0">
+          <div className="card p-4 @min-[640px]:p-5">
+            <div className="mb-3.5 flex flex-wrap items-center gap-2.5">
+              <label className="flex h-[42px] min-w-0 flex-1 basis-full items-center gap-2 rounded-full bg-bg px-4 text-ink-3 @min-[640px]:basis-auto @min-[640px]:max-w-[340px]">
+                <svg aria-hidden width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
+                <input
+                  type="search"
+                  aria-label="Mitglieder suchen"
+                  placeholder={`Name oder E-Mail, ${members.length} Mitglieder`}
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  className="min-w-0 flex-1 bg-transparent text-[15px] text-ink outline-none placeholder:text-ink-3"
+                />
+              </label>
+              <div className="flex-1" />
+              <button type="button" onClick={() => downloadCsv(shown)} className="btn btn-ghost hidden @min-[640px]:inline-flex">Exportieren</button>
+              <button type="button" onClick={() => setEditing("new")} className="btn btn-pri">+ Mitglied</button>
             </div>
-          );
-        })}
-      </div>
-      {picked.length > 0 && (
-        <div className="fixed inset-x-3 bottom-[calc(max(10px,env(safe-area-inset-bottom))+84px)] z-40 mx-auto flex max-w-[720px] flex-wrap items-center gap-2 rounded-[20px] border border-border bg-card p-2.5 shadow-lg lg:bottom-6 lg:left-64">
-          <span className="px-2 text-[14px] font-bold">{picked.length} ausgewählt</span>
-          <div className="flex-1" />
-          <button type="button" disabled={busy === "bulk"} onClick={() => bulk("remind")} className={cn(pill, "border border-border")}>Erinnern</button>
-          <button type="button" disabled={busy === "bulk"} onClick={() => bulk("paid")} className={cn(pill, "border border-border")}>Bezahlt</button>
-          <button type="button" disabled={busy === "bulk"} onClick={() => bulk("renew")} className={cn(pill, "border border-border")}>Verlängerung anbieten</button>
-          <button type="button" onClick={() => downloadCsv(picked)} className={cn(pill, "border border-border")}>CSV</button>
-          <button type="button" onClick={() => setSel([])} aria-label="Auswahl aufheben" className={cn(pill, "bg-inset")}>
-            {busy === "bulk" ? <Spinner /> : "✕"}
-          </button>
+            <div className="no-scrollbar -mx-1 mb-3 flex gap-2 overflow-x-auto px-1 py-1">
+              {filters.map(([id, label, t]) => (
+                <button key={id} type="button" aria-pressed={filter === id} onClick={() => setFilter(id)} className="chip shadow-none aria-pressed:shadow-none bg-bg">
+                  {label} <span className="opacity-60">{members.filter(t).length}</span>
+                </button>
+              ))}
+            </div>
+            {/* wide: table rows; phone: the same rows stack */}
+            <div className={cn("flex flex-col", picked.length > 0 && "mb-2")}>
+              <div className="hidden grid-cols-[24px_minmax(0,2.2fr)_minmax(0,1.6fr)_minmax(0,1.4fr)_150px] gap-4 px-3 pb-3 text-[12.5px] font-semibold text-ink-3 @min-[1024px]:grid">
+                <input type="checkbox" aria-label="Alle angezeigten auswählen" checked={allOn} onChange={() => setSel(allOn ? [] : shown.map((m) => m.id))} className="h-[18px] w-[18px] accent-brand-deep" />
+                <span>Mitglied</span>
+                <span>Abo</span>
+                <span>Gültigkeit</span>
+                <span className="text-right">Zahlung</span>
+              </div>
+              {!shown.length && <div className="py-6 text-center text-[15px] text-ink-2">Niemand gefunden</div>}
+              {shown.map((m) => {
+                const isPaid = m.state === "paid" || paid.includes(m.id);
+                const sent = reminded.includes(m.id);
+                const role = m.role !== "MEMBER" ? ROLES.find(([r]) => r === m.role)?.[1] : null;
+                const warn = checks(m, plans);
+                const on = sel.includes(m.id);
+                return (
+                  <div
+                    key={m.id}
+                    className={cn(
+                      "flex items-center gap-3 rounded-[14px] border-t border-line px-3 py-2.5 first:border-t-0 @min-[1024px]:grid @min-[1024px]:grid-cols-[24px_minmax(0,2.2fr)_minmax(0,1.6fr)_minmax(0,1.4fr)_150px] @min-[1024px]:gap-4",
+                      (on || detail === m.id) && "bg-brand-tint"
+                    )}
+                  >
+                    <input type="checkbox" aria-label={`${m.name} auswählen`} checked={on} onChange={() => toggle(m.id)} className="h-[18px] w-[18px] shrink-0 accent-brand-deep" />
+                    <button type="button" onClick={() => openMember(m)} aria-label={`${m.name} öffnen`} className="flex min-w-0 flex-1 items-center gap-3 text-left">
+                      <Avatar ini={initials(m.name)} className="h-9 w-9 text-[12px]" />
+                      <span className="min-w-0 flex-1">
+                        <span className="flex items-center gap-2">
+                          <span className="truncate text-[15px] font-semibold">{m.name}</span>
+                          {role && <span className="pill h-5 shrink-0 bg-bg px-2 text-[11px] text-ink-2">{role}</span>}
+                          {warn.length > 0 && (
+                            <span title={warn.join(" · ")} className="pill h-5 shrink-0 bg-warn-bg px-2 text-[11px] text-warn max-sm:hidden">
+                              {warn.length === 1 ? warn[0] : `${warn.length} prüfen`}
+                            </span>
+                          )}
+                        </span>
+                        <span className="block truncate text-[12.5px] text-ink-3">{m.email}</span>
+                        <span className="mt-0.5 flex items-center gap-2 truncate text-[12.5px] @min-[1024px]:hidden">
+                          {statusPill(m, isPaid)}
+                          {m.planId ? <b className="truncate font-semibold">{m.plan}</b> : null}
+                        </span>
+                      </span>
+                    </button>
+                    <div className="hidden min-w-0 @min-[1024px]:block">
+                      <div className="flex items-center gap-2">
+                        {statusPill(m, isPaid)}
+                        {m.planId && <span className="truncate text-[14px] font-semibold">{m.plan}</span>}
+                      </div>
+                      {m.pricePaid != null && <div className="mt-0.5 text-[12.5px] text-ink-3">CHF {m.pricePaid}</div>}
+                    </div>
+                    <div className="hidden text-[14px] @min-[1024px]:block">
+                      <Validity m={m} />
+                      {m.planId && m.planStart && <div className="text-[12.5px] text-ink-3">seit {date(m.planStart)}</div>}
+                    </div>
+                    <div className="shrink-0 @min-[1024px]:flex @min-[1024px]:justify-end">
+                      {(m.renewalOpen && !paid.includes(m.id)) || m.state === "invoice" ? (
+                        <button type="button" onClick={() => markPaid(m)} disabled={busy === m.id} aria-label={`${m.renewalOpen ? "Verlängerung" : "Rechnung"} von ${m.name} als bezahlt markieren`} className={cn(pill, "bg-brand-deep text-white")}>
+                          Bezahlt markieren
+                        </button>
+                      ) : isPaid ? (
+                        <span className="pill bg-ok-bg text-ok">Bezahlt</span>
+                      ) : m.role === "CLUB_ADMIN" || m.role === "COACH" ? null : sent ? (
+                        <span className="pill bg-bg text-ink-2">Gesendet</span>
+                      ) : (
+                        <button type="button" onClick={() => remind(m)} disabled={busy === m.id} aria-label={`Zahlungserinnerung an ${m.name} senden`} className={cn(pill, "bg-bg text-ink")}>
+                          Erinnern
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          {picked.length > 0 && (
+            <div className="sticky bottom-[calc(max(10px,env(safe-area-inset-bottom))+84px)] z-40 mt-3.5 flex flex-wrap items-center gap-2 rounded-[28px] bg-ink p-2 pl-5 text-[14px] font-semibold text-white shadow-lift @min-[640px]:bottom-4 @min-[640px]:rounded-full">
+              <span>{picked.length} ausgewählt</span>
+              <div className="flex-1" />
+              {([["remind", "Erinnern"], ["paid", "Als bezahlt markieren"], ["renew", "Verlängerung anbieten"]] as const).map(([k, l]) => (
+                <button key={k} type="button" disabled={busy === "bulk"} onClick={() => bulk(k)} className="btn h-9 bg-white/[.12] text-[13px] text-white shadow-none">{l}</button>
+              ))}
+              <button type="button" onClick={() => downloadCsv(picked)} className="btn h-9 bg-white/[.12] text-[13px] text-white shadow-none">CSV</button>
+              <button type="button" onClick={() => setSel([])} className="btn h-9 bg-white/[.12] text-[13px] text-white shadow-none">{busy === "bulk" ? <Spinner /> : "Aufheben"}</button>
+            </div>
+          )}
         </div>
-      )}
-    </>
+        <div className="hidden flex-col gap-4 @min-[1100px]:flex">
+          {cur ? (
+            <>
+              <div className="card p-5">
+                <div className="flex items-center gap-3 pb-3.5">
+                  <Avatar ini={initials(cur.name)} className="h-12 w-12 text-[15px]" />
+                  <div className="min-w-0">
+                    <b className="block truncate text-[17px]">{cur.name}</b>
+                    <span className="block truncate text-[13px] text-ink-3">{cur.email}</span>
+                  </div>
+                </div>
+                <div className="grid grid-cols-[1fr_auto] gap-x-3.5 gap-y-2.5 border-t border-line py-3.5 text-[14px] [&>span:nth-child(even)]:text-right [&>span:nth-child(even)]:font-semibold [&>span:nth-child(odd)]:text-ink-3">
+                  <span>Abo</span><span>{cur.planId ? cur.plan : "Kein Abo"}</span>
+                  <span>Gültig bis</span><span>{cur.planEnd ? date(cur.planEnd) : "–"}</span>
+                  <span>Zahlung</span><span>{cur.pricePaid != null ? `CHF ${cur.pricePaid}` : "–"}</span>
+                  <span>Jahrgang</span><span>{cur.birthDate ? cur.birthDate.slice(0, 4) : "–"}</span>
+                </div>
+                <button type="button" onClick={() => setEditing(cur)} className="btn btn-ghost w-full">Bearbeiten</button>
+              </div>
+              <div className="card p-5">
+                <h2 className="mb-3.5 text-[17px] font-semibold">Belegung diese Woche</h2>
+                {(() => {
+                  const max = Math.max(1, ...cur.week);
+                  const top = cur.week.indexOf(Math.max(...cur.week));
+                  return (
+                    <>
+                      <div className="flex h-[110px] items-end gap-2 pt-6">
+                        {cur.week.map((h, i) => (
+                          <div key={i} title={`${h} h`} className={cn("relative flex-1 rounded-t-lg rounded-b-[4px]", i === top && h > 0 ? "bg-brand-deep" : "bg-[#f3d9a4]")} style={{ height: `${Math.max(4, (h / max) * 100)}%` }}>
+                            {i === top && h > 0 && <span className="absolute -top-[22px] left-1/2 -translate-x-1/2 text-[11.5px] font-semibold text-ink-3">{h} h</span>}
+                          </div>
+                        ))}
+                      </div>
+                      <div className="mt-1.5 flex gap-2 text-center text-[11.5px] text-ink-3">{["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"].map((d) => <span key={d} className="flex-1">{d}</span>)}</div>
+                    </>
+                  );
+                })()}
+              </div>
+            </>
+          ) : (
+            <div className="card p-5 text-[14px] text-ink-2">Wähle ein Mitglied in der Liste, dann erscheinen hier Details und Belegung.</div>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
 

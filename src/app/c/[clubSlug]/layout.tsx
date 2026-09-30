@@ -1,6 +1,7 @@
 import { getTenantContext } from "@/lib/tenant";
 import { TabBar } from "@/components/app/tab-bar";
 import { DemoSwitcher } from "@/components/app/demo-switcher";
+import { initials } from "@/lib/courts";
 import { DEMO_ACCOUNTS, demoModeOn, isDemoEmail } from "@/lib/demo";
 
 const DEMO_PERSONAS = [
@@ -20,11 +21,12 @@ export default async function ClubLayout({
   const { tenant, user } = ctx;
   const brand = tenant.settingsJson?.brandColor;
   return (
-    <div className="min-h-[100dvh] bg-background text-foreground lg:pl-64">
+    <div className="@container min-h-[100dvh] bg-background text-foreground">
       {/* validated #rrggbb in updateClubBrandingAction; the shades derive from it in globals.css */}
       {brand && /^#[0-9a-f]{6}$/i.test(brand) && <style>{`:root{--tennis-clay:${brand}}`}</style>}
-      <main className="mx-auto w-full max-w-[640px] pb-[calc(max(10px,env(safe-area-inset-bottom))+88px)] lg:max-w-[1280px] lg:px-6 lg:has-[[data-wide]]:max-w-none lg:pb-16">{children}</main>
-      <TabBar slug={tenant.slug} clubName={tenant.name} logoUrl={tenant.logoUrl} anon={!user} canAdmin={ctx.isTenantAdmin} />
+      <TabBar slug={tenant.slug} clubName={tenant.name} logoUrl={tenant.logoUrl} anon={!user} canAdmin={ctx.isTenantAdmin} ini={user ? initials(user.name || user.email) : undefined}>
+        {children}
+      </TabBar>
       {demoModeOn(tenant.settingsJson) && (
         <DemoSwitcher
           slug={tenant.slug}

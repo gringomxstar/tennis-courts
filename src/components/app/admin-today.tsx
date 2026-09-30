@@ -4,10 +4,12 @@ import { useOptimistic, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Avatar, Chevron } from "@/components/app/avatar";
+import { Avatar, Dot } from "@/components/app/avatar";
+import { SwitchKnob } from "@/components/app/switch";
+import { cn } from "@/lib/utils";
 import { useNow } from "@/components/app/use-now";
-import { cancelBookingAction, markBookingPaidOfflineAction } from "@/app/actions/booking";
-import { addDays, atHour, courtLabel, hhmm, initials, longDate, slotState } from "@/lib/courts";
+import { cancelBookingAction, createCourtBlockAction, deleteCourtBlockAction, markBookingPaidOfflineAction } from "@/app/actions/booking";
+import { addDays, atHour, courtColor, courtLabel, hhmm, initials, longDate, slotState } from "@/lib/courts";
 import type { Booking, Court, CourtBlock, TenantSettings } from "@/types";
 
 /** Local midnight (ms) on the client, null during SSR so server/client never disagree about "now". */
@@ -19,7 +21,7 @@ export function useToday() {
 export const overlapsDay = (b: { startsAt: string; endsAt: string }, day: number) =>
   new Date(b.startsAt).getTime() < addDays(new Date(day), 1).getTime() && new Date(b.endsAt).getTime() > day;
 
-const BAR = { blocked: "bg-bar-blocked", busy: "bg-clay", free: "bg-inset" } as const;
+const BAR = { blocked: "stripes", busy: "bg-brand-deep", free: "bg-brand-soft" } as const;
 
 export function AdminToday({
   slug,
@@ -87,6 +89,35 @@ export function AdminToday({
     });
   }
 
+  // Regen: every sand court blocked all day today, reason RAIN
+  const sand = courts.filter((c) => c.surface === "CLAY" && c.sportType !== "PADEL");
+  const rainBlocks = today === null ? [] : blocks.filter((b) => b.reason === "RAIN" && sand.some((c) => c.id === b.courtId) && overlapsDay(b, today));
+  const [rain, setRain] = useOptimistic(sand.length > 0 && sand.every((c) => rainBlocks.some((b) => b.courtId === c.id)));
+  function toggleRain() {
+    if (today === null || !sand.length) return;
+    const on = rain;
+    startTransition(async () => {
+      setRain(!on);
+      const results = on
+        ? await Promise.all(rainBlocks.map((b) => deleteCourtBlockAction({ clubSlug: slug, blockId: b.id })))
+        : [
+            await createCourtBlockAction({
+              clubSlug: slug,
+              items: sand
+                .filter((c) => !rainBlocks.some((b) => b.courtId === c.id))
+                .map((c) => ({ courtId: c.id, startsAt: atHour(new Date(today), open).toISOString(), endsAt: atHour(new Date(today), close).toISOString() })),
+              reason: "RAIN",
+            }),
+          ];
+      const failed = results.find((r) => !r.success);
+      if (failed) toast(failed.error ?? "Sperre fehlgeschlagen");
+      router.refresh();
+    });
+  }
+
+  const todays = today === null ? [] : bookings.filter((b) => b.status !== "CANCELLED" && overlapsDay(b, today));
+  const guests = todays.filter((b) => b.participants.some((p) => p.guestName)).length;
+
   function markPaid(id: string, waive = false) {
     startTransition(async () => {
       hide(id);
@@ -96,121 +127,118 @@ export function AdminToday({
     });
   }
 
+  const kpi = (label: string, value: string | number, sub: string, hero = false) => (
+    <div className={cn("card flex flex-col gap-2.5 p-4 @min-[640px]:px-[22px] @min-[640px]:py-5", hero && "bg-[linear-gradient(135deg,#1a8a75,#0f5c4f_70%)] text-white")}>
+      <span className="text-[14px] font-medium opacity-85">{label}</span>
+      <b className="text-[28px] font-bold leading-none tracking-[-.04em] tabular-nums @min-[640px]:text-[36px]">{value}</b>
+      <span className="text-[13px] font-semibold opacity-85">{sub}</span>
+    </div>
+  );
+
   return (
     <>
-      <div className="px-5 pt-[66px] lg:pt-12">
-        <div className="flex items-center justify-between gap-3">
-          <Link href={`/c/${slug}/admin`} className="lg:hidden inline-flex items-center gap-1 text-[15px] font-semibold text-clay-text"><svg aria-hidden width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>Verwaltung</Link>
-          <h1 className="text-[34px] font-bold tracking-[-.035em]">Heute</h1>
+      <div className="flex items-end justify-between gap-3 px-5 pt-[66px] @min-[640px]:px-0 @min-[640px]:pt-0">
+        <div>
+          <Link href={`/c/${slug}/admin`} className="@min-[640px]:hidden inline-flex items-center gap-1 text-[15px] font-semibold text-clay-text"><svg aria-hidden width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>Verwaltung</Link>
+          <h1 className="text-[28px] font-bold tracking-[-.03em]">Heute</h1>
+          <div className="mt-0.5 text-[15px] text-muted-foreground">{day ? longDate(day) : " "}</div>
         </div>
-        <div className="mt-0.5 text-[15px] text-muted-foreground">Belegung · {day ? longDate(day) : " "}</div>
+        <Link href={`/c/${slug}/admin/blocks`} className="btn hidden @min-[640px]:inline-flex">Sperre planen</Link>
       </div>
 
-      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] lg:gap-3 lg:px-5 lg:pt-4">
-      <div className="flex gap-3 px-5 pt-4 lg:flex-col lg:px-0 lg:pt-0">
-        <div className="flex-1 rounded-[24px] bg-clay p-[18px] text-white">
-          <div className="text-[13px] font-bold">Auslastung</div>
-          <div className="text-[44px] font-bold leading-[1.1] tracking-[-.04em]">{util}%</div>
-        </div>
-        <div className="flex-1 rounded-[24px] border border-border bg-card p-[18px]">
-          <div className="text-[13px] font-bold text-muted-foreground">Gesperrt</div>
-          <div className="text-[44px] font-bold leading-[1.1] tracking-[-.04em]">{blockedCount}</div>
-        </div>
-      </div>
+      <div className="flex flex-col gap-3.5 px-5 pt-4 pb-6 @min-[640px]:gap-4 @min-[640px]:px-0">
+        {sand.length > 0 && (
+          <button
+            type="button"
+            aria-pressed={rain}
+            onClick={toggleRain}
+            className="card flex items-center gap-3 p-4 text-left @min-[640px]:px-5"
+          >
+            <span className="min-w-0 flex-1">
+              <b className="block text-[16px]">Regen: alle Sandplätze sperren</b>
+              <small className="block text-[13px] text-ink-3">{rain ? "Gesperrt bis Tagesende. Zum Aufheben antippen." : `${sand.length} Plätze, heute ganztägig`}</small>
+            </span>
+            <SwitchKnob on={rain} />
+          </button>
+        )}
 
-      <div className="mx-5 mt-3 flex flex-col gap-[9px] rounded-[24px] border border-border bg-card p-4 lg:m-0 lg:justify-center">
-        {rows.map((r) => (
-          <div key={r.court.id} className="flex items-center gap-2.5">
-            <div className="w-14 text-[13px] font-semibold">{courtLabel(r.court).name}</div>
-            <div className="flex flex-1 gap-[2px]">
-              {r.bars.map((k, i) => (
-                <div key={i} className={`h-5 flex-1 rounded-[4px] ${BAR[k]}`} />
+        <div className="grid grid-cols-2 gap-2.5 @min-[640px]:gap-4 @min-[1024px]:grid-cols-4">
+          {kpi("Auslastung", `${util}%`, "belegte Platzstunden", true)}
+          {kpi("Buchungen", todays.length, guests ? `davon ${guests} Gäste` : "heute")}
+          {kpi("Gesperrt", blockedCount, blockedCount === 1 ? "Platz heute" : "Plätze heute")}
+          {kpi("Offen", openPayments.filter((p) => !gone.includes(p.id)).length, "Zahlungen vor Ort / Rechnung")}
+        </div>
+
+        <div className="grid items-start gap-3.5 @min-[640px]:gap-4 @min-[1024px]:grid-cols-2">
+          <div className="card flex flex-col gap-[9px] p-4 @min-[640px]:p-5">
+            <h2 className="mb-1 text-[18px] font-bold tracking-[-.02em]">Belegung</h2>
+            {rows.map((r) => (
+              <div key={r.court.id} className="flex items-center gap-2.5">
+                <div className="w-14 shrink-0 truncate text-[13px] font-semibold">{courtLabel(r.court).name}</div>
+                <div className="flex flex-1 gap-[2px]">
+                  {r.bars.map((k, i) => (
+                    <div key={i} className={cn("h-5 flex-1 rounded-[4px]", BAR[k])} />
+                  ))}
+                </div>
+              </div>
+            ))}
+            <div aria-hidden className="flex justify-between pl-[66px] text-[12px] text-ink-3">
+              {labels.map((h, i) => (
+                <span key={i}>{h}</span>
               ))}
             </div>
           </div>
-        ))}
-        <div aria-hidden className="flex justify-between pl-[66px] text-[12px] text-muted-foreground">
-          {labels.map((h, i) => (
-            <span key={i}>{h}</span>
-          ))}
-        </div>
-      </div>
-      </div>
 
-      <div className="flex flex-col gap-2.5 px-5 pt-3 lg:grid lg:grid-cols-2">
-        <Link
-          href={`/c/${slug}/admin/settings`}
-          className="flex items-center gap-3 rounded-[20px] border border-border bg-card px-4 py-3.5"
-        >
-          <div className="flex-1 text-[16px] font-bold">Club-Einstellungen</div>
-          <Chevron />
-        </Link>
-      </div>
-
-      <h2 className="px-5 pb-2.5 pt-6 text-[20px] font-bold tracking-[-.02em]">Nächste Buchungen</h2>
-      <div className="flex flex-col gap-2.5 px-5 lg:grid lg:grid-cols-2">
-        {upcoming.map((b) => {
-          const name = nameOf(b);
-          const court = byId.get(b.courtId) ?? b.court;
-          return (
-            <div key={b.id} className="flex items-center gap-3 rounded-[20px] border border-border bg-card px-4 py-3.5">
-              <Avatar ini={initials(name)} />
-              <div className="flex-1">
-                <div className="text-[16px] font-bold">{name}</div>
-                <div className="text-[14px] text-muted-foreground">
-                  {hhmm(new Date(b.startsAt))} · {court ? courtLabel(court).name : ""}
+          <div className="card p-4 @min-[640px]:p-5">
+            <h2 className="mb-1 text-[18px] font-bold tracking-[-.02em]">Nächste Buchungen</h2>
+            {!upcoming.length && <div className="py-3 text-[15px] text-ink-3">Heute keine weiteren Buchungen.</div>}
+            {upcoming.map((b) => {
+              const name = nameOf(b);
+              const court = byId.get(b.courtId) ?? b.court;
+              return (
+                <div key={b.id} className="flex items-center gap-3 border-t border-line py-3 first:border-t-0">
+                  <b className="w-12 shrink-0 text-[15px] tabular-nums">{hhmm(new Date(b.startsAt))}</b>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 truncate text-[15px] font-bold">
+                      {court && <Dot color={courtColor(court)} size={9} />}
+                      {court ? courtLabel(court).name : ""}
+                    </div>
+                    <div className="truncate text-[13px] text-ink-3">{name}</div>
+                  </div>
+                  <button type="button" onClick={() => cancel(b)} aria-label={`Buchung von ${name} stornieren`} className="btn btn-ghost !h-9 text-bad">
+                    Stornieren
+                  </button>
                 </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => cancel(b)}
-                aria-label={`Buchung von ${name} stornieren`}
-                className="rounded-[12px] bg-inset px-3.5 py-[9px] text-[14px] font-bold text-clay-text"
-              >
-                Stornieren
-              </button>
-            </div>
-          );
-        })}
-      </div>
+              );
+            })}
+          </div>
+        </div>
 
-      {openPayments.some((p) => !gone.includes(p.id)) && (
-        <>
-          <h2 className="px-5 pb-2.5 pt-6 text-[20px] font-bold tracking-[-.02em]">Offene Zahlungen</h2>
-          <div className="flex flex-col gap-2.5 px-5 lg:grid lg:grid-cols-2">
+        {openPayments.some((p) => !gone.includes(p.id)) && (
+          <div className="card p-4 @min-[640px]:p-5">
+            <h2 className="mb-1 text-[18px] font-bold tracking-[-.02em]">Offene Zahlungen</h2>
             {openPayments
               .filter((p) => !gone.includes(p.id))
               .map((p) => (
-                <div key={p.id} className="flex items-center gap-3 rounded-[20px] border border-border bg-card px-4 py-3.5">
+                <div key={p.id} className="flex flex-wrap items-center gap-3 border-t border-line py-3 first:border-t-0">
                   <Avatar ini={initials(p.name)} />
-                  <div className="flex-1">
-                    <div className="text-[16px] font-bold">{p.name}</div>
-                    <div className="text-[14px] text-muted-foreground">
+                  <div className="min-w-0 flex-1 basis-40">
+                    <div className="truncate text-[15px] font-bold">{p.name}</div>
+                    <div className="text-[13px] text-ink-3">
                       {now ? `${longDate(new Date(p.startsAt))}, ${hhmm(new Date(p.startsAt))}` : ""} · CHF {Number(p.amount).toFixed(2)} · {p.method}
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => markPaid(p.id, true)}
-                    aria-label={`Zahlung von ${p.name} erlassen`}
-                    className="rounded-[12px] border border-border px-3.5 py-[9px] text-[14px] font-bold"
-                  >
+                  <button type="button" onClick={() => markPaid(p.id, true)} aria-label={`Zahlung von ${p.name} erlassen`} className="btn btn-ghost !h-9">
                     Erlassen
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => markPaid(p.id)}
-                    aria-label={`Zahlung von ${p.name} als bezahlt markieren`}
-                    className="rounded-[12px] bg-clay px-3.5 py-[9px] text-[14px] font-bold text-white"
-                  >
+                  <button type="button" onClick={() => markPaid(p.id)} aria-label={`Zahlung von ${p.name} als bezahlt markieren`} className="btn btn-pri !h-9">
                     Bezahlt
                   </button>
                 </div>
               ))}
           </div>
-        </>
-      )}
-
+        )}
+      </div>
     </>
   );
 }

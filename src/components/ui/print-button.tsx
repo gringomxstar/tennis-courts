@@ -5,9 +5,9 @@ export function PrintButton() {
     <button
       type="button"
       onClick={() => window.print()}
-      className="flex h-[60px] w-full items-center justify-center rounded-[20px] bg-clay text-[18px] font-bold text-white active:scale-[.97]"
+      className="btn btn-pri h-[54px] w-full text-[16px]"
     >
-      Als PDF speichern / Drucken
+      PDF laden
     </button>
   );
 }

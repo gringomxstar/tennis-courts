@@ -7,7 +7,8 @@
 body { background: var(--pg-bg); color: var(--pg-fg); font-family: "Outfit", -apple-system, "Helvetica Neue", sans-serif; padding-inline: 16px; padding-block: 18px 60px; }
 .bar { display: flex; flex-wrap: wrap; gap: 10px 20px; align-items: center; max-width: 1480px; margin: 0 auto 14px; }
 .bar h1 { font-size: 17px; margin: 0; font-weight: 700; }
-.bar .grp { display: flex; gap: 2px; background: var(--pg-card); border: 1px solid var(--pg-line); border-radius: 999px; padding: 3px; }
+.bar .scr { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; } .bar .scr > span { font-size: 11.5px; font-weight: 700; color: var(--pg-muted); text-transform: uppercase; letter-spacing: .06em; }
+.bar .grp { display: flex; flex-wrap: wrap; gap: 2px; background: var(--pg-card); border: 1px solid var(--pg-line); border-radius: 20px; padding: 3px; }
 .bar button { font: inherit; font-size: 13px; font-weight: 600; border: 0; background: transparent; color: var(--pg-muted); padding: 6px 13px; border-radius: 999px; cursor: pointer; }
 .bar button[aria-pressed="true"] { background: var(--pg-accent); color: #fff; }
 .bar .note { font-size: 13px; color: var(--pg-muted); flex-basis: 100%; max-width: 72ch; }
@@ -66,7 +67,7 @@ body { background: var(--pg-bg); color: var(--pg-fg); font-family: "Outfit", -ap
 .court svg { position: absolute; inset: 0; width: 100%; height: 100%; }
 .court .lbl { position: absolute; top: 16px; left: 16px; display: inline-flex; align-items: center; gap: 8px; background: rgba(255,255,255,.18); backdrop-filter: blur(10px); border-radius: 999px; padding: 7px 12px 7px 8px; font-size: 13px; font-weight: 600; }
 .court .lbl i { width: 22px; height: 22px; border-radius: 50%; background: #fff; display: inline-block; }
-.court .foot { position: absolute; left: 16px; right: 16px; bottom: 16px; display: flex; gap: 8px; flex-wrap: wrap; }
+.court .foot { position: absolute; left: 16px; right: 16px; bottom: 16px; display: flex; gap: 8px; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; } .court .foot .chip { flex: none; }
 .court .foot .chip { background: rgba(255,255,255,.92); box-shadow: none; color: var(--ink); height: 38px; }
 .court .foot .chip b { font-size: 15px; }
 
@@ -138,7 +139,6 @@ body { background: var(--pg-bg); color: var(--pg-fg); font-family: "Outfit", -ap
 .hourrow b { font-size: 17px; letter-spacing: -.02em; padding-top: 6px; }
 .courts { display: flex; flex-wrap: wrap; gap: 6px; }
 .courts .chip { height: 34px; padding: 0 11px; box-shadow: none; background: var(--bg); } .courts .chip.taken { color: var(--ink-3); text-decoration: line-through; opacity: .7; } .courts .chip.mine { background: var(--brand-deep); color: #fff; }
-.sheet, .scrim { display: none; }
 
 /* ---------- MITGLIEDER ---------- */
 .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
@@ -169,6 +169,95 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 
 .bars div span { position: absolute; top: -22px; left: 50%; transform: translateX(-50%); font-size: 11.5px; color: var(--ink-3); font-weight: 600; }
 .bars-x { display: flex; gap: 8px; margin-top: 6px; } .bars-x span { flex: 1; text-align: center; font-size: 11.5px; color: var(--ink-3); }
 
+/* ---------- ADDED SCREENS (same language) ---------- */
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 16px; align-items: start; }
+.stack { display: flex; flex-direction: column; gap: 14px; }
+.m3 { color: var(--ink-3); font-size: 13.5px; } .center { text-align: center; }
+.lst > .lrow:first-child { border-top: 0; padding-top: 0; }
+.lrow { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid var(--line); }
+.lrow .g { flex: 1; min-width: 0; } .lrow b { display: block; font-size: 15px; font-weight: 600; } .lrow small { display: block; color: var(--ink-3); font-size: 12.5px; }
+.lrow.tap { cursor: pointer; } .lrow .chev { color: var(--ink-3); font-size: 20px; font-weight: 500; }
+.lrow .g b .dot { margin-right: 6px; vertical-align: 1px; }
+.tm { width: 56px; flex: none; } .tm b { font-size: 18px; letter-spacing: -.02em; }
+.btn.danger { background: var(--bad-bg); color: var(--bad); box-shadow: none; }
+.btn.wide { width: 100%; height: 50px; font-size: 15.5px; }
+.btn.sm { height: 36px; padding: 0 14px; font-size: 13px; box-shadow: none; background: var(--bg); }
+.banner { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: var(--r-s); background: var(--warn-bg); color: var(--warn); font-size: 13.5px; font-weight: 500; }
+.banner .g { flex: 1; min-width: 0; } .banner b { display: block; font-size: 15px; font-weight: 700; }
+.banner .btn { height: 36px; box-shadow: none; background: #fff; color: var(--warn); font-size: 13px; padding: 0 14px; }
+.banner.ok { background: var(--ok-bg); color: var(--ok); } .banner.ok .btn { color: var(--ok); }
+.fld { display: flex; flex-direction: column; gap: 7px; min-width: 0; } .fld > span, .l2 { font-size: 13px; font-weight: 600; color: var(--ink-2); }
+.fld input, .fld select { height: 48px; border: 0; border-radius: 14px; background: var(--bg); padding: 0 16px; font-size: 15px; outline: 0; width: 100%; color: var(--ink); }
+.fld input:focus { box-shadow: inset 0 0 0 2px var(--brand-deep); } .fld .hint { font-size: 12.5px; color: var(--ink-3); font-weight: 500; }
+.fld.err input { box-shadow: inset 0 0 0 2px var(--bad); } .fld.err .hint { color: var(--bad); font-weight: 600; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.sw { width: 50px; height: 30px; border-radius: 999px; background: #d3dbd8; position: relative; flex: none; border: 0; cursor: pointer; }
+.sw::after { content: ""; position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%; background: #fff; box-shadow: 0 2px 6px rgba(0,0,0,.2); transition: left .2s; }
+.sw[aria-pressed="true"] { background: var(--brand-deep); } .sw[aria-pressed="true"]::after { left: 23px; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 160px), 1fr)); gap: 12px; }
+.tile { padding: 18px; display: flex; flex-direction: column; gap: 4px; cursor: pointer; min-height: 138px; }
+.tile .ti { width: 38px; height: 38px; border-radius: 12px; background: var(--brand-tint); color: var(--brand-deep); display: inline-flex; align-items: center; justify-content: center; margin-bottom: auto; }
+.tile .ti svg, .ei svg, .okc svg { width: 19px; height: 19px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.tile b { font-size: 28px; font-weight: 700; letter-spacing: -.03em; line-height: 1.05; margin-top: 12px; } .tile span { font-weight: 600; } .tile small { color: var(--ink-3); font-size: 12.5px; }
+.grad { background: linear-gradient(135deg, #1a8a75 0%, #0f5c4f 70%); color: #fff; } .grad small, .grad .m3 { color: rgba(255,255,255,.78); } .tile.grad .ti { background: rgba(255,255,255,.16); color: #fff; }
+.empty { text-align: center; padding: 28px 22px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.ei { width: 64px; height: 64px; border-radius: 50%; background: var(--brand-tint); color: var(--brand-deep); display: flex; align-items: center; justify-content: center; }
+.ei svg { width: 26px; height: 26px; } .okc { width: 76px; height: 76px; border-radius: 50%; background: var(--ok-bg); color: var(--ok); display: flex; align-items: center; justify-content: center; margin: 4px auto 0; } .okc svg { width: 34px; height: 34px; stroke-width: 2.6; }
+.sum .tot { font-weight: 700; font-size: 16px; border-top: 1px solid #d5dfdb; padding-top: 8px; }
+.opt { display: flex; align-items: center; gap: 12px; padding: 14px; border-radius: 16px; background: var(--bg); cursor: pointer; border: 0; width: 100%; text-align: left; }
+.opt[aria-pressed="true"] { background: var(--brand-tint); box-shadow: inset 0 0 0 2px var(--brand-deep); }
+.opt .g { flex: 1; min-width: 0; } .opt b { display: block; font-size: 15px; font-weight: 600; } .opt small { color: var(--ink-3); font-size: 12.5px; } .opt .pr { font-weight: 700; font-size: 16px; white-space: nowrap; }
+.radio { width: 20px; height: 20px; border-radius: 50%; box-shadow: inset 0 0 0 2px var(--ink-3); flex: none; } .opt[aria-pressed="true"] .radio { box-shadow: inset 0 0 0 6px var(--brand-deep); }
+.ck { display: flex; gap: 10px; align-items: flex-start; font-size: 13.5px; color: var(--ink-2); } .ck input { width: 18px; height: 18px; accent-color: var(--brand-deep); margin: 1px 0 0; flex: none; }
+.bigpay { position: sticky; bottom: 0; z-index: 3; padding: 14px; display: flex; flex-direction: column; gap: 10px; box-shadow: var(--sh-lg); }
+.savebar { position: sticky; bottom: 0; z-index: 3; display: flex; align-items: center; gap: 8px; padding: 7px 7px 7px 20px; border-radius: 999px; background: var(--ink); color: #fff; font-weight: 600; font-size: 14px; box-shadow: var(--sh-lg); }
+.savebar .btn { height: 40px; box-shadow: none; } .savebar .btn.t { background: rgba(255,255,255,.12); color: #fff; } .savebar .btn.pri { background: #38b58a; }
+.auth { width: 100%; max-width: 420px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+.brandmark { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 17px; }
+.brandmark i { width: 42px; height: 42px; border-radius: 14px; background: linear-gradient(135deg,#1a8a75,#0b433a); color: #fff; font-style: normal; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px; letter-spacing: -.04em; }
+.link { color: var(--brand-deep); font-weight: 600; cursor: pointer; }
+.or { display: flex; align-items: center; gap: 10px; color: var(--ink-3); font-size: 13px; } .or::before, .or::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+.swatches { display: flex; gap: 10px; flex-wrap: wrap; } .swatches button { width: 40px; height: 40px; border-radius: 50%; border: 0; cursor: pointer; } .swatches button[aria-pressed="true"] { box-shadow: 0 0 0 3px var(--card), 0 0 0 5px var(--ink); }
+.hbar { display: grid; grid-template-columns: 64px 1fr 40px; gap: 10px; align-items: center; font-size: 13px; padding: 5px 0; } .hbar span:last-child { text-align: right; font-weight: 600; }
+.hbar .tr { height: 10px; border-radius: 99px; background: var(--bg); overflow: hidden; } .hbar .tr i { display: block; height: 100%; border-radius: 99px; background: var(--brand-deep); }
+.bars.y { height: 130px; gap: 6px; } .bars.y div { background: #cde8df; } .bars.y div.hi { background: var(--brand-deep); } .bars-x.y { gap: 6px; }
+.courtrows .cr { padding: 12px 0; border-top: 1px solid var(--line); } .courtrows .cr:first-child { border-top: 0; padding-top: 0; }
+.courtrows .cr > div:first-child { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; } .courtrows .cr b { font-size: 15px; } .courtrows .cr small { color: var(--ink-3); font-size: 12.5px; }
+.hscroll { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; } .slots { padding: 2px 2px 6px; margin: 0 -2px; } .slot { flex: none; width: 128px; padding: 14px 16px; border: 0; text-align: left; cursor: pointer; display: flex; flex-direction: column; gap: 2px; background: var(--bg); box-shadow: none; } .slot b { font-size: 32px; font-weight: 700; letter-spacing: -.04em; line-height: 1.1; } .slot span { display: flex; align-items: center; gap: 6px; font-weight: 600; } .slot small { color: var(--ink-3); font-size: 12.5px; }
+.hscroll .chip { flex: none; height: 38px; box-shadow: none; background: var(--bg); font-size: 14px; }
+.hscroll .chip.taken { color: var(--ink-3); text-decoration: line-through; opacity: .7; } .hscroll .chip.mine { background: var(--brand-deep); color: #fff; } .hscroll .chip.past { opacity: .35; }
+.grid9 { display: grid; grid-template-columns: 44px repeat(9, minmax(0, 1fr)); gap: 4px; align-items: center; }
+.grid9 .h { font-size: 11.5px; font-weight: 700; color: var(--ink-2); text-align: center; } .grid9 .r { font-size: 13px; font-weight: 600; }
+.grid9 .c { height: 34px; border-radius: 9px; background: var(--bg); cursor: pointer; } .grid9 .c.t { background: var(--mem); cursor: default; } .grid9 .c.me { background: var(--me); } .grid9 .c.g { background: var(--guest); } .grid9 .c.co { background: var(--coach); } .grid9 .c.bl { background: repeating-linear-gradient(135deg,#cfd7d4 0 3px,#eef2f0 3px 6px); cursor: default; }
+.inv { font-size: 14px; } .inv .kv { display: grid; grid-template-columns: 1fr auto; gap: 8px 14px; padding: 14px 0; border-top: 1px solid var(--line); } .inv .kv span:nth-child(odd) { color: var(--ink-2); } .inv .kv span:nth-child(even) { text-align: right; font-weight: 600; }
+.inv .kv .tot { font-size: 18px; font-weight: 700; color: var(--ink) !important; }
+.acts2 { display: flex; gap: 8px; flex-wrap: wrap; } .acts2 .btn { flex: 1; }
+/* annotation: tap counter (draft only) */
+.abo-new, .app[data-abo="neu"] .abo-renew { display: none; } .app[data-abo="neu"] .abo-new { display: inline; } .app[data-abo="neu"] .btn.abo-new { display: inline-flex; }
+.tapn { display: none; }
+.app[data-taps] .tapn { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background: #ff3d7f; color: #fff; font-size: 12px; font-weight: 800; font-style: normal; box-shadow: 0 0 0 3px rgba(255,61,127,.25); flex: none; }
+.app[data-taps] .chip.pick { background: var(--brand-soft); color: var(--brand-deep); box-shadow: inset 0 0 0 2px var(--brand-deep); gap: 6px; padding-right: 5px; }
+/* phone variants of the calendar */
+/* overlays: bottom sheet on phone, dialog from 640 */
+.veil, .bs { display: none; }
+.app[data-bs] .veil { display: block; position: absolute; inset: 0; background: rgba(20,33,61,.42); z-index: 7; }
+.app[data-bs="res"] #bs-res, .app[data-bs="ok"] #bs-ok, .app[data-bs="detail"] #bs-detail { display: flex; }
+.bs { position: absolute; z-index: 8; inset: auto 0 0 0; background: var(--card); border-radius: 30px 30px 0 0; box-shadow: 0 -20px 50px -20px rgba(20,33,61,.5); max-height: 92%; overflow: auto; padding: 8px 20px 26px; flex-direction: column; gap: 14px; }
+.bs::before { content: ""; flex: none; align-self: center; width: 40px; height: 5px; border-radius: 3px; background: #d8dedb; }
+.bs .l { font-size: 13px; font-weight: 600; color: var(--ink-2); display: block; margin-bottom: 7px; }
+.bs-h { display: flex; align-items: flex-start; gap: 12px; } .bs-h .g { flex: 1; min-width: 0; } .bs-h .k { font-size: 13px; color: var(--ink-3); font-weight: 600; }
+.bs-h h2 { font-size: 26px; font-weight: 700; letter-spacing: -.03em; line-height: 1.1; } .bs-h small { display: flex; align-items: center; gap: 7px; color: var(--ink-2); font-size: 13.5px; margin-top: 4px; }
+.xb { width: 38px; height: 38px; border-radius: 50%; background: var(--bg); border: 0; font-size: 18px; cursor: pointer; flex: none; color: var(--ink-2); }
+.app[data-bare] { grid-template-columns: 1fr !important; } .app[data-bare] .rail, .app[data-bare] .topbar, .app[data-bare] .tabs { display: none !important; }
+@container app (min-width: 640px) {
+  .bs { inset: 50% auto auto 50%; transform: translate(-50%, -50%); width: 440px; border-radius: 24px; padding: 22px 24px 24px; max-height: 90%; } .bs::before { display: none; }
+  .app[data-bare] .content { justify-content: center; }
+}
+@container app (max-width: 639px) {
+  .bigpay, .savebar { bottom: 84px; }
+  .app[data-bare] .content { padding-bottom: 32px; }
+}
+
 /* ---------- from 640: rail + topbar ---------- */
 @container app (min-width: 640px) {
   .app { grid-template-columns: 72px 1fr; }
@@ -188,7 +277,7 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 
   .cal, .mem { grid-template-columns: 1fr; } .form-wrap, .detail { display: none; }
   .g3 { grid-template-columns: 1fr 1fr; } .g3 > :first-child { grid-column: 1 / -1; } .g2 { grid-template-columns: 1fr; }
   .kpis { grid-template-columns: repeat(2, 1fr); }
-  .topbar .pills button span { display: none; } .topbar .pills button { padding: 8px 12px; }
+  .topbar .pills button { padding: 8px 12px; } .topbar .search { display: none; }
   .heat { grid-template-columns: 56px repeat(15, 1fr); gap: 3px; }
 }
 /* ---------- phone ---------- */
@@ -196,17 +285,13 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 
   .app { grid-template-columns: 1fr; padding: 0; gap: 0; }
   .rail, .topbar { display: none; } .tabs { display: flex; }
   .content { padding: 54px 16px 110px; gap: 14px; }
-  .ph h1 { font-size: 28px; } .ph .btn.pri span, .ph .hide-m, .ph .grow { display: none; } .ph > div:first-child { flex: 1; min-width: 0; } .ph .btn.pri { width: 44px; padding: 0; }
+  .ph h1 { font-size: 28px; } .ph .hide-m, .ph .grow { display: none; } .ph > div:first-child { flex: 1; min-width: 0; } .ph .btn.pri { padding: 0 16px 0 12px; }
   .ph .btn.icon.hide-m { display: none; }
   .hero { padding: 20px; background: linear-gradient(160deg, #1f2f52 0%, #14213d 60%, #0f182c 100%); } .hero .big { font-size: 54px; } .hero .act .btn.w { background: #38b58a; color: #fff; flex: 1; } .hero .meta .avs .av { border-color: #14213d; }
   .g3, .g2 { grid-template-columns: 1fr; gap: 14px; }
   .court { min-height: 200px; }
   .heat { grid-template-columns: 50px repeat(15, 1fr); gap: 3px; } .heat .q { border-radius: 4px; } .heat .cl:nth-child(2n) { visibility: hidden; }
   .cal-wrap, .legend.cal-leg, .filters .hide-m { display: none; } .cal-list { display: block; } .filters { flex-wrap: nowrap !important; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
-  .app[data-sheet] .scrim { display: block; position: absolute; inset: 0; background: rgba(20,33,61,.4); z-index: 5; }
-  .app[data-sheet] .sheet { display: block; position: absolute; inset: auto 0 0 0; z-index: 6; background: var(--card); border-radius: 30px 30px 0 0; box-shadow: 0 -20px 50px -20px rgba(20,33,61,.5); }
-  .sheet::before { content: ""; display: block; width: 40px; height: 5px; border-radius: 3px; background: #d8dedb; margin: 10px auto 0; }
-  .sheet .form { padding: 12px 20px calc(18px + 74px); }
   .kpis { grid-template-columns: repeat(2, 1fr); gap: 10px; } .kpi { padding: 16px; } .kpi b { font-size: 28px; }
   table.t, .bulk { display: none; } .mem-list { display: block; }
   .tools .search { max-width: none; min-width: 0; flex-basis: 100%; } .tools .chip.hide-m, .tools .seg { display: none; }
@@ -217,14 +302,15 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 
   .tabs a svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
   .tabs a span { display: none; } .tabs a[aria-current] { background: #38b58a; color: #fff; } .tabs a[aria-current] span { display: inline; }
 }
-@container app (min-width: 640px) { .scrim, .sheet { display: none !important; } }
 </style>
 
 <div class="bar">
   <h1>TC Marly Entwurf</h1>
-  <div class="grp" id="scr"><button aria-pressed="true" data-screen="start">Start</button><button data-screen="cal">Kalender</button><button data-screen="mem">Mitglieder</button></div>
   <div class="grp" id="wid"><button data-w="390">Handy 390</button><button data-w="1024">Laptop 1024</button><button aria-pressed="true" data-w="1440">Desktop 1440</button></div>
-  <div class="note">Version 3 nach deinen Referenzen: Icon-Leiste, Pillen-Navigation, weisse Karten mit grossem Radius, Verlaufs-Karte in der Clubfarbe, Platz-Bildkarte, Heatmap, farbige Kalenderbalken. Schrift Outfit.</div>
+  <div class="scr"><span>Mitglied</span><div class="grp"><button data-screen="start">Start</button><button data-screen="cal">Kalender</button><button data-screen="res-1">Buchen 1 Slot</button><button data-screen="res-2">Buchen 2 Sheet</button><button data-screen="res-3">Buchen 3 Bestätigt</button><button data-screen="book">Buchungen</button><button data-screen="detail">Buchungsdetail</button><button data-screen="profil">Profil</button><button data-screen="abos">Abos (Verlängern)</button><button data-screen="rechnung">Rechnung</button></div></div>
+  <div class="scr"><span>Zugang</span><div class="grp"><button data-screen="entry">Einstieg</button><button data-screen="login">Login</button><button data-screen="abos-neu">Abo wählen (neu)</button><button data-screen="register">Registrieren</button><button data-screen="gast">Gast-Buchung</button></div></div>
+  <div class="scr"><span>Verwaltung</span><div class="grp"><button data-screen="hub">Übersicht</button><button data-screen="heute">Heute</button><button data-screen="sperren">Sperren</button><button data-screen="mem">Mitglieder</button><button data-screen="stats">Statistik</button><button data-screen="settings">Einstellungen</button></div></div>
+  <div class="note" id="note">Version 3 nach deinen Referenzen: Icon-Leiste, Pillen-Navigation, weisse Karten mit grossem Radius, Verlaufs-Karte in der Clubfarbe, Platz-Bildkarte, Heatmap, farbige Kalenderbalken. Schrift Outfit.</div>
 </div>
 
 <div class="stage"><div class="frame" id="frame" data-w="1440"><div class="app" id="app">
@@ -233,11 +319,11 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 
     <div class="logo">TC</div>
     <a href="#" data-nav="start" title="Start"><svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg></a>
     <a href="#" data-nav="cal" title="Kalender"><svg viewBox="0 0 24 24"><path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/></svg></a>
-    <a href="#" title="Buchungen"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg></a>
-    <a href="#" title="Profil"><svg viewBox="0 0 24 24"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/></svg></a>
+    <a href="#" data-nav="book" title="Buchungen"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg></a>
+    <a href="#" data-nav="profil" title="Profil"><svg viewBox="0 0 24 24"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/></svg></a>
     <div class="sep"></div>
-    <a href="#" data-nav="mem" title="Verwaltung"><svg viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg></a>
-    <div class="bottom"><a href="#" title="Einstellungen"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></a><span class="av a2">AJ</span></div>
+    <a href="#" data-nav="admin" title="Verwaltung"><svg viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg></a>
+    <div class="bottom"><a href="#" data-nav="settings" title="Einstellungen"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></a><span class="av a2">AJ</span></div>
   </nav>
 
   <div class="main">
@@ -252,13 +338,13 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 
     <div class="content">
       <!-- START -->
       <section class="screen" data-screen="start" data-on>
-        <div class="ph"><div><h1>Guten Abend, Alain</h1><div class="sub">Dienstag, 29. September. Plätze offen bis 22 Uhr, Flutlicht ab 19 Uhr gratis.</div></div><div class="grow"></div><button class="btn ghost hide-m">Diese Woche</button><button class="btn pri"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>Reservieren</span></button></div>
+        <div class="ph"><div><h1>Guten Abend, Alain</h1><div class="sub">Dienstag, 29. September. Plätze offen bis 22 Uhr, Flutlicht ab 19 Uhr gratis.</div></div><div class="grow"></div><button class="btn ghost hide-m">Diese Woche</button><button class="btn pri" data-go="cal"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>Reservieren</span></button></div>
         <div class="g3">
           <div class="hero">
             <div class="k">Nächstes Spiel</div>
             <div class="big">17:00<small>Morgen, Mi 30.9.</small></div>
             <div class="meta"><span class="avs"><span class="av a2">AJ</span><span class="av a1">MB</span></span>Platz 2, Sand, Einzel mit Marc Bühler</div>
-            <div class="act"><button class="btn w">Details</button><button class="btn t">Verschieben</button><button class="btn t">Stornieren</button></div>
+            <div class="act"><button class="btn w" data-go="detail">Details</button><button class="btn t">Verschieben</button><button class="btn t">Stornieren</button></div>
           </div>
           <div class="court" id="court1"></div>
           <div class="card pad">
@@ -288,7 +374,7 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 
 
       <!-- KALENDER -->
       <section class="screen" data-screen="cal">
-        <div class="ph"><h1>Kalender</h1><div class="grow"></div><button class="btn icon hide-m" aria-label="Vortag">‹</button><button class="btn"><svg viewBox="0 0 24 24"><path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/></svg>Mi, 30. September</button><button class="btn icon hide-m" aria-label="Folgetag">›</button><button class="btn ghost hide-m">Heute</button><button class="btn pri"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>Reservieren</span></button></div>
+        <div class="ph"><h1>Kalender</h1><div class="grow"></div><button class="btn icon hide-m" aria-label="Vortag">‹</button><button class="btn"><svg viewBox="0 0 24 24"><path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/></svg>Mi, 30. September</button><button class="btn icon hide-m" aria-label="Folgetag">›</button><button class="btn ghost hide-m">Heute</button><button class="btn pri hide-m"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>Reservieren</span></button></div>
         <div class="filters" style="display:flex;gap:8px;flex-wrap:wrap"><button class="chip" aria-pressed="true">Alle Plätze</button><button class="chip"><i class="dot d-sand"></i>Sand</button><button class="chip"><i class="dot d-hard"></i>Allwetter</button><button class="chip"><i class="dot d-padel"></i>Padel</button><span style="flex:1"></span><button class="chip hide-m">Nur freie</button><button class="chip hide-m">Tag</button><button class="chip hide-m">Woche</button></div>
         <div class="cal">
           <div style="min-width:0">
@@ -297,7 +383,10 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 
             </div>
             <div class="cal-list">
               <div class="days"><button><small>Di</small>29</button><button aria-pressed="true"><small>Mi</small>30</button><button><small>Do</small>1</button><button><small>Fr</small>2</button><button><small>Sa</small>3</button><button><small>So</small>4</button><button><small>Mo</small>5</button><button><small>Di</small>6</button></div>
-              <div class="card pad" id="list" style="margin-top:14px"></div><div class="legend" style="justify-content:center"><span>Tipp auf einen freien Platz, um zu reservieren</span></div>
+              <div class="vb" style="margin-top:14px"><div class="seg" data-panes="vb-list,vb-grid"><button aria-pressed="true">Liste</button><button>Raster</button></div>
+                <div class="card pad courtrows" id="vb-list" style="margin-top:14px"></div>
+                <div class="card pad" id="vb-grid" style="margin-top:14px" hidden><div class="grid9" id="grid9"></div><div class="legend"><span><i style="background:var(--bg)"></i>frei</span><span><i style="background:var(--me)"></i>meine</span><span><i style="background:var(--mem)"></i>belegt</span><span><i style="background:var(--coach)"></i>Training</span></div></div>
+                <div class="legend" style="justify-content:center"><span>Liste beginnt bei der aktuellen Stunde (18:15). Tipp auf eine freie Stunde reserviert.</span></div></div>
             </div>
           </div>
           <div class="card pad form-wrap"><div class="form" id="form"></div></div>
@@ -336,18 +425,323 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 
           </div>
         </div>
       </section>
+
+      <!-- EINSTIEG (heutige Struktur, v3-Stil) -->
+      <section class="screen" data-screen="entry">
+        <div class="auth">
+          <div class="brandmark"><i>TC</i>TC Marly</div>
+          <div class="hero">
+            <div class="k">Dienstag, 29. September</div>
+            <div style="font-size:34px;font-weight:700;letter-spacing:-.03em;line-height:1.05">Willkommen beim TC Marly.</div>
+            <div class="m3">8 Tennisplätze, 1 Padel, 7–22 Uhr</div>
+          </div>
+          <div class="card pad stack">
+            <button class="btn pri wide" data-go="login">Mitglied anmelden</button>
+            <button class="btn ghost wide" data-go="cal">Als Gast buchen</button>
+            <div class="center m3">Ohne Konto.</div>
+          </div>
+          <div class="card pad"><div class="lst"><div class="lrow tap" data-go="abos-neu"><div class="g"><b>Mitglied werden</b><small>Abo wählen, dann Konto erstellen. Saison bis 31. März, ab CHF 60.</small></div><button class="btn sm">Mitglied werden</button></div></div></div>
+          <div class="card pad"><div class="ch"><h2>Jetzt frei</h2><span class="link" data-go="cal">Alle Plätze</span></div>
+            <div class="hscroll slots"><button class="card slot" data-go="cal"><small>Morgen</small><b>17:00</b><span><i class="dot d-sand"></i>Platz 2</span><small>Sand</small></button><button class="card slot" data-go="cal"><small>Morgen</small><b>18:00</b><span><i class="dot d-sand"></i>Platz 5</span><small>Sand</small></button><button class="card slot" data-go="cal"><small>Morgen</small><b>19:00</b><span><i class="dot d-hard"></i>Central</span><small>Allwetter</small></button><button class="card slot" data-go="cal"><small>Morgen</small><b>20:00</b><span><i class="dot d-padel"></i>Padel 1</span><small>Padel</small></button></div></div>
+        </div>
+      </section>
+
+      <!-- BUCHUNGEN -->
+      <section class="screen" data-screen="book">
+        <div class="ph"><div><h1>Buchungen</h1><div class="sub">3 kommend, 34 in dieser Saison</div></div><div class="grow"></div><button class="btn pri" data-go="cal"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>Reservieren</span></button></div>
+        <div class="seg" data-panes="bk-up,bk-past" style="max-width:360px"><button aria-pressed="true">Kommend</button><button>Vergangen</button></div>
+        <div class="cols" id="bk-up">
+          <div class="card pad"><div class="ch"><h2>Diese Woche</h2></div>
+            <div class="lst">
+              <div class="lrow tap" data-go="detail"><div class="tm"><b>17:00</b><small>Mi 30.9.</small></div><div class="g"><b><i class="dot d-sand"></i>Platz 2</b><small>Einzel mit Marc Bühler</small></div><span class="pill p-ok"><i></i>Abo</span></div>
+              <div class="lrow tap" data-go="detail"><div class="tm"><b>10:00</b><small>Sa 3.10.</small></div><div class="g"><b><i class="dot d-padel"></i>Padel 1</b><small>Doppel mit Anna, Luca, Sara</small></div><span class="pill p-warn"><i></i>CHF 12 offen</span></div>
+            </div>
+          </div>
+          <div class="card pad"><div class="ch"><h2>Nächste Woche</h2></div>
+            <div class="lst"><div class="lrow tap" data-go="detail"><div class="tm"><b>12:00</b><small>Di 6.10.</small></div><div class="g"><b><i class="dot d-sand"></i>Platz 2</b><small>Einzel mit Marc, jede Woche</small></div><span class="pill p-ok"><i></i>Abo</span></div></div>
+          </div>
+          <div class="card pad"><div class="ch"><h2>Meine Serien</h2><span class="pill p-coach"><i></i>nur Trainer</span></div>
+            <div class="lst">
+              <div class="lrow"><div class="g"><b><i class="dot d-hard"></i>Training U14, Central</b><small>jeden Mi 17:00–19:00, noch 12 Termine bis 31.3.</small></div></div>
+              <div class="acts2"><button class="btn sm">Einen Termin absagen</button><button class="btn sm danger">Serie stornieren</button></div>
+              <div class="lrow"><div class="g"><b><i class="dot d-sand"></i>Training Erwachsene, Platz 7</b><small>jeden Do 14:00–16:00, noch 8 Termine</small></div></div>
+              <div class="acts2"><button class="btn sm">Einen Termin absagen</button><button class="btn sm danger">Serie stornieren</button></div>
+            </div>
+          </div>
+        </div>
+        <div class="cols" id="bk-past" hidden>
+          <div class="card pad"><div class="ch"><h2>September</h2><span class="m3">31 Spiele</span></div>
+            <div class="lst">
+              <div class="lrow"><div class="tm"><b>18:00</b><small>Mo 28.9.</small></div><div class="g"><b><i class="dot d-sand"></i>Platz 4</b><small>Einzel mit Tobias Meier</small></div><span class="pill p-ok"><i></i>CHF 15 bezahlt</span></div>
+              <div class="lrow"><div class="tm"><b>19:00</b><small>Fr 25.9.</small></div><div class="g"><b><i class="dot d-hard"></i>Central</b><small>Doppel, Clubabend</small></div><span class="pill p-off">Abo</span></div>
+              <div class="lrow"><div class="tm"><b>12:00</b><small>Di 22.9.</small></div><div class="g"><b><i class="dot d-sand"></i>Platz 2</b><small>storniert</small></div><span class="pill p-bad"><i></i>storniert</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- PROFIL (heutige Struktur, v3-Stil) -->
+      <section class="screen" data-screen="profil">
+        <div class="ph"><span class="av a2" style="width:56px;height:56px;font-size:18px">AJ</span><div><h1>Alain Julmy</h1><div class="sub">Mitglied seit 2019, TC Marly</div></div></div>
+        <div class="cols">
+          <div class="stack">
+            <div class="card pad grad"><div class="ch"><h2>Guthaben</h2><span class="m3">für Buchungen und Gäste</span></div><div style="font-size:48px;font-weight:700;letter-spacing:-.04em;line-height:1"><small style="font-size:18px;font-weight:500;opacity:.8;margin-right:6px">CHF</small>50.00</div>
+              <div class="acts2" style="margin-top:16px"><button class="btn" style="box-shadow:none;background:rgba(255,255,255,.16);color:#fff">+ 20</button><button class="btn" style="box-shadow:none;background:rgba(255,255,255,.16);color:#fff">+ 50</button><button class="btn" style="box-shadow:none;background:#fff;color:var(--brand-dark)">+ 100</button></div></div>
+            <div class="card pad"><div class="ch"><h2>Mein Abo</h2><span class="pill p-ok"><i></i>aktiv</span></div>
+              <div class="lst"><div class="lrow"><div class="g"><b>Saison Erwachsene, Tennis</b><small>gültig bis 31.3.2027, CHF 450</small></div><button class="btn sm" data-go="abos">Ändern</button></div></div></div>
+          </div>
+          <div class="card pad"><div class="lst">
+            <div class="lrow tap"><div class="g"><b>Meine Daten</b><small>alain.julmy@ace.ch, 079 412 33 08</small></div><span class="chev">›</span></div>
+            <div class="lrow tap" data-go="rechnung"><div class="g"><b>Rechnungen und Belege</b><small>1 offen, CHF 12</small></div><span class="pill p-warn"><i></i>1 offen</span><span class="chev">›</span></div>
+            <div class="lrow"><div class="g"><b>E-Mail bei neuer Buchung</b><small>wenn dich jemand als Mitspieler einträgt</small></div><button class="sw" aria-pressed="true" aria-label="E-Mail bei neuer Buchung"></button></div>
+            <div class="lrow"><div class="g"><b>Dunkles Design</b><small>folgt sonst dem Gerät</small></div><button class="sw" aria-label="Dunkles Design"></button></div>
+            <div class="lrow tap" data-go="login"><div class="g"><b style="color:var(--bad)">Abmelden</b></div></div>
+          </div></div>
+        </div>
+      </section>
+
+      <!-- ABOS (alte informative Seite mit Jahrgang, v3-Stil) -->
+      <section class="screen" data-screen="abos">
+        <div class="ph"><div><h1><span class="abo-renew">Abos</span><span class="abo-new">Mitglied werden</span></h1><div class="sub">Dein Platz. Die ganze Saison. Einmal zahlen, vom 1. April bis 31. März spielen.</div></div></div>
+        <div class="banner abo-renew"><div class="g"><b>Dein Abo ist am 31.3.2026 abgelaufen</b>Dein letztes Abo ist markiert. Ein Tipp auf Bezahlen verlängert es.</div></div>
+        <div class="card pad stack">
+          <div class="seg" id="ab-sport"><button aria-pressed="true" data-v="tennis"><i class="dot d-sand"></i> Tennis</button><button data-v="padel"><i class="dot d-padel"></i> Padel</button><button data-v="combo">Beides <small style="opacity:.7">spart bis 200</small></button></div>
+          <div class="row2" style="align-items:end">
+            <div class="seg" id="ab-who"><button aria-pressed="true" data-v="single">Für mich</button><button data-v="couple">Als Paar</button></div>
+            <label class="fld"><span>Jahrgang</span><input id="ab-year" inputmode="numeric" maxlength="4" value="1985"></label>
+          </div>
+          <div class="m3" id="ab-fit" style="color:var(--brand-deep);font-weight:600"></div>
+          <div class="m3" id="ab-anchor"></div>
+        </div>
+        <div class="cols" id="ab-main"></div>
+        <div class="card pad"><div class="ch" style="margin-bottom:6px"><h2>Weitere Tarife</h2><span class="m3" id="ab-morenote"></span></div><div class="lst" id="ab-more"></div></div>
+        <div class="cols">
+          <div class="card pad"><b style="display:block;font-size:15px">Sofort freigeschaltet</b><div class="m3">Nach der Zahlung buchst du direkt. Keine Woche warten.</div></div>
+          <div class="card pad"><b style="display:block;font-size:15px">Gültig bis 31. März</b><div class="m3">Die Saison läuft vom 1. April bis 31. März. Beitritt jederzeit.</div></div>
+          <div class="card pad"><b style="display:block;font-size:15px">Gäste willkommen</b><div class="m3">Mo–Fr 11–13 Uhr spielen Nichtmitglieder gratis mit dir, wenn ihr danach im Club esst.</div></div>
+        </div>
+      </section>
+
+      <!-- RECHNUNG -->
+      <section class="screen" data-screen="rechnung">
+        <div class="ph"><div><h1>Rechnung</h1><div class="sub">Nr. 2026-0142</div></div><div class="grow"></div><button class="btn">PDF laden</button></div>
+        <div class="cols">
+          <div class="card pad inv">
+            <div class="ch"><div class="brandmark"><i>TC</i><div>TC Marly<div class="m3" style="font-weight:500">Route du Centre 12, 1723 Marly</div></div></div><span class="pill p-ok"><i></i>bezahlt</span></div>
+            <div class="kv"><span>An</span><span>Alain Julmy</span><span>Datum</span><span>12.1.2026</span><span>Zahlart</span><span>Twint</span></div>
+            <div class="kv"><span>Saison-Abo Erwachsene 2026/27</span><span>CHF 450.00</span><span>Gültig</span><span>1.4.2026–31.3.2027</span></div>
+            <div class="kv"><span class="tot">Total</span><span class="tot">CHF 450.00</span></div>
+            <div class="acts2"><button class="btn sm">PDF laden</button><button class="btn sm">Per E-Mail senden</button></div>
+          </div>
+          <div class="card pad"><div class="ch"><h2>Weitere Belege</h2></div>
+            <div class="lst">
+              <div class="lrow"><div class="g"><b>Padel 1, Sa 3.10., Anteil Gast</b><small>Nr. 2026-0311</small></div><button class="btn sm pri" style="background:var(--brand-deep);color:#fff">CHF 12 bezahlen</button></div>
+              <div class="lrow"><div class="g"><b>Platz 4, Mo 28.9.</b><small>Nr. 2026-0298, Twint</small></div><span class="pill p-ok"><i></i>CHF 15</span></div>
+              <div class="lrow"><div class="g"><b>Guthaben aufgeladen</b><small>Nr. 2026-0207, Karte</small></div><span class="pill p-ok"><i></i>CHF 50</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- LOGIN (heutige Struktur) -->
+      <section class="screen" data-screen="login">
+        <div class="auth">
+          <div class="brandmark"><i>TC</i>TC Marly</div>
+          <h1 style="font-size:36px">Anmelden</h1>
+          <div class="card pad stack">
+            <label class="fld"><span>E-Mail</span><input type="email" value="alain.julmy@ace.ch"></label>
+            <label class="fld err"><span>Passwort</span><input type="password" value="falsch123"><span class="hint">E-Mail oder Passwort stimmt nicht.</span></label>
+            <button class="btn pri wide" data-go="start">Anmelden</button>
+            <div class="center m3"><span class="link">Passwort vergessen?</span></div>
+          </div>
+          <div class="or">oder</div>
+          <button class="btn wide" data-go="gast">Ohne Konto als Gast buchen</button>
+          <div class="center m3">Noch kein Konto? <span class="link" data-go="register">Registrieren</span></div>
+        </div>
+      </section>
+
+      <!-- REGISTER -->
+      <section class="screen" data-screen="register">
+        <div class="auth">
+          <div class="brandmark"><i>TC</i>TC Marly</div>
+          <h1 style="font-size:36px">Konto erstellen</h1>
+          <div class="card pad stack">
+            <div class="row2"><label class="fld"><span>Vorname</span><input value="Lea"></label><label class="fld"><span>Nachname</span><input value="Brunner"></label></div>
+            <label class="fld"><span>E-Mail</span><input type="email" value="lea.brunner@bluewin.ch"></label>
+            <label class="fld"><span>Passwort</span><input type="password" value="••••••••••"><span class="hint">mindestens 8 Zeichen</span></label>
+            <label class="ck"><input type="checkbox" checked>Ich akzeptiere Statuten und Datenschutz des TC Marly.</label>
+            <button class="btn pri wide" data-go="start">Konto erstellen und bezahlen</button>
+          </div>
+          <div class="banner ok"><div class="g">Dein Abo: Saison Erwachsene, CHF 450. Nach dem Bezahlen buchst du als Mitglied.</div></div>
+          <div class="center m3">Schon ein Konto? <span class="link" data-go="login">Anmelden</span></div>
+        </div>
+      </section>
+
+      <!-- GAST-BUCHUNG -->
+      <section class="screen" data-screen="gast">
+        <div class="auth">
+          <div class="brandmark"><i>TC</i>TC Marly</div>
+          <h1 style="font-size:32px">Als Gast buchen</h1>
+          <div class="card pad"><div class="lst"><div class="lrow"><div class="g"><b><i class="dot d-sand"></i>Platz 5, Mi 30.9.</b><small>18:00–19:00, Sand, Einzel</small></div><button class="btn sm" data-go="cal">Ändern</button></div></div></div>
+          <div class="card pad stack">
+            <label class="fld"><span>Name</span><input value="Petra Sommer"></label>
+            <div class="row2"><label class="fld"><span>E-Mail</span><input type="email" value="petra.sommer@bluewin.ch"></label><label class="fld"><span>Handy</span><input type="tel" value="079 555 21 90"></label></div>
+            <div><span class="l2" style="display:block;margin-bottom:7px">Mitspieler</span><div class="seg"><button aria-pressed="true">Auch Gast</button><button>Mitglied mit Abo</button></div></div>
+            <div class="sum"><span>Dein Anteil</span><b>CHF 15</b><span>Anteil Mitspieler, Gast</span><b>CHF 15</b><span class="tot">Du bezahlst</span><b class="tot">CHF 30</b><span class="n">Bestätigung und Storno-Link kommen per E-Mail.</span></div>
+            <button class="btn pri wide">Bezahlen · CHF 30</button>
+          </div>
+          <div class="center m3">Mitglied? <span class="link" data-go="login">Anmelden</span> und mit Abo spielen.</div>
+        </div>
+      </section>
+
+      <!-- VERWALTUNG: HUB -->
+      <section class="screen" data-screen="hub">
+        <div class="ph"><div><h1>Verwaltung</h1><div class="sub">TC Marly, Dienstag 29. September</div></div></div>
+        <div class="tiles">
+          <div class="card tile grad" data-go="heute"><span class="ti"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span><b>46%</b><span>Heute</span><small>24 Buchungen</small></div>
+          <div class="card tile" data-go="sperren"><span class="ti"><svg viewBox="0 0 24 24"><path d="M4.9 4.9l14.2 14.2M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z"/></svg></span><b>2</b><span>Sperren</span><small>Platz 4 bis 10 Uhr</small></div>
+          <div class="card tile" data-go="mem"><span class="ti"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></svg></span><b>142</b><span>Mitglieder</span><small style="color:var(--warn)">9 Zahlungen offen</small></div>
+          <div class="card tile" data-go="stats"><span class="ti"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></span><b>38'420</b><span>Statistik</span><small>CHF Einnahmen 2026</small></div>
+          <div class="card tile" data-go="cal"><span class="ti"><svg viewBox="0 0 24 24"><path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/></svg></span><b>9</b><span>Kalender</span><small>alle Plätze</small></div>
+          <div class="card tile" data-go="settings"><span class="ti"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg></span><b style="font-size:20px">Regeln</b><span>Einstellungen</span><small>Plätze, Tarife, Branding</small></div>
+        </div>
+      </section>
+
+      <!-- VERWALTUNG: HEUTE -->
+      <section class="screen" data-screen="heute">
+        <div class="ph"><div><h1>Heute</h1><div class="sub">Dienstag, 29. September</div></div><div class="grow"></div><button class="btn hide-m" data-go="sperren">Sperre planen</button></div>
+        <div class="card pad"><div class="lst"><div class="lrow"><div class="g"><b>Regen: alle Sandplätze sperren</b><small>Platz 2–7 bis Tagesende. 5 Buchende bekommen eine E-Mail.</small></div><button class="sw" aria-label="Sandplätze sperren"></button></div></div></div>
+        <div class="kpis">
+          <div class="card kpi grad"><div class="k">Auslastung</div><b>46%</b><span class="trend">↗ 8% mehr als letzte Woche</span></div>
+          <div class="card kpi"><div class="k">Buchungen</div><b>24</b><span class="trend" style="color:var(--ink-3)">davon 3 Gäste</span></div>
+          <div class="card kpi"><div class="k">Gesperrt</div><b>1</b><span class="trend" style="color:var(--ink-3)">Platz 4, 8–10 Uhr</span></div>
+          <div class="card kpi"><div class="k">Gäste</div><b>3</b><span class="trend" style="color:var(--ink-3)">CHF 90 online bezahlt</span></div>
+        </div>
+        <div class="g2">
+          <div class="card pad"><div class="ch"><h2>Belegung</h2><span class="m3">Plätze × Stunden</span></div><div class="heat" id="heat2"></div></div>
+          <div class="card pad"><div class="ch"><h2>Nächste Buchungen</h2></div>
+            <div class="lst">
+              <div class="lrow"><div class="tm"><b>18:00</b></div><div class="g"><b><i class="dot d-hard"></i>Platz 1</b><small>Petra Sommer, Gast</small></div><span class="pill p-ok"><i></i>Twint</span></div>
+              <div class="lrow"><div class="tm"><b>18:00</b></div><div class="g"><b><i class="dot d-sand"></i>Platz 3</b><small>Sven Graf, Kai Lang</small></div><span class="pill p-ok"><i></i>Abo</span></div>
+              <div class="lrow"><div class="tm"><b>19:00</b></div><div class="g"><b><i class="dot d-sand"></i>Platz 5</b><small>Luca Pini, Elia Wyss</small></div><span class="pill p-ok"><i></i>Abo</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- VERWALTUNG: SPERREN -->
+      <section class="screen" data-screen="sperren">
+        <div class="ph"><div><h1>Sperren</h1><div class="sub">Plätze für Regen, Pflege oder Turnier sperren</div></div></div>
+        <div class="cols">
+          <div class="card pad stack">
+            <div class="ch" style="margin:0"><h2>Neue Sperre</h2></div>
+            <div><span class="l2" style="display:block;margin-bottom:7px">Grund</span><div class="seg"><button>Regen</button><button aria-pressed="true">Wartung</button><button>Turnier</button><button>Training</button></div></div>
+            <div><span class="l2" style="display:block;margin-bottom:7px">Plätze</span><div class="people"><button class="chip">Alle</button><button class="chip">Central</button><button class="chip">Platz 1</button><button class="chip" aria-pressed="true">Platz 2</button><button class="chip" aria-pressed="true">Platz 3</button><button class="chip">Platz 4</button><button class="chip">Platz 5</button><button class="chip">Platz 6</button><button class="chip">Platz 7</button><button class="chip">Padel 1</button></div></div>
+            <div class="row2"><label class="fld"><span>Von</span><input type="date" value="2026-10-03"></label><label class="fld"><span>Zeit</span><input type="time" value="08:00"></label></div>
+            <div class="row2"><label class="fld"><span>Bis</span><input type="date" value="2026-10-03"></label><label class="fld"><span>Zeit</span><input type="time" value="12:00"></label></div>
+            <div><span class="l2" style="display:block;margin-bottom:7px">Wiederholen</span><div class="seg"><button aria-pressed="true">Einmal</button><button>Jede Woche</button></div></div>
+            <div class="banner"><div class="g"><b>2 Buchungen betroffen</b>Sa 3.10. Platz 2 10:00, Platz 3 11:00. Sie werden storniert und per E-Mail informiert.</div></div>
+            <button class="btn pri wide">Sperre speichern</button>
+          </div>
+          <div class="card pad"><div class="ch"><h2>Aktiv und geplant</h2></div>
+            <div class="lst">
+              <div class="lrow"><div class="g"><b>Platzpflege, Platz 4</b><small>heute 8:00–10:00</small></div><span class="pill p-bad"><i></i>aktiv</span><button class="btn sm">Aufheben</button></div>
+              <div class="lrow"><div class="g"><b>Clubmeisterschaft, Central, Platz 1</b><small>Sa 10.10.–So 11.10., ganztags</small></div><button class="btn sm">Bearbeiten</button></div>
+              <div class="lrow"><div class="g"><b>Training U14, Central</b><small>jeden Mi 17:00–19:00</small></div><button class="btn sm">Bearbeiten</button></div>
+              <div class="lrow"><div class="g"><b>Winterpause, Platz 2–7</b><small>ab So 1.11.</small></div><button class="btn sm">Bearbeiten</button></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- VERWALTUNG: STATISTIK -->
+      <section class="screen" data-screen="stats">
+        <div class="ph"><div><h1>Statistik</h1><div class="sub">Kalenderjahr 2026, nach Zahlungsdatum</div></div><div class="grow"></div><button class="btn"><svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>CSV exportieren</button></div>
+        <div class="pills" style="align-self:flex-start"><button>2024</button><button>2025</button><button aria-pressed="true">2026</button></div>
+        <div class="kpis">
+          <div class="card kpi grad"><div class="k">Einnahmen</div><b>CHF 38'420</b><span class="trend">↗ 9% zu 2025</span></div>
+          <div class="card kpi"><div class="k">Abos verkauft</div><b>118</b><span class="trend">↗ 12</span></div>
+          <div class="card kpi"><div class="k">Auslastung</div><b>41%</b><span class="trend">↗ 3%</span></div>
+          <div class="card kpi"><div class="k">Offene Posten</div><b style="color:var(--warn)">CHF 3'240</b><span class="trend down">9 Mitglieder</span></div>
+        </div>
+        <div class="g2">
+          <div class="card pad"><div class="ch"><h2>Einnahmen pro Monat</h2><span class="m3">CHF</span></div>
+            <div class="bars y"><div style="height:62%"></div><div style="height:48%"></div><div style="height:100%" class="hi"><span>9'840</span></div><div style="height:74%"></div><div style="height:40%"></div><div style="height:36%"></div><div style="height:28%"></div><div style="height:22%"></div><div style="height:30%"></div><div style="height:12%"></div><div style="height:0%"></div><div style="height:0%"></div></div>
+            <div class="bars-x y"><span>J</span><span>F</span><span>M</span><span>A</span><span>M</span><span>J</span><span>J</span><span>A</span><span>S</span><span>O</span><span>N</span><span>D</span></div>
+          </div>
+          <div class="card pad"><div class="ch"><h2>Auslastung nach Platz</h2></div>
+            <div class="hbar"><span>Central</span><span class="tr"><i style="width:68%"></i></span><span>68%</span></div>
+            <div class="hbar"><span>Platz 1</span><span class="tr"><i style="width:55%"></i></span><span>55%</span></div>
+            <div class="hbar"><span>Platz 2</span><span class="tr"><i style="width:49%"></i></span><span>49%</span></div>
+            <div class="hbar"><span>Platz 3</span><span class="tr"><i style="width:44%"></i></span><span>44%</span></div>
+            <div class="hbar"><span>Platz 4–7</span><span class="tr"><i style="width:31%"></i></span><span>31%</span></div>
+            <div class="hbar"><span>Padel 1</span><span class="tr"><i style="width:58%;background:var(--padel)"></i></span><span>58%</span></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- VERWALTUNG: EINSTELLUNGEN -->
+      <section class="screen" data-screen="settings">
+        <div class="ph"><div><h1>Einstellungen</h1><div class="sub">TC Marly</div></div></div>
+        <div class="filters" style="display:flex;gap:8px;flex-wrap:wrap"><button class="chip" aria-pressed="true">Regeln</button><button class="chip">Plätze</button><button class="chip">Tarife</button><button class="chip">Branding</button></div>
+        <div class="cols">
+          <div class="card pad stack"><div class="ch" style="margin:0"><h2>Regeln</h2></div>
+            <div class="row2"><label class="fld"><span>Offen ab</span><input type="time" value="07:00"></label><label class="fld"><span>bis</span><input type="time" value="22:00"></label></div>
+            <div class="row2"><label class="fld"><span>Offene Buchungen pro Mitglied</span><input type="number" value="2"></label><label class="fld"><span>Buchbar im Voraus</span><select><option>7 Tage</option></select></label></div>
+            <div class="lst"><div class="lrow"><div class="g"><b>2 Stunden nur im Doppel</b><small>4 Spieler nötig</small></div><button class="sw" aria-pressed="true" aria-label="2 Stunden nur im Doppel"></button></div><div class="lrow"><div class="g"><b>Flutlicht ab 19 Uhr gratis</b></div><button class="sw" aria-pressed="true" aria-label="Flutlicht gratis"></button></div></div>
+          </div>
+          <div class="card pad"><div class="ch"><h2>Plätze</h2><button class="btn sm">+ Platz</button></div>
+            <div class="lst" id="setcourts"></div>
+          </div>
+          <div class="card pad stack"><div class="ch" style="margin:0"><h2>Tarife</h2></div>
+            <div class="row2"><label class="fld"><span>Gast pro Stunde</span><input value="CHF 30"></label><label class="fld"><span>Saison Erwachsene</span><input value="CHF 450"></label></div>
+            <div class="row2"><label class="fld"><span>Paar-Abo</span><input value="CHF 780"></label><label class="fld"><span>Student bis 25</span><input value="CHF 200"></label></div>
+            <div class="row2"><label class="fld"><span>Junior U18</span><input value="CHF 120"></label><label class="fld"><span>Senior 65+</span><input value="CHF 350"></label></div>
+          </div>
+          <div class="card pad stack"><div class="ch" style="margin:0"><h2>Branding</h2></div>
+            <div><span class="l2" style="display:block;margin-bottom:9px">Clubfarbe</span><div class="swatches"><button aria-pressed="true" style="background:#147a68" aria-label="Grün"></button><button style="background:#c9432f" aria-label="Rot"></button><button style="background:#3a7bd5" aria-label="Blau"></button><button style="background:#14213d" aria-label="Navy"></button><button style="background:#e0653a" aria-label="Sand"></button></div></div>
+            <div class="lst"><div class="lrow"><div class="brandmark"><i>TC</i></div><div class="g"><b>Logo</b><small>PNG oder SVG, quadratisch</small></div><button class="btn sm">Ersetzen</button></div></div>
+            <div class="hero" style="padding:18px"><div class="k">Vorschau</div><div style="font-size:26px;font-weight:700">TC Marly</div></div>
+          </div>
+        </div>
+        <div class="savebar"><span style="flex:1">2 Änderungen</span><button class="btn t">Verwerfen</button><button class="btn pri">Speichern</button></div>
+      </section>
     </div>
   </div>
 
-  <div class="scrim"></div>
-  <div class="sheet"><div class="form" id="form-m"></div></div>
+  <!-- Overlays: Sheet auf dem Handy, Dialog ab 640 -->
+  <div class="veil" data-go="back"></div>
+  <div class="bs" id="bs-res" role="dialog" aria-label="Reservieren">
+    <div class="bs-h"><div class="g"><div class="k">Reservieren</div><h2>Mi 30.9., 18:00</h2><small><i class="dot d-sand"></i>Platz 5, Sand, noch 4 Stunden frei</small></div><button class="xb" data-go="back" aria-label="Schliessen">×</button></div>
+    <div><span class="l">Dauer</span><div class="seg"><button aria-pressed="true">1 Stunde</button><button>2 Stunden (Doppel)</button></div></div>
+    <div><span class="l">Mitspieler</span><div class="people"><span class="chip" aria-pressed="true"><span class="av a2">TM</span>Tobias <small style="opacity:.7">zuletzt</small></span><span class="chip"><span class="av a1">MB</span>Marc</span><span class="chip"><span class="av a3">AK</span>Anna</span><span class="chip add">+ Suchen</span><span class="chip add">+ Gast</span></div></div>
+    <div class="sum"><span>Du, Abo deckt deinen Anteil</span><b>CHF 0</b><span>Tobias, Abo abgelaufen</span><b>CHF 15</b><span class="tot">Du bezahlst</span><b class="tot">CHF 15</b><span class="n">Ein Abo deckt nur den eigenen Anteil. Den Rest bezahlt, wer bucht.</span></div>
+    <button class="btn pri wide" data-go="res-3">Reservieren · CHF 15 <b class="tapn">3</b></button>
+  </div>
+  <div class="bs" id="bs-ok" role="dialog" aria-label="Bestätigt">
+    <div class="okc"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></div>
+    <div class="center"><h2 style="font-size:26px;font-weight:700">Platz 5 ist reserviert</h2><div class="m3" style="margin-top:6px;font-size:15px">Mi 30.9., 18:00–19:00 mit Tobias Meier</div></div>
+    <div class="sum"><span>Bezahlt mit Twint</span><b>CHF 15</b><span>Tobias bekommt</span><b>eine E-Mail</b><span class="n">Stornieren kannst du in Buchungen.</span></div>
+    <div class="center"><span class="pill" style="background:#ffe3ee;color:#c4185a">3 Tipps: Kalender, Platz 5 18:00, Reservieren</span></div>
+    <div class="acts2"><button class="btn ghost">In Kalender eintragen</button><button class="btn pri" data-go="start">Fertig</button></div>
+  </div>
+  <div class="bs" id="bs-detail" role="dialog" aria-label="Buchung">
+    <div class="bs-h"><div class="g"><div class="k">Buchung</div><h2>Mi 30.9., 17:00–18:00</h2><small><i class="dot d-sand"></i>Platz 2, Sand, Einzel</small></div><button class="xb" data-go="back" aria-label="Schliessen">×</button></div>
+    <div class="lst">
+      <div class="lrow"><span class="av a2">AJ</span><div class="g"><b>Alain Julmy</b><small>du, hat gebucht am 27.9.</small></div><span class="pill p-ok"><i></i>Abo</span></div>
+      <div class="lrow"><span class="av a1">MB</span><div class="g"><b>Marc Bühler</b><small>079 318 44 21</small></div><span class="pill p-ok"><i></i>Abo</span></div>
+    </div>
+    <div class="sum"><span>Preis</span><b>CHF 0, beide mit Abo</b></div>
+    <div class="acts2"><button class="btn ghost">Mitspieler ändern</button><button class="btn danger">Stornieren</button></div>
+    <div class="m3 center">Marc bekommt eine E-Mail, wenn du stornierst.</div>
+  </div>
 
   <nav class="tabs" aria-label="Navigation">
     <a href="#" data-nav="start"><svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg><span>Start</span></a>
-    <a href="#" data-nav="cal"><svg viewBox="0 0 24 24"><path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/></svg><span>Kalender</span></a>
-    <a href="#"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg><span>Buchungen</span></a>
-    <a href="#"><svg viewBox="0 0 24 24"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/></svg><span>Profil</span></a>
-    <a href="#" data-nav="mem"><svg viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg><span>Verwaltung</span></a>
+    <a href="#" data-nav="cal"><svg viewBox="0 0 24 24"><path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/></svg><span>Kalender</span><b class="tapn">1</b></a>
+    <a href="#" data-nav="book"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg><span>Buchungen</span></a>
+    <a href="#" data-nav="profil"><svg viewBox="0 0 24 24"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/></svg><span>Profil</span></a>
+    <a href="#" data-nav="admin"><svg viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg><span>Verwaltung</span></a>
   </nav>
 
 </div></div></div>
@@ -382,13 +776,9 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 
   // heatmap (start): rows = courts, cols = hours
   var Hm = '<div></div>' + hours.map(function (h) { return '<div class="cl">' + h + '</div>'; }).join("");
   courts.forEach(function (c, i) { Hm += '<div class="rl">' + c[0] + '</div>'; hours.forEach(function (h) { var b = map[i + ":" + h]; var cls = h < 8 ? "x" : b === "skip" ? "l2" : b ? (b[3] == "me" ? "l3" : b[3] == "block" ? "x" : "l2") : ""; Hm += '<div class="q ' + cls + '"></div>'; }); });
-  document.getElementById("heat").innerHTML = Hm;
+  document.getElementById("heat").innerHTML = Hm; document.getElementById("heat2").innerHTML = Hm;
   // court illustration
-  document.getElementById("court1").innerHTML = '<svg viewBox="0 0 400 240" preserveAspectRatio="xMidYMid slice"><g fill="none" stroke="rgba(255,255,255,.85)" stroke-width="3"><rect x="70" y="30" width="260" height="180"/><line x1="70" y1="52" x2="330" y2="52"/><line x1="70" y1="188" x2="330" y2="188"/><line x1="200" y1="30" x2="200" y2="210" stroke-width="5"/><rect x="118" y="52" width="164" height="136"/><line x1="118" y1="120" x2="282" y2="120"/></g></svg><span class="lbl"><i></i>Platz 2, Sand</span><div class="foot"><span class="chip"><b>18:00</b> Platz 5</span><span class="chip"><b>19:00</b> Platz 2</span><span class="chip"><b>20:00</b> Central</span></div>';
-  // phone hour list
-  var L = "";
-  [16,17,18,19,20,21].forEach(function (h) { L += '<div class="hourrow"><b>' + h + ':00</b><div class="courts">'; courts.forEach(function (c, i) { var b = map[i + ":" + h]; var cls = b === "skip" || (b && b[3] != "me") ? " taken" : b && b[3] == "me" ? " mine" : ""; L += '<span class="chip' + cls + '">' + c[0] + '</span>'; }); L += '</div></div>'; });
-  document.getElementById("list").innerHTML = L;
+  document.getElementById("court1").innerHTML = '<svg viewBox="0 0 400 240" preserveAspectRatio="xMidYMid slice"><g fill="none" stroke="rgba(255,255,255,.85)" stroke-width="3"><rect x="70" y="30" width="260" height="180"/><line x1="70" y1="52" x2="330" y2="52"/><line x1="70" y1="188" x2="330" y2="188"/><line x1="200" y1="30" x2="200" y2="210" stroke-width="5"/><rect x="118" y="52" width="164" height="136"/><line x1="118" y1="120" x2="282" y2="120"/></g></svg><span class="lbl"><i></i>Heute noch frei, Tipp bucht</span><div class="foot"><button class="chip" data-go="res-2"><b>18:00</b> Platz 5</button><button class="chip" data-go="res-2"><b>19:00</b> Platz 2</button><button class="chip" data-go="res-2"><b>20:00</b> Central</button></div>';
   var form = '<div class="ch" style="margin-bottom:4px"><h2>Reservieren</h2><span class="more">×</span></div>' +
     '<div class="when">Mi 30.9., 18:00<small><i class="dot d-sand"></i>Platz 5, Sand, 1 Stunde</small></div>' +
     '<div><span class="l">Spiel</span><div class="seg"><button aria-pressed="true">Einzel</button><button>Doppel</button></div></div>' +
@@ -396,7 +786,7 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 
     '<div><span class="l">Mitspieler</span><div class="people"><span class="chip" aria-pressed="true"><span class="av a1">MB</span>Marc</span><span class="chip"><span class="av a3">AK</span>Anna</span><span class="chip"><span class="av a4">LP</span>Luca</span><span class="chip add">+ Suchen</span><span class="chip add">+ Gast</span></div></div>' +
     '<div class="sum"><span>Dein Anteil</span><b>inbegriffen</b><span>Anteil Marc</span><b>inbegriffen</b><span class="n">Beide haben ein Saison-Abo. Flutlicht ab 19 Uhr kostet nichts.</span></div>' +
     '<button class="btn pri">Platz 5 reservieren</button>';
-  document.getElementById("form").innerHTML = form; document.getElementById("form-m").innerHTML = form;
+  document.getElementById("form").innerHTML = form;
   var members = [["Marc Bühler","marc.buehler@bluewin.ch","Saison Erwachsene","31.3.2027","ok","Twint",1,"a1"],["Anna Keller","anna.keller@gmx.ch","Saison Erwachsene","31.3.2027","ok","Karte",0,"a3"],["Leo Frei","leo.frei@tcmarly.ch","Trainer","","coach","",0,"a4"],["Sara Kunz","sara.kunz@hispeed.ch","Paar-Abo","31.3.2027","warn","CHF 780 offen",0,"a5"],["Tobias Meier","tobias.meier@sunrise.ch","Saison Erwachsene","31.3.2026","bad","abgelaufen",0,"a2"],["Nina Roth","nina.roth@bluewin.ch","Junior U18","31.3.2027","ok","Rechnung",1,"a6"],["Luca Pini","luca.pini@gmail.com","Saison Erwachsene","31.3.2027","ok","Twint",0,"a4"],["Elia Wyss","elia.wyss@unifr.ch","Student","31.3.2027","warn","Ausweis fehlt",0,"a3"],["Mia Steiner","mia.steiner@bluewin.ch","Saison Erwachsene","31.3.2027","ok","Karte",0,"a1"],["Jan Furrer","jan.furrer@gmx.ch","Paar-Abo","31.3.2027","ok","Twint",0,"a2"],["Kai Lang","kai.lang@sunrise.ch","Saison Erwachsene","31.3.2026","bad","abgelaufen",0,"a5"],["Petra Sommer","petra.sommer@bluewin.ch","Senior 65+","31.3.2027","ok","Rechnung",0,"a6"]];
   var pill = { ok: '<span class="pill p-ok"><i></i>aktiv</span>', warn: '<span class="pill p-warn"><i></i>offen</span>', bad: '<span class="pill p-bad"><i></i>abgelaufen</span>', coach: '<span class="pill p-coach"><i></i>Trainer</span>' };
   var T = '<thead><tr><th><input type="checkbox" aria-label="Alle"></th><th>Name</th><th>Abo</th><th>Gültig bis</th><th>Status</th><th>Zahlung</th></tr></thead><tbody>', M = "";
@@ -407,26 +797,121 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 
   });
   document.getElementById("tbl").innerHTML = T + '</tbody>'; document.getElementById("mlist").innerHTML = M;
 
-  var pn = { start: [["start","Start"],["cal","Kalender"],["",'Buchungen'],["",'Profil']], cal: [["start","Start"],["cal","Kalender"],["",'Buchungen'],["",'Profil']], mem: [["",'Heute'],["mem","Mitglieder"],["",'Sperren'],["",'Statistik'],["",'Einstellungen']] };
-  var frame = document.getElementById("frame");
+  // calendar B: one row per court with hour chips (today's list idea), plus raster
+  var VB = "", G = '<div></div>' + courts.map(function (c) { return '<div class="h">' + (c[0] == "Central" ? "C" : c[0] == "Padel 1" ? "P" : c[0].slice(-1)) + '</div>'; }).join("");
+  courts.forEach(function (c, i) {
+    VB += '<div class="cr"><div><span class="dot" style="background:' + col[c[1]] + '"></span><b>' + c[0] + '</b><small>' + tname[c[1]] + '</small></div><div class="hscroll">';
+    [18,19,20,21].forEach(function (h) { var b = map[i + ":" + h]; var cls = b === "skip" || (b && b[3] != "me") ? " taken" : b ? " mine" : ""; var pk = i == 5 && h == 18; VB += '<span class="chip' + cls + (pk ? ' pick' : '') + '"' + (cls ? '' : ' data-go="res-2"') + '>' + h + ':00' + (pk ? '<b class="tapn">2</b>' : '') + '</span>'; });
+    VB += '</div></div>';
+  });
+  [16,17,18,19,20,21].forEach(function (h) { G += '<div class="r">' + h + '</div>'; courts.forEach(function (c, i) { var b = map[i + ":" + h]; if (b === "skip") b = map[i + ":" + (h - 1)]; var k = !b ? "" : b[3] == "me" ? " me" : b[3] == "guest" ? " g" : b[3] == "coach" ? " co" : b[3] == "block" ? " bl" : " t"; G += '<div class="c' + k + '"' + (k ? '' : ' data-go="res-2"') + '></div>'; }); });
+  document.getElementById("vb-list").innerHTML = VB; document.getElementById("grid9").innerHTML = G;
+  document.getElementById("setcourts").innerHTML = courts.map(function (c, i) { return '<div class="lrow"><span class="dot" style="background:' + col[c[1]] + '"></span><div class="g"><b>' + c[0] + '</b><small>' + tname[c[1]] + (c[1] == "padel" ? "" : ", Flutlicht") + '</small></div><button class="sw" aria-pressed="' + (i != 4) + '" aria-label="' + c[0] + ' buchbar"></button></div>'; }).join("");
+
+  // Abos: Tarife laut tennismarly.ch (Saison 1.4.–31.3.), Jahrgang schlägt die Kategorie vor
+  var CATS = [
+    { id: "kind", name: "Kinder", cond: "bis 12 J.", t: [60], p: [60], c: [110] },
+    { id: "junior", name: "Junioren", cond: "13–18 J.", t: [100], p: [100], c: [150], main: 1 },
+    { id: "jung", name: "Junge Erwachsene", cond: "bis 26 J.", t: [200] },
+    { id: "student", name: "Studierende & Lehrlinge", cond: "bis 30 J., mit Ausweis", t: [200], p: [185], c: [250], proof: 1 },
+    { id: "adult", name: "Erwachsene", cond: "ab 19 J.", t: [380, 550], p: [290, 400], c: [480, 750], main: 1, last: 1 },
+    { id: "senior", name: "Senioren", cond: "ab 65 J.", t: [300, 550], p: [230, 400], c: [400, 750], main: 1 },
+    { id: "soleil", name: "Abo Soleil", cond: "Mo–Fr 8–16 Uhr", t: [200] },
+    { id: "rolli", name: "Rollstuhltennis", cond: "Rollstuhl", t: [100] }
+  ];
+  var KEY = { tennis: "t", padel: "p", combo: "c" }, ab = { sport: "tennis", who: "single" };
+  function price(c, s) { var a = c[KEY[s || ab.sport]]; if (!a) return null; return ab.who == "couple" ? (a[1] || null) : a[0]; }
+  function fitFor(a) { return a == null ? null : a <= 12 ? "kind" : a <= 18 ? "junior" : a >= 65 ? "senior" : "adult"; }
+  function feats(c) {
+    var f = [];
+    if (ab.sport != "padel") f.push("Alle 8 Tennisplätze ohne Platzgebühr");
+    if (ab.sport != "tennis") f.push("Padel-Court ohne Platzgebühr");
+    f.push("Online reservieren bis 7 Tage im Voraus");
+    if (ab.who == "couple") f.push("Zwei Personen, ein Haushalt");
+    if (ab.sport == "combo" && c.t && c.p) { var i = ab.who == "couple" ? 1 : 0, s = c.t[i] + c.p[i], p = price(c); if (s && p) f.push("CHF " + (s - p) + " günstiger als einzeln"); }
+    return f;
+  }
+  function renderAbos() {
+    var y = parseInt(document.getElementById("ab-year").value, 10), a = y > 1900 && y <= 2026 ? 2026 - y : null, fit = fitFor(a);
+    var main = CATS.filter(function (c) { return c.main && price(c) != null; }), rest = CATS.filter(function (c) { return !c.main && price(c) != null; });
+    document.getElementById("ab-main").innerHTML = main.map(function (c) {
+      var p = price(c), on = c.id == fit;
+      return '<div class="card pad stack"' + (on ? ' style="box-shadow:inset 0 0 0 2px var(--brand-deep),var(--sh)"' : '') + '>' +
+        '<div class="ch" style="margin:0"><div><h2>' + c.name + '</h2><div class="m3">' + c.cond + '</div></div>' + (on ? '<span class="pill p-ok"><i></i>passt zu dir</span>' : c.last ? '<span class="pill p-off abo-renew">dein letztes Abo</span>' : '') + '</div>' +
+        '<div style="font-size:34px;font-weight:700;letter-spacing:-.03em;line-height:1">CHF ' + p + '<small style="font-size:14px;font-weight:500;color:var(--ink-3);margin-left:6px">/ Saison</small></div>' +
+        '<div class="m3">' + (ab.who == "couple" ? "CHF " + p / 2 + " pro Person" : ab.sport == "tennis" ? "Als Gast nach " + Math.ceil(p / 30) + " Stunden bezahlt" : "&nbsp;") + '</div>' +
+        '<div class="lst">' + feats(c).map(function (f) { return '<div class="lrow" style="padding:7px 0"><span style="color:var(--ok);font-weight:700">✓</span><div class="g">' + f + '</div></div>'; }).join("") + '</div>' +
+        '<button class="btn ' + (on ? 'pri' : 'ghost') + ' wide abo-renew">Bezahlen · CHF ' + p + '</button><button class="btn ' + (on ? 'pri' : 'ghost') + ' wide abo-new" data-go="register">Bezahlen · CHF ' + p + '</button></div>';
+    }).join("");
+    document.getElementById("ab-more").innerHTML = rest.map(function (c) { var p = price(c), on = c.id == fit; return '<div class="lrow"><div class="g"><b>' + c.name + '</b><small>' + c.cond + '</small></div><b style="white-space:nowrap">CHF ' + p + '</b><button class="btn sm' + (on ? ' pri" style="background:var(--brand-deep);color:#fff' : '') + '">Auswählen</button></div>'; }).join("") || '<div class="m3">Paar-Abos gibt es für Erwachsene und Senioren.</div>';
+    document.getElementById("ab-morenote").textContent = rest.length ? "Ermässigungen mit Alters- oder Ausweis-Nachweis" : "";
+    var ad = price(CATS[4]);
+    document.getElementById("ab-anchor").innerHTML = ab.sport == "tennis" ? "Als Gast zahlst du CHF 30 pro Stunde. Das Erwachsenen-Abo ist nach " + Math.ceil(ad / 30) + " Stunden bezahlt, danach spielst du bis 31. März ohne Platzgebühr."
+      : ab.sport == "padel" ? "Als Gast zahlst du CHF 40 pro Stunde Padel. Das Erwachsenen-Abo ist nach " + Math.ceil(ad / 40) + " Stunden bezahlt."
+      : "Tennis und Padel zusammen: Erwachsene sparen CHF " + ((ab.who == "couple" ? 550 + 400 : 380 + 290) - ad) + " gegenüber zwei einzelnen Abos.";
+    var fc = fit && CATS.filter(function (c) { return c.id == fit; })[0];
+    document.getElementById("ab-fit").textContent = fc ? "→ " + fc.name + (a > 18 && a <= 30 ? " (bis 30 J. mit Ausweis günstiger, siehe Weitere Tarife)" : "") : "Jahrgang eingeben, dann schlagen wir das passende Abo vor.";
+  }
+  ["ab-sport", "ab-who"].forEach(function (id) { document.getElementById(id).addEventListener("click", function (e) { var b = e.target.closest("button"); if (!b) return; ab[id == "ab-sport" ? "sport" : "who"] = b.dataset.v; setTimeout(renderAbos, 0); }); });
+  document.getElementById("ab-year").addEventListener("input", renderAbos);
+  renderAbos();
+
+  // screen -> [section, nav, calendar variant, overlay, show taps]
+  var S = { start: ["start","start"], cal: ["cal","cal"],
+    "res-1": ["cal","cal","","",1], "res-2": ["cal","cal","","res",1], "res-3": ["cal","cal","","ok",1],
+    book: ["book","book"], detail: ["book","book","","detail"], profil: ["profil","profil"], abos: ["abos","profil"], "abos-neu": ["abos","","","","",1], rechnung: ["rechnung","profil"],
+    entry: ["entry",""], login: ["login",""], register: ["register",""], gast: ["gast",""],
+    hub: ["hub","admin"], heute: ["heute","admin"], sperren: ["sperren","admin"], mem: ["mem","admin"], stats: ["stats","admin"], settings: ["settings","admin"] };
+  var home = { start: "start", cal: "cal", book: "book", profil: "profil", admin: "hub", settings: "settings" };
+  var back = { "res-2": "cal", "res-3": "cal", detail: "book" };
+  var notes = {
+    start: "Start: Platzkarte zeigt die nächsten freien Slots. Ein Tipp auf einen Slot öffnet direkt das Buchungs-Sheet: 2 Tipps bis zur Buchung. Angepasst: der runde Plus-Button trägt auf dem Handy jetzt den Text Reservieren.",
+    cal: "Kalender (Handy wie heute): Tagesleiste, dann Liste (pro Platz eine Zeile mit Stunden, seitwärts scrollbar, ab der aktuellen Stunde) oder Raster (Plätze × Stunden). Buchen: Kalender, freie Stunde, Reservieren = 3 Tipps. Desktop: Raster mit Formular rechts (unverändert).",
+    "res-1": "Buchen, Schritt 1: Tipp 1 Kalender, Tipp 2 freie Stunde in der Liste (Platz 5, 18:00). Die pinken Zahlen sind nur Anmerkungen im Entwurf.",
+    "res-2": "Buchen, Schritt 2: Sheet mit letztem Mitspieler vorausgewählt, Dauer, Preis-Split (Abo deckt den eigenen Anteil, Rest zahlt, wer bucht). Zahlart wählt man danach in Stripe Checkout. Tipp 3 Reservieren.",
+    "res-3": "Buchen, Schritt 3: Bestätigung. Total 3 Tipps über den Kalender (Liste und Raster gleich), 2 Tipps über die Platzkarte auf Start. Anderer Mitspieler = 1 Tipp mehr.",
+    book: "Buchungen: Kommend/Vergangen wie heute. Tipp auf eine Buchung öffnet das Detail. Serien mit Serie stornieren sieht nur, wer Trainer ist.",
+    detail: "Buchungsdetail: Spieler mit Abo-Status, Preis, Stornieren direkt sichtbar.",
+    profil: "Profil: heutige Reihenfolge (Guthaben, Abo, Daten, Design, Abmelden) bleibt, nur im v3-Stil. Neu: Rechnungen mit offenem Betrag.",
+    abos: "Abos wie die alte Seite: Sportart, Für mich/Als Paar, Jahrgang schlägt das Abo vor (Rahmen + passt zu dir), drei Hauptkarten mit Leistungen, Weitere Tarife, Infos. Pro Karte nur ein Button Bezahlen, danach Stripe Checkout (Twint oder Karte). Kein Auto-Verlängern-Block mehr.",
+    rechnung: "Rechnung: Beleg mit Status, PDF und E-Mail, darunter weitere Belege. Offener Betrag direkt bezahlbar.",
+    entry: "Einstieg (abgemeldet), heutige Struktur: drei Wege, Mitglied anmelden (primär), Als Gast buchen (Kalender als Gast), Mitglied werden (Abo-Seite, dort Abo wählen, dann Konto erstellen und bezahlen). „Jetzt frei“ scrollt seitwärts. Ohne Abo gibt es keine Mitglied-Buchung.",
+    login: "Login: heutige Struktur bleibt (E-Mail, Passwort, Anmelden, Registrieren). Gezeigt mit Fehlerzustand. Neu: Gast-Buchung ohne Konto.",
+    "abos-neu": "Mitglied werden: gleiche Seite ohne Abgelaufen-Hinweis. Bezahlen führt erst zu Konto erstellen, dann Stripe Checkout.",
+    register: "Registrieren: vier Felder, eine Checkbox, ein Button. Kommt nach der Abo-Wahl (Mitglied werden), danach bezahlen.",
+    gast: "Gast-Buchung: Slot oben, drei Felder, Preis-Split, ein Button Bezahlen. Zahlart (Twint oder Karte) wählt man danach in Stripe Checkout.",
+    hub: "Verwaltung Übersicht: eine Kachel pro Bereich mit der wichtigsten Zahl. Oben am Desktop die Admin-Pillen.",
+    heute: "Heute: Regen-Schalter zuoberst (ein Tipp sperrt alle Sandplätze, wie heute Sperren), dann Kennzahlen, Belegung, nächste Buchungen.",
+    sperren: "Sperren: Formular mit Grund, Plätzen, Zeitraum, Wiederholen und Warnung zu betroffenen Buchungen; daneben die Liste.",
+    mem: "Mitglieder: unverändert aus v3.",
+    stats: "Statistik: Jahr, vier Kennzahlen, Einnahmen pro Monat, Auslastung pro Platz, CSV-Export mit Text-Button.",
+    settings: "Einstellungen: Regeln, Plätze, Tarife, Branding als Karten; Speichern-Leiste bleibt beim Scrollen sichtbar."
+  };
+  var pn = { m: [["start","Start"],["cal","Kalender"],["book","Buchungen"],["profil","Profil"]], a: [["heute","Heute"],["mem","Mitglieder"],["sperren","Sperren"],["stats","Statistik"],["settings","Einstellungen"]] };
+  var frame = document.getElementById("frame"), app = document.getElementById("app"), cur = "start";
+  function attr(k, v) { if (v) app.setAttribute(k, v); else app.removeAttribute(k); }
   function setScreen(s) {
-    document.querySelectorAll(".screen").forEach(function (el) { if (el.dataset.screen == s) el.setAttribute("data-on", ""); else el.removeAttribute("data-on"); });
-    document.querySelectorAll("#scr button").forEach(function (b) { b.setAttribute("aria-pressed", b.dataset.screen == s); });
-    document.querySelectorAll("[data-nav]").forEach(function (a) { if (a.dataset.nav == s) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
-    document.getElementById("pn").innerHTML = pn[s].map(function (p) { return '<button' + (p[0] == s ? ' aria-pressed="true"' : '') + (p[0] ? ' data-go="' + p[0] + '"' : '') + '><span>' + p[1] + '</span></button>'; }).join("");
-    document.getElementById("app").removeAttribute("data-sheet");
+    if (s == "back") s = back[cur] || "start";
+    var c = S[s]; if (!c) return; cur = s;
+    document.querySelectorAll(".screen").forEach(function (el) { if (el.dataset.screen == c[0]) el.setAttribute("data-on", ""); else el.removeAttribute("data-on"); });
+    document.querySelectorAll(".scr button").forEach(function (b) { b.setAttribute("aria-pressed", b.dataset.screen == s); });
+    document.querySelectorAll("[data-nav]").forEach(function (a) { if (a.dataset.nav == c[1] || (s == "settings" && a.dataset.nav == "settings")) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
+    document.getElementById("pn").innerHTML = pn[c[1] == "admin" ? "a" : "m"].map(function (p) { var on = S[p[0]][0] == c[0] || (c[1] != "admin" && S[p[0]][1] == c[1]); return '<button' + (on ? ' aria-pressed="true"' : '') + ' data-go="' + p[0] + '"><span>' + p[1] + '</span></button>'; }).join("");
+    attr("data-bs", c[3]); attr("data-taps", c[4] ? "1" : ""); attr("data-bare", c[1] ? "" : "1"); attr("data-abo", c[5] ? "neu" : "");
+    document.getElementById("note").textContent = notes[s] || notes[c[0]] || "";
   }
   function fit() { frame.style.zoom = Math.min(1, (document.documentElement.clientWidth - 32) / +frame.dataset.w); }
   function setW(w) { frame.dataset.w = w; document.querySelectorAll("#wid button").forEach(function (b) { b.setAttribute("aria-pressed", b.dataset.w == w); }); fit(); try { localStorage.setItem("tcm-w", w); } catch (e) {} }
-  document.getElementById("scr").addEventListener("click", function (e) { var b = e.target.closest("button"); if (b) setScreen(b.dataset.screen); });
+  document.querySelectorAll(".scr").forEach(function (g) { g.addEventListener("click", function (e) { var b = e.target.closest("button"); if (b) setScreen(b.dataset.screen); }); });
   document.getElementById("wid").addEventListener("click", function (e) { var b = e.target.closest("button"); if (b) setW(b.dataset.w); });
-  document.getElementById("pn").addEventListener("click", function (e) { var b = e.target.closest("button"); if (b && b.dataset.go) setScreen(b.dataset.go); });
-  document.querySelectorAll("[data-nav]").forEach(function (a) { a.addEventListener("click", function (e) { e.preventDefault(); setScreen(a.dataset.nav); }); });
-  document.getElementById("list").addEventListener("click", function (e) { var c = e.target.closest(".chip"); if (c && !c.classList.contains("taken")) document.getElementById("app").setAttribute("data-sheet", ""); });
-  document.querySelector(".scrim").addEventListener("click", function () { document.getElementById("app").removeAttribute("data-sheet"); });
-  document.getElementById("form-m").addEventListener("click", function (e) { if (e.target.closest(".more")) document.getElementById("app").removeAttribute("data-sheet"); });
+  app.addEventListener("click", function (e) {
+    var n = e.target.closest("[data-nav]"); if (n) { e.preventDefault(); return setScreen(home[n.dataset.nav]); }
+    var g = e.target.closest("[data-go]"); if (g) return setScreen(g.dataset.go);
+    var sw = e.target.closest(".sw, .opt, .swatches button"); if (sw) { if (sw.matches(".sw")) sw.setAttribute("aria-pressed", sw.getAttribute("aria-pressed") != "true"); else sw.parentNode.querySelectorAll(sw.matches(".opt") ? ".opt" : "button").forEach(function (o) { o.setAttribute("aria-pressed", o == sw); }); return; }
+    var sb = e.target.closest(".seg button"); if (sb) { var seg = sb.parentNode, bs = [].slice.call(seg.children); bs.forEach(function (o) { o.setAttribute("aria-pressed", o == sb); }); if (seg.dataset.panes) seg.dataset.panes.split(",").forEach(function (id, j) { document.getElementById(id).hidden = j != bs.indexOf(sb); }); }
+  });
   window.addEventListener("resize", fit);
-  var w0 = "1440"; try { w0 = localStorage.getItem("tcm-w") || w0; } catch (e) {}
+  var w0 = "390"; try { w0 = localStorage.getItem("tcm-w") || w0; } catch (e) {}
   setW(w0); setScreen("start");
 })();
 </script>

@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Segmented } from "@/components/app/segmented";
 import { Spinner } from "@/components/app/avatar";
 import { SwitchKnob } from "@/components/app/switch";
+import { PriceSplit, payHint } from "@/components/app/booking-sheet";
 import { createBookingAction, createCoachSeriesAction } from "@/app/actions/booking";
 import { setFavoritesAction } from "@/app/actions/profile";
 import { computeBookingCost, isDinerSlot, needsFloodlight, payButtonLabel, payOptions, roundRappen } from "@/lib/pricing";
@@ -68,6 +69,7 @@ export function ReserveView({
   const [paying, setPaying] = useState(false);
   const [guests, setGuests] = useState<{ name: string; email: string }[]>([]);
   const [guestForm, setGuestForm] = useState<{ name: string; email: string } | null>(null);
+  // only the club's extra methods (vor Ort, Rechnung) are a choice; wallet vs. Stripe is decided by the rule
   const [method, setMethod] = useState<PaymentMethod | null>(null);
   // Trainer series: repeat weekly until this date (YYYY-MM-DD), null = single booking
   const [until, setUntil] = useState<string | null>(null);
@@ -164,7 +166,8 @@ export function ReserveView({
         ...guests.map((g) => ({ type: "GUEST" as const, guestName: g.name, guestEmail: g.email || undefined })),
       ],
       hasBallMachine: ball,
-      ...(cost.total > 0 ? { paymentMethod: pay } : {}),
+      // wallet vs. Stripe is decided on the server; only the club's extra methods are sent
+      ...(cost.total > 0 && (pay === "ON_SITE" || pay === "INVOICE") ? { paymentMethod: pay } : {}),
     }).catch(() => ({ success: false as const, error: "Verbindung fehlgeschlagen. Bitte erneut versuchen." }));
     if (res.success && "checkoutUrl" in res && res.checkoutUrl) {
       window.location.assign(res.checkoutUrl);
@@ -181,21 +184,37 @@ export function ReserveView({
 
   const summary = (
     <>
-          <div className="flex justify-between px-1 pb-2.5 text-[14px] font-semibold text-muted-foreground">
-            <span>Total</span>
-            <span className="text-[17px] font-bold text-foreground">{cost.total ? `CHF ${cost.total}${until !== null ? " pro Termin" : ""}` : "Inklusive"}</span>
-          </div>
+          {until === null ? (
+            <div className="mb-2.5">
+              <PriceSplit
+                court={court}
+                cost={cost}
+                people={[
+                  { name: "Du", sports: planSports },
+                  ...players.map((id) => ({ name: nameOf(id), sports: byId.get(id)?.sports ?? null })),
+                  ...guests.map((g) => ({ name: g.name, sports: null, guest: true })),
+                ]}
+                hint={payHint(pay, cost.total, wallet)}
+              />
+            </div>
+          ) : (
+            <div className="flex justify-between px-1 pb-2.5 text-[14px] font-semibold text-ink-2">
+              <span>Pro Termin, auf Rechnung</span>
+              <span className="text-[16px] font-bold text-ink">{cost.total ? `CHF ${cost.total}` : "inbegriffen"}</span>
+            </div>
+          )}
           {until === null && cost.total > 0 && opts.length > 1 && (
-            <Segmented size="lg" className="mb-2.5" label="Zahlungsart" value={pay} onChange={setMethod} options={opts} />
+            // only when the club enabled "vor Ort" / "Rechnung"; wallet vs. Stripe is never a choice
+            <Segmented className="mb-2.5" label="Zahlungsart" value={pay} onChange={setMethod} options={opts} />
           )}
           <button
             type="button"
             onClick={confirm}
             disabled={paying || (needPartner && count === 0) || (until === null && rtype === "double" && count < 3)}
-            className="flex h-[58px] w-full items-center justify-center gap-2.5 rounded-[20px] bg-clay text-[18px] font-bold text-white shadow-[0_14px_30px_-10px_var(--tennis-clay)] active:scale-[.97] disabled:bg-inset disabled:text-muted-foreground disabled:shadow-none disabled:active:scale-100"
+            className="btn btn-pri h-[50px] w-full text-[15.5px]"
           >
             {paying && <Spinner />}
-            {paying ? "Einen Moment…" : until !== null ? "Serie buchen" : cost.total > 0 ? payButtonLabel(pay, cost.total) : "Reservieren"}
+            {paying ? "Einen Moment…" : until !== null ? "Serie buchen" : payButtonLabel(pay, cost.total)}
           </button>
           {until === null && rtype === "double" && count < 3 && (
             <div className="mt-2 w-full text-center text-[14px] font-semibold text-muted-foreground">Doppel: noch {3 - count} Mitspieler oder Gäste wählen</div>
@@ -207,17 +226,18 @@ export function ReserveView({
   );
 
   return (
-    <div className="fixed inset-0 z-[45] flex flex-col bg-background lg:left-64">
-      <div className="mx-auto flex w-full max-w-[640px] flex-1 flex-col overflow-hidden lg:max-w-[1100px] lg:px-6">
-        <div className="flex items-center gap-3 px-5 pb-2 pt-[60px] lg:pt-12">
-          <button type="button" aria-label="Zurück" onClick={() => router.back()} className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-card">
+    // phone: full screen over the tab bar; from 640 a normal page inside the shell
+    <div className="fixed inset-0 z-[45] flex flex-col bg-background @min-[640px]:static @min-[640px]:z-auto">
+      <div className="flex w-full flex-1 flex-col overflow-hidden @min-[640px]:overflow-visible">
+        <div className="flex items-center gap-3 px-5 pb-2 pt-[60px] @min-[640px]:px-0 @min-[640px]:pt-2">
+          <button type="button" aria-label="Zurück" onClick={() => router.back()} className="btn w-[42px] px-0">
             <svg aria-hidden width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
           </button>
-          <h1 className="text-[30px] font-bold tracking-[-.035em]">Reservieren</h1>
+          <h1 className="text-[28px] font-semibold tracking-[-.02em] @min-[640px]:text-[32px]">Reservieren</h1>
         </div>
-        <div className="flex-1 overflow-y-auto px-5 pb-5 pt-2 lg:grid lg:grid-cols-2 lg:grid-rows-[auto_1fr] lg:content-start lg:items-start lg:gap-x-8">
+        <div className="flex-1 overflow-y-auto px-5 pb-5 pt-2 @min-[640px]:overflow-visible @min-[640px]:px-0 lg:grid lg:grid-cols-2 lg:grid-rows-[auto_1fr] lg:content-start lg:items-start lg:gap-x-8">
           <div className="lg:col-start-1 lg:row-start-1">
-          <div className="flex items-end justify-between rounded-[26px] px-5 py-[18px] text-white transition-[background] duration-[400ms]" style={{ background: color }}>
+          <div className="flex items-end justify-between rounded-[24px] px-5 py-[18px] text-white shadow-card transition-[background] duration-[400ms]" style={{ background: color }}>
             <div>
               <div className="text-[14px] font-semibold">{longDate(startDate)}</div>
               <div className="text-[34px] font-bold leading-[1.1] tracking-[-.04em]">
@@ -428,10 +448,10 @@ export function ReserveView({
               </button>
             </>
           )}
-          <div className="mt-7 hidden rounded-[22px] border border-border bg-card p-5 lg:sticky lg:top-4 lg:block">{summary}</div>
+          <div className="card mt-7 hidden p-5 lg:sticky lg:top-4 lg:block">{summary}</div>
           </div>
         </div>
-        <div className="border-t border-border bg-glass px-5 pb-[max(24px,env(safe-area-inset-bottom))] pt-3 backdrop-blur-[24px] lg:hidden">
+        <div className="border-t border-border bg-glass px-5 pb-[max(24px,env(safe-area-inset-bottom))] pt-3 backdrop-blur-[24px] @min-[640px]:sticky @min-[640px]:bottom-0 @min-[640px]:rounded-[24px] @min-[640px]:border-0 @min-[640px]:shadow-lift lg:hidden">
           {summary}
         </div>
       </div>
