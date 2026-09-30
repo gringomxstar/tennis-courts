@@ -10,6 +10,7 @@ export function Segmented<T extends string | number>({
   className,
   size = "md",
   label,
+  muted = [],
 }: {
   options: readonly (readonly [T, ReactNode])[];
   value: T;
@@ -17,6 +18,8 @@ export function Segmented<T extends string | number>({
   className?: string;
   size?: "sm" | "md" | "lg";
   label?: string;
+  /** looks unavailable but stays tappable (the caller explains why) */
+  muted?: readonly T[];
 }) {
   return (
     <div
@@ -36,11 +39,13 @@ export function Segmented<T extends string | number>({
             type="button"
             role="radio"
             aria-checked={on}
+            aria-disabled={muted.includes(id) || undefined}
             onClick={() => onChange(id)}
             className={cn(
               "flex-1 text-center font-semibold transition-all duration-300 ease-spring",
-              size === "sm" ? "rounded-[11px] py-[7px] text-[13px]" : size === "lg" ? "rounded-[11px] py-2.5 text-[15px]" : "rounded-[12px] py-[9px] text-[14px]",
-              on ? "bg-seg-on text-seg-on-fg shadow-[0_2px_8px_rgba(0,0,0,.18)]" : "bg-transparent text-seg-off-fg"
+              size === "sm" ? "rounded-[11px] py-[7px] text-[13px]" : size === "lg" ? "rounded-[11px] py-[11px] text-[15px]" : "rounded-[12px] py-[9px] text-[14px]",
+              on ? "bg-seg-on text-seg-on-fg shadow-[0_2px_8px_rgba(0,0,0,.18)]" : "bg-transparent text-seg-off-fg",
+              muted.includes(id) && !on && "opacity-50"
             )}
           >
             {text}
