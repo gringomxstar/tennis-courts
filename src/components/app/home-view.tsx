@@ -250,13 +250,13 @@ export function HomeView({
                   type="button"
                   onClick={() => sheet.open(q)}
                   aria-label={`${relDay(q.start)} ${hh(q.start.getHours())}, ${courtLabel(q.court).name} buchen`}
-                  className="chip h-[38px] flex-none bg-white/90 text-ink shadow-none"
+                  className="chip h-[38px] flex-none bg-white/90 text-[#16201d] shadow-none"
                 >
-                  {relDay(q.start) !== "Heute" && <span className="text-ink-3">{relDay(q.start)}</span>}
+                  {relDay(q.start) !== "Heute" && <span className="text-[#8a9793]">{relDay(q.start)}</span>}
                   <b className="text-[15px]">{hh(q.start.getHours())}</b> {courtLabel(q.court).name}
                 </button>
               ))}
-              {data && !data.quick.length && <span className="rounded-full bg-white/90 px-3.5 py-2 text-[13.5px] font-semibold text-ink">Gerade nichts frei.</span>}
+              {data && !data.quick.length && <span className="rounded-full bg-white/90 px-3.5 py-2 text-[13.5px] font-semibold text-[#16201d]">Gerade nichts frei.</span>}
             </div>
           </div>
 
