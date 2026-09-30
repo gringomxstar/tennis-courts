@@ -26,6 +26,7 @@ export default async function CalendarPage({ params }: { params: Promise<{ clubS
       needPartner={d.needPartner}
       planSports={d.planSports}
       windowDays={isTenantAdmin ? null : d.windowDays}
+      isCoach={d.isCoach}
       horizon={isTenantAdmin || d.isCoach ? WIDE - 1 : undefined}
       admin={isTenantAdmin}
     />
