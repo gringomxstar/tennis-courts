@@ -2,6 +2,8 @@
 
 import { Fragment, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { createCoachBlockAction } from "@/app/actions/booking";
+import { useRouter } from "next/navigation";
 import { BookingSheet } from "@/components/app/booking-sheet";
 import { BookingDetailSheet } from "@/components/app/booking-detail-sheet";
 import { LabeledSwitch } from "@/components/app/switch";
@@ -31,6 +33,7 @@ export function CalendarView({
   wallet,
   windowDays,
   horizon,
+  isCoach = false,
   guestRate,
   needPartner = false,
   planSports,
@@ -47,6 +50,7 @@ export function CalendarView({
   windowDays: number | null;
   /** Trainer/admin: days ahead that can be browsed (beats windowDays and the 7-day cap). */
   horizon?: number;
+  isCoach?: boolean;
   guestRate: boolean;
   needPartner?: boolean;
   planSports: SportType[] | null;
@@ -68,6 +72,13 @@ export function CalendarView({
   };
   const [day, setDay] = useState(0);
   const [weekMode, setWeekMode] = useState(false);
+  const router = useRouter();
+  // Trainer/Admin: mark several free tiles (any court/day) and book them as one Kurs
+  const [multi, setMulti] = useState(false);
+  const [marked, setMarked] = useState<Map<string, { court: Court; start: Date }>>(new Map());
+  const [kurs, setKurs] = useState("");
+  const [kursBusy, setKursBusy] = useState(false);
+  const markKey = (c: Court, start: Date) => `${c.id}|${start.getTime()}`
   const [weekCourtId, setWeekCourtId] = useState<string | null>(null);
   const [filter, setFilter] = useState<"all" | SurfaceKind>("all");
   const open = tenant.settingsJson?.openingHour ?? 7;
@@ -88,6 +99,13 @@ export function CalendarView({
     return b ? REASON[b.reason] : "Gesperrt";
   };
   const tap = (court: Court, start: Date, state: SlotState) => {
+    if (multi) {
+      if (state !== "free") return toast("Nur freie Kacheln können markiert werden.");
+      const k = markKey(court, start);
+      const next = new Map(marked);
+      if (!next.delete(k)) next.set(k, { court, start });
+      return setMarked(next);
+    }
     if (state === "free") sheet.open({ court, start });
     else if (state === "mine" || (admin && state === "taken")) setDetail(bookingAt(court.id, start, 60, bookings) ?? null);
     else if (state === "blocked") toast(`Platz gesperrt: ${blockLabel(court, start)}`);
@@ -154,7 +172,7 @@ export function CalendarView({
     // a longer booking is drawn once, from the cell it starts in; the cells below stay empty under it
     if (b && bStart < start.getTime() && h > open && cell(c, h - 1, dt).state === state) return <div key={`${c.id}${dt.getTime()}`} className="h-14 rounded-[13px] bg-bg" />;
     const rows = b ? Math.max(1, Math.min(close - h, Math.ceil((new Date(b.endsAt).getTime() - start.getTime()) / HOUR_MS))) : 1;
-    const picked = state === "free" && sel?.court.id === c.id && sel.start.getTime() === start.getTime();
+    const picked = state === "free" && (multi ? marked.has(markKey(c, start)) : sel?.court.id === c.id && sel.start.getTime() === start.getTime());
     const inert = state === "taken" && !admin;
     const ev =
       state === "mine" || state === "taken"
@@ -176,7 +194,7 @@ export function CalendarView({
           (inert || state === "blocked") && "cursor-default"
         )}
       >
-        {picked && <span className="text-[12px] font-semibold text-brand-deep">+ Reservieren</span>}
+        {picked && <span className="text-[12px] font-semibold text-brand-deep">{multi ? "✓" : "+ Reservieren"}</span>}
         {ev && (
           <span
             className="absolute inset-x-0 top-0 z-[1] flex items-center overflow-hidden rounded-[13px] px-[9px] text-left text-[12px] font-semibold leading-[1.2] shadow-[0_8px_18px_-10px_rgba(0,0,0,.35)]"
@@ -191,6 +209,29 @@ export function CalendarView({
       </button>
     );
   };
+  // neighbouring hours on the same court become one longer booking
+  const kursItems = () => {
+    const sorted = [...marked.values()].sort((a, b) => (a.court.id === b.court.id ? a.start.getTime() - b.start.getTime() : a.court.id < b.court.id ? -1 : 1));
+    const items: { courtId: string; startsAt: string; durationMinutes: number }[] = [];
+    for (const m of sorted) {
+      const last = items[items.length - 1];
+      const lastEnd = last && new Date(last.startsAt).getTime() + last.durationMinutes * 60_000;
+      if (last && last.courtId === m.court.id && lastEnd === m.start.getTime()) last.durationMinutes += 60;
+      else items.push({ courtId: m.court.id, startsAt: m.start.toISOString(), durationMinutes: 60 });
+    }
+    return items;
+  };
+  async function bookKurs() {
+    setKursBusy(true);
+    const res = await createCoachBlockAction({ clubSlug: tenant.slug, name: kurs, items: kursItems() });
+    setKursBusy(false);
+    if (!res.success) return void toast(res.error);
+    toast(`Kurs gebucht: ${res.created} Termine`);
+    setMarked(new Map());
+    setKurs("");
+    setMulti(false);
+    router.refresh();
+  }
   const step = weekMode ? 7 : 1;
   const mon = addDays(date ?? startOfToday(), -(((date ?? startOfToday()).getDay() + 6) % 7));
   const weekCourt = shown.find((c) => c.id === weekCourtId) ?? shown[0];
@@ -201,6 +242,11 @@ export function CalendarView({
       <div className="flex items-center gap-3 pt-2">
         <h1 className="text-[32px] font-semibold leading-[1.05] tracking-[-.02em]">Kalender</h1>
         <div className="flex-1" />
+        {(admin || isCoach) && (
+          <button type="button" aria-pressed={multi} className={cn("btn", multi && "bg-ink text-card")} onClick={() => { setMulti(!multi); setMarked(new Map()); }}>
+            Mehrere wählen
+          </button>
+        )}
         <LabeledSwitch left="Tag" right="Woche" label="Wochenansicht" on={weekMode} onChange={setWeekMode} />
         <button type="button" className="btn w-[42px] px-0" aria-label={weekMode ? "Vorwoche" : "Vortag"} disabled={day === 0} onClick={() => setDay(Math.max(0, day - step))}>‹</button>
         <span className="btn">{weekMode ? `${mon.toLocaleDateString("de-CH", { day: "numeric", month: "numeric" })} – ${addDays(mon, 6).toLocaleDateString("de-CH", { day: "numeric", month: "numeric" })}` : longDate(date)}</span>
@@ -269,6 +315,15 @@ export function CalendarView({
             </div>
           )}
         </div>
+        )}
+        {multi && (
+          <div className="sticky bottom-3 z-[6] mt-3 flex flex-wrap items-center gap-2 rounded-[18px] bg-ink p-3 text-card shadow-card">
+            <b className="px-2 text-[14px]">{marked.size} Kacheln ({kursItems().length} Buchungen)</b>
+            <input aria-label="Kursname" value={kurs} onChange={(e) => setKurs(e.target.value)} placeholder="Kursname" maxLength={80} className="h-10 min-w-0 flex-1 rounded-[12px] bg-card px-3 text-[15px] text-foreground outline-none" />
+            <button type="button" disabled={!marked.size || !kurs.trim() || kursBusy} onClick={bookKurs} className="btn btn-primary h-10">
+              Als Kurs buchen
+            </button>
+          </div>
         )}
         <div className="mt-3 flex flex-wrap gap-3.5 text-[12.5px] text-ink-2">
           {userId && <span className="flex items-center gap-1.5"><i className="inline-block h-3 w-3 rounded-[4px] bg-me" />Meine Buchung</span>}
