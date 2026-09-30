@@ -14,7 +14,7 @@ import {
 import { prisma } from "@/lib/prisma";
 import { getStripe } from "@/lib/stripe";
 import { revalidatePath } from "next/cache";
-import { computeBookingCost, needsFloodlight } from "@/lib/pricing";
+import { computeBookingCost, needsFloodlight, settleBooking } from "@/lib/pricing";
 import { BlockReason, BookingParticipant, PaymentMethod, SportType, TenantSettings } from "@/types";
 import { sendBookingCancellation, sendBookingConfirmation, sendMail } from "@/lib/mail";
 import { ballMachineConflict, cancelDeadlineMinutes, checkBookingRules, deadlineText, lateBookingCutoff, weeklyStarts } from "@/lib/booking-rules";
@@ -47,7 +47,7 @@ export interface CreateBookingInput {
   guestFirstName?: string;
   guestLastName?: string;
   guestEmail?: string;
-  /** Members: WALLET (default, falls back to ONLINE when the balance is short), ONLINE, ON_SITE, INVOICE. */
+  /** Only ON_SITE / INVOICE (when the club enabled them) are honoured; anything else follows settleBooking. */
   paymentMethod?: PaymentMethod;
   /** Split the price evenly across the organizer and all member participants' wallets. */
 }
@@ -293,14 +293,18 @@ export async function createBookingAction(input: CreateBookingInput) {
     start: startDate,
   });
 
-  // Payment method. Anonymous guests pay online or on site; members default to their wallet.
+  // Payment method. Only the club's extra methods (vor Ort, Rechnung) are a choice; otherwise the owner's
+  // rule decides on the server: wallet when it covers the total, else the full amount via Stripe.
   let method: PaymentMethod | null = null;
   if (totalCost > 0 && hasDb) {
     const want = input.paymentMethod;
     if (want === "ON_SITE" && settings?.payOnSite) method = "ON_SITE";
     else if (want === "INVOICE" && settings?.payByInvoice && !isGuest) method = "INVOICE";
-    else if (isGuest || want === "ONLINE") method = "ONLINE";
-    else method = "WALLET";
+    else if (isGuest) method = "ONLINE";
+    else {
+      const w = await prisma.userWallet.findUnique({ where: { tenantId_userId: { tenantId: tenant.id, userId: organizerId } } });
+      method = settleBooking(Number(w?.balance ?? 0), totalCost).method;
+    }
   }
 
   const participants: BookingParticipant[] = [
@@ -401,7 +405,7 @@ export async function createBookingAction(input: CreateBookingInput) {
         });
       } catch (e) {
         if (!(e instanceof InsufficientFundsError)) throw e;
-        method = "ONLINE"; // not enough credit: pay the booking online instead
+        method = "ONLINE"; // balance changed since the check (concurrent booking): pay online instead
         created = await prisma.booking.create({ data: bookingData(method) });
       }
     } else {

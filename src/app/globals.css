@@ -49,8 +49,8 @@
   --card-foreground: var(--ink);
   --popover: var(--card);
   --popover-foreground: var(--ink);
-  --inset: var(--bg);
-  --acc: var(--bg);
+  --inset: #f3f6f5; /* legacy fills; lighter than --bg so they still show on the page background */
+  --acc: #edf1f0;
   --glass: rgba(255, 255, 255, 0.8);
   --sheet: var(--card);
   --clay-text: var(--brand-deep);
@@ -104,6 +104,8 @@
   --brand-soft: color-mix(in srgb, var(--brand) 30%, var(--card));
   --brand-tint: color-mix(in srgb, var(--brand) 14%, var(--card));
   --stripes: repeating-linear-gradient(135deg, #1d2624 0 4px, #151c1b 4px 8px);
+  --inset: #1d2624;
+  --acc: #222c2a;
   --glass: rgba(24, 33, 32, 0.78);
   --top-mask: linear-gradient(#101413 55%, rgba(16, 20, 19, 0));
   --track-off: #34403d;
