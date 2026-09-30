@@ -321,6 +321,7 @@ model Booking {
   notes          String?
   idempotencyKey String?       @unique
   cancelledAt    DateTime?
+  refundedAt     DateTime? // Stripe refund went through (accounting export: negative row)
   cancelledById  String?
   createdById    String
   createdAt      DateTime      @default(now())

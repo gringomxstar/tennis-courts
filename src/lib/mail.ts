@@ -66,6 +66,7 @@ export async function sendBookingConfirmation(bookingId: string) {
       m.slot,
       b.totalCost ? `Betrag: CHF ${Number(b.totalCost).toFixed(2)}` : "",
       b.paymentMethod ? (PAY_NOTE[b.paymentMethod] ?? "") : "",
+      b.paymentStatus === "PAID" ? `Quittung: ${appUrl()}/invoice/${b.id}` : "",
       "",
       `Buchung ansehen oder stornieren: ${bookingLink(b.tenant.slug, b.id)}`,
     ].join("\n")
@@ -114,6 +115,17 @@ export async function sendRenewalReminder(to: string, firstName: string, planNam
     `dein Abo «${planName}» beim ${clubName} läuft am ${end} ab.`,
     `Jetzt für die nächste Saison verlängern (Twint oder Karte): ${appUrl()}/c/${clubSlug}/abos?plan=${planId}`,
     "", "Mit «automatisch verlängern» musst du nächstes Jahr nicht mehr daran denken.",
+  ].join("\n"));
+}
+
+/** Abo paid (Stripe purchase or auto-renewal): receipt link; the invoice itself comes from the club's billing tool. */
+export async function sendAboReceipt(to: string, firstName: string, planName: string, clubName: string, membershipId: string) {
+  const m = await prisma.membership.findUnique({ where: { id: membershipId }, select: { pricePaid: true } });
+  const amount = Number(m?.pricePaid ?? 0);
+  return sendMail(to, `Abo bezahlt: ${clubName}`, [
+    `Hallo ${firstName}`, "",
+    `deine Zahlung für das Abo «${planName}» beim ${clubName} ist eingegangen (CHF ${amount.toFixed(2)}).`,
+    `Quittung: ${appUrl()}/invoice/${membershipId}`,
   ].join("\n"));
 }
 

@@ -70,7 +70,7 @@ export async function loadStats(tenantId: string, year: number, openHour: number
       where: { tenantId, startsAt: { gte: from, lt: to } },
       select: {
         id: true, courtId: true, organizerId: true, startsAt: true, endsAt: true, status: true, bookingType: true,
-        paymentStatus: true, paymentMethod: true, totalCost: true, hasLighting: true, cancelledAt: true, createdAt: true, updatedAt: true,
+        paymentStatus: true, paymentMethod: true, totalCost: true, hasLighting: true, cancelledAt: true, refundedAt: true, createdAt: true, updatedAt: true,
         organizer: { select: { firstName: true, lastName: true, email: true, birthDate: true } },
         court: { select: { name: true, sportType: true } },
         participants: { select: { userId: true, role: true, guestName: true, user: { select: { birthDate: true } } } },
@@ -80,7 +80,7 @@ export async function loadStats(tenantId: string, year: number, openHour: number
     prisma.membership.findMany({
       where: { tenantId },
       select: {
-        userId: true, startsAt: true, endsAt: true, status: true, pricePaid: true, paidAt: true, createdAt: true,
+        id: true, userId: true, startsAt: true, endsAt: true, status: true, pricePaid: true, paidAt: true, createdAt: true,
         plan: { select: { name: true, price: true } },
         user: { select: { firstName: true, lastName: true, email: true } },
       },
@@ -329,6 +329,7 @@ const PAY_LABEL: Record<string, string> = { PAID: "bezahlt", UNPAID: "offen", WA
 export const EXPORTS = {
   buchungen: "Buchungen",
   kasse: "Kassenjournal (Monate)",
+  abos: "Abo-Zahlungen",
   wallet: "Guthaben-Bewegungen",
   mitglieder: "Mitgliederliste",
 } as const;
@@ -338,13 +339,19 @@ export function exportRows(s: Stats, type: ExportType): unknown[][] {
   if (type === "buchungen") {
     return [
       ["Datum", "Von", "Bis", "Platz", "Organisator", "E-Mail", "Art", "Status", "Zahlart", "Zahlung", "Betrag CHF", "Flutlicht", "Mitspieler", "Gäste"],
-      ...s.raw.yb.map((b) => [
+      ...s.raw.yb.flatMap((b) => [[
         chDate(b.startsAt), chTime(b.startsAt), chTime(b.endsAt), b.court.name, name(b.organizer), b.organizer.email,
         TYPE_LABEL[b.bookingType] ?? b.bookingType, STATUS_LABEL[b.status] ?? b.status,
         b.paymentMethod ? METHOD_LABEL[b.paymentMethod] : "", PAY_LABEL[b.paymentStatus] ?? b.paymentStatus,
         Number(b.totalCost).toFixed(2), b.hasLighting ? "ja" : "nein",
         b.participants.filter((p) => p.role !== "ORGANIZER" && p.role !== "GUEST").length,
         b.participants.filter((p) => p.role === "GUEST").map((p) => p.guestName).join(", "),
+      ],
+        // Stripe refunds are always full (refundStripeBooking, dated by refundedAt): reverse them so the export nets to 0
+        ...(b.refundedAt && b.paymentMethod === "ONLINE" && b.paymentStatus === "PAID" && Number(b.totalCost) > 0
+          ? [[chDate(b.refundedAt), "", "", b.court.name, name(b.organizer), b.organizer.email, TYPE_LABEL[b.bookingType] ?? b.bookingType,
+              "Storno-Rückerstattung", METHOD_LABEL.ONLINE, "zurückerstattet", (-Number(b.totalCost)).toFixed(2), "", "", ""]]
+          : []),
       ]),
     ];
   }
@@ -359,6 +366,15 @@ export function exportRows(s: Stats, type: ExportType): unknown[][] {
       ["Offene Posten", s.kasse.open.toFixed(2)],
       ["Erlassen", s.kasse.waived.toFixed(2)],
       ["Guthaben-Saldo aller Mitglieder (Verbindlichkeit, heute)", s.kasse.wallet.liability.toFixed(2)],
+    ];
+  }
+  if (type === "abos") {
+    return [
+      ["Bezahlt am", "Name", "E-Mail", "Abo", "Gültig von", "Gültig bis", "Betrag CHF", "Referenz"],
+      ...s.raw.paidMemberships.filter((m) => chDate(s.raw.aboDate(m)).endsWith(String(s.year))).map((m) => [
+        chDate(s.raw.aboDate(m)), name(m.user), m.user.email, m.plan.name, chDate(m.startsAt), chDate(m.endsAt),
+        s.raw.aboAmount(m).toFixed(2), m.id,
+      ]),
     ];
   }
   if (type === "wallet") {
