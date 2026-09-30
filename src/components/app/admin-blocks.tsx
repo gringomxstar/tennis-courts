@@ -10,7 +10,7 @@ import { SwitchKnob } from "@/components/app/switch";
 import { overlapsDay, useToday } from "@/components/app/admin-today";
 import { createCourtBlockAction, deleteCourtBlockAction } from "@/app/actions/booking";
 import { CreateCourtBlockForm } from "@/components/admin/create-court-block-form";
-import { atHour, courtColor, courtLabel, hhmm, longDate } from "@/lib/courts";
+import { atHour, courtColor, courtLabel, hhmm, longDate, SURFACE_COLOR, SURFACE_LABEL, surfaceKind } from "@/lib/courts";
 import type { BlockReason, Court, CourtBlock, TenantSettings } from "@/types";
 import { cn } from "@/lib/utils";
 
@@ -78,6 +78,16 @@ export function AdminBlocks({
     });
   }
 
+  const todayRows =
+    today === null
+      ? []
+      : courts.map((c) => {
+          const todays = blocks.filter((b) => b.courtId === c.id && overlapsDay(b, today));
+          const r = c.id in override ? override[c.id] : (todays[0]?.reason ?? null);
+          return { c, todays, r, on: r !== null };
+        });
+  const kinds = (["clay", "hard", "padel"] as const).filter((k) => courts.some((c) => surfaceKind(c) === k));
+
   return (
     <>
       <div className="px-5 pt-[66px] @min-[640px]:px-0 @min-[640px]:pt-0">
@@ -103,12 +113,27 @@ export function AdminBlocks({
           <section className="card p-4 @min-[640px]:p-5">
             <h2 className="text-[18px] font-bold tracking-[-.02em]">Heute ganztägig</h2>
             <Segmented options={REASONS} value={reason} onChange={setReason} label="Grund" className="mt-3" />
+            {kinds.length > 1 && todayRows.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {kinds.map((k) => {
+                  const rows = todayRows.filter((x) => surfaceKind(x.c) === k);
+                  const allOn = rows.every((x) => x.on);
+                  return (
+                    <button
+                      key={k}
+                      type="button"
+                      onClick={() => rows.filter((x) => x.on === allOn).forEach((x) => toggle(x.c, x.todays, x.on))}
+                      className="chip"
+                    >
+                      <Dot color={SURFACE_COLOR[k]} size={9} />
+                      {allOn ? `Alle ${SURFACE_LABEL[k]} freigeben` : `Alle ${SURFACE_LABEL[k]} sperren`}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
             <div className="mt-2 flex flex-col">
-              {today !== null &&
-                courts.map((c) => {
-                  const todays = blocks.filter((b) => b.courtId === c.id && overlapsDay(b, today));
-                  const r = c.id in override ? override[c.id] : (todays[0]?.reason ?? null);
-                  const on = r !== null;
+              {todayRows.map(({ c, todays, r, on }) => {
                   const label = courtLabel(c);
                   return (
                     <button
@@ -121,7 +146,7 @@ export function AdminBlocks({
                       <Dot color={courtColor(c)} size={9} />
                       <div className="flex-1">
                         <div className="text-[15px] font-bold">{label.name}</div>
-                        <div className={cn("text-[13px]", on ? "text-bad" : "text-ink-3")}>{on ? `Gesperrt · ${REASON_LABEL[r]}` : label.sub}</div>
+                        <div className={cn("text-[13px]", on ? "text-bad" : "text-ink-3")}>{on ? `Gesperrt · ${REASON_LABEL[r!]}` : label.sub}</div>
                       </div>
                       <SwitchKnob on={on} />
                     </button>
