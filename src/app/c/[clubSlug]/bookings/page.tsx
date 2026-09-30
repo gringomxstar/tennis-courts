@@ -10,11 +10,12 @@ export default async function BookingsPage({ params }: { params: Promise<{ clubS
   const { tenant, user } = await getTenantContext(clubSlug);
   if (user) after(() => syncPendingBookingPayments(tenant.id));
 
-  const isCoach = user ? (await getMemberContext(tenant.id, user.id))?.role === "COACH" : false;
+  const member = user ? await getMemberContext(tenant.id, user.id) : null;
+  const isCoach = member?.role === "COACH";
   const [bookings, courts] = await Promise.all([
     user ? getUserBookings(user.id, tenant.id) : Promise.resolve([]),
     getCourtsByTenantId(tenant.id),
   ]);
 
-  return <BookingsView isCoach={isCoach} slug={tenant.slug} userId={user?.id} bookings={bookings} courts={courts} cancelDeadlineMinutes={cancelDeadlineMinutes(tenant.settingsJson)} />;
+  return <BookingsView isCoach={isCoach} hasAbo={!!member?.plan} slug={tenant.slug} userId={user?.id} bookings={bookings} courts={courts} cancelDeadlineMinutes={cancelDeadlineMinutes(tenant.settingsJson)} />;
 }
