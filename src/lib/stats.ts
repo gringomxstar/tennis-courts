@@ -339,13 +339,19 @@ export function exportRows(s: Stats, type: ExportType): unknown[][] {
   if (type === "buchungen") {
     return [
       ["Datum", "Von", "Bis", "Platz", "Organisator", "E-Mail", "Art", "Status", "Zahlart", "Zahlung", "Betrag CHF", "Flutlicht", "Mitspieler", "Gäste"],
-      ...s.raw.yb.map((b) => [
+      ...s.raw.yb.flatMap((b) => [[
         chDate(b.startsAt), chTime(b.startsAt), chTime(b.endsAt), b.court.name, name(b.organizer), b.organizer.email,
         TYPE_LABEL[b.bookingType] ?? b.bookingType, STATUS_LABEL[b.status] ?? b.status,
         b.paymentMethod ? METHOD_LABEL[b.paymentMethod] : "", PAY_LABEL[b.paymentStatus] ?? b.paymentStatus,
         Number(b.totalCost).toFixed(2), b.hasLighting ? "ja" : "nein",
         b.participants.filter((p) => p.role !== "ORGANIZER" && p.role !== "GUEST").length,
         b.participants.filter((p) => p.role === "GUEST").map((p) => p.guestName).join(", "),
+      ],
+        // online payments are refunded in full on cancel (refundStripeBooking): reverse them so the export nets to 0
+        ...(b.status === "CANCELLED" && b.paymentMethod === "ONLINE" && b.paymentStatus === "PAID" && Number(b.totalCost) > 0
+          ? [[chDate(b.cancelledAt ?? b.updatedAt), "", "", b.court.name, name(b.organizer), b.organizer.email, TYPE_LABEL[b.bookingType] ?? b.bookingType,
+              "Storno-Rückerstattung", METHOD_LABEL.ONLINE, "zurückerstattet", (-Number(b.totalCost)).toFixed(2), "", "", ""]]
+          : []),
       ]),
     ];
   }
