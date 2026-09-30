@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { ballMachineConflict, checkBookingRules, slotLimitFor, weeklyStarts, type RuleInput } from "../src/lib/booking-rules";
+import { ballMachineConflict, checkBookingRules, checkBookingWindow, slotLimitFor, weeklyStarts, type RuleInput } from "../src/lib/booking-rules";
 
 const H = 3_600_000;
 const now = Date.UTC(2030, 0, 7, 8); // Monday
@@ -69,3 +69,21 @@ assert.equal(checkBookingRules({ ...base, role: "COACH", plan: { bookingWindowDa
   assert.equal(weeklyStarts(first, new Date("2030-01-01")).length, 53);
 }
 console.log("coach + series ok");
+// opening hours, slot grid, horizon (club time; January = UTC+1)
+{
+  const settings = { openingHour: 8, closingHour: 22, slotDurationMinutes: 60 };
+  const n = Date.UTC(2030, 0, 7, 8); // Mon 09:00 club time
+  const t = (h: number, m = 0, day = 0) => new Date(Date.UTC(2030, 0, 7 + day, h - 1, m)); // h in club time
+  const w = (start: Date, mins = 60, plan?: { bookingWindowDays: number }) =>
+    checkBookingWindow({ settings, plan, start, end: new Date(start.getTime() + mins * 60_000), now: n });
+  assert.equal(w(t(10, 0, 1)), null);
+  assert.equal(w(t(21, 0, 1)), null); // ends exactly at closing
+  assert.match(w(t(3, 0, 1))!, /8 bis 22/);
+  assert.match(w(t(21, 0, 1), 120)!, /8 bis 22/); // runs past closing
+  assert.match(w(t(10, 7, 1))!, /Startzeit/); // off grid
+  assert.equal(w(t(10, 0, 6)), null); // within 7 days is fine
+  assert.match(w(t(10, 0, 9))!, /7 Tage/); // default horizon
+  assert.equal(w(t(10, 0, 20), 60, { bookingWindowDays: 30 }), null); // plan horizon wins
+  assert.match(w(t(10, 0, 40), 60, { bookingWindowDays: 30 })!, /30 Tage/);
+}
+console.log("window ok");

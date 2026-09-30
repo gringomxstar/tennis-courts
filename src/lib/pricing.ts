@@ -5,8 +5,8 @@ export const FLOODLIGHT_FROM_HOUR = 19;
 
 /** Floodlight is due when a booking on a lit court runs past FLOODLIGHT_FROM_HOUR, in club time (server = browser). */
 export function needsFloodlight(court: Pick<Court, "hasLighting">, start: Date, minutes: number): boolean {
-  const hour = Number(Object.fromEntries(zurich.formatToParts(start).map((p) => [p.type, p.value])).hour);
-  return court.hasLighting && hour + minutes / 60 > FLOODLIGHT_FROM_HOUR;
+  const p = Object.fromEntries(zurich.formatToParts(start).map((x) => [x.type, x.value]));
+  return court.hasLighting && Number(p.hour) + Number(p.minute) / 60 + minutes / 60 > FLOODLIGHT_FROM_HOUR;
 }
 
 export interface BookingCostInput {
@@ -35,7 +35,7 @@ export interface BookingCost {
 }
 
 const WEEKDAY: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
-const zurich = new Intl.DateTimeFormat("en-US", { timeZone: "Europe/Zurich", hour: "numeric", hourCycle: "h23", weekday: "short" });
+const zurich = new Intl.DateTimeFormat("en-US", { timeZone: "Europe/Zurich", hour: "numeric", minute: "numeric", hourCycle: "h23", weekday: "short" });
 
 /** Price rules whose conditions all match this start time, in club time (same result on server and browser). */
 export function matchingPriceRules(rules: PriceRule[] | undefined, start: Date, now = Date.now()): PriceRule[] {

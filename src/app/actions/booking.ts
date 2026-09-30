@@ -17,7 +17,7 @@ import { revalidatePath } from "next/cache";
 import { computeBookingCost, needsFloodlight, settleBooking } from "@/lib/pricing";
 import { BlockReason, BookingParticipant, PaymentMethod, SportType, TenantSettings } from "@/types";
 import { sendBookingCancellation, sendBookingConfirmation, sendMail } from "@/lib/mail";
-import { ballMachineConflict, cancelDeadlineMinutes, checkBookingRules, deadlineText, lateBookingCutoff, weeklyStarts } from "@/lib/booking-rules";
+import { ballMachineConflict, cancelDeadlineMinutes, checkBookingRules, checkBookingWindow, deadlineText, lateBookingCutoff, weeklyStarts } from "@/lib/booking-rules";
 import { randomUUID } from "node:crypto";
 import { logMoney } from "@/lib/audit";
 import { InsufficientFundsError, debitWallets, refundBookingWallets } from "@/lib/wallet";
@@ -249,6 +249,11 @@ export async function createBookingAction(input: CreateBookingInput) {
         error: `Die Ballmaschine ist im gewählten Zeitraum bereits auf ${where} reserviert. Pro Club steht zeitgleich nur eine Maschine zur Verfügung.`,
       };
     }
+  }
+
+  if (!isClubAdmin && member?.role !== "COACH") {
+    const error = checkBookingWindow({ settings, plan: member?.plan, start: startDate, end: endDate });
+    if (error) return { success: false, error };
   }
 
   // Club rules, role/sport limits and membership-plan rules (against the real bookings)

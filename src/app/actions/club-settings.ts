@@ -191,14 +191,14 @@ export async function updateClubSettingsAction(
     allowGuestBookings: Boolean(settings.allowGuestBookings),
     allowConsecutiveSlotsForDoubles: settings.allowConsecutiveSlotsForDoubles ?? true,
     marlyRuleEnabled: settings.marlyRuleEnabled ?? true,
-    marlyCooldownMinutes: Number(settings.marlyCooldownMinutes ?? 60),
-    maxActiveSlotsPerPlayer: Number(settings.maxActiveSlotsPerPlayer ?? 2),
+    marlyCooldownMinutes: nonNegative(settings.marlyCooldownMinutes, 60),
+    maxActiveSlotsPerPlayer: nonNegative(settings.maxActiveSlotsPerPlayer, 2),
     ballMachineAvailable: settings.ballMachineAvailable ?? true,
-    ballMachineFee: Number(settings.ballMachineFee ?? 10),
-    floodlightFee: Number(settings.floodlightFee ?? 0),
-    defaultHourlyRateTennis: Number(settings.defaultHourlyRateTennis ?? 30),
-    defaultHourlyRateHalle: Number(settings.defaultHourlyRateHalle ?? 45),
-    defaultHourlyRatePadel: Number(settings.defaultHourlyRatePadel ?? 40),
+    ballMachineFee: nonNegative(settings.ballMachineFee, 10),
+    floodlightFee: nonNegative(settings.floodlightFee, 0),
+    defaultHourlyRateTennis: nonNegative(settings.defaultHourlyRateTennis, 30),
+    defaultHourlyRateHalle: nonNegative(settings.defaultHourlyRateHalle, 45),
+    defaultHourlyRatePadel: nonNegative(settings.defaultHourlyRatePadel, 40),
   });
 
   if (!updated) {
@@ -817,6 +817,12 @@ export async function sendRenewalRemindersAction(clubSlug: string, userIds: stri
   return { success: true as const, sent, skipped: userIds.length - sent };
 }
 
+/** Fees, rates and limits: finite and >= 0, else the default (a negative fee would make bookings free). */
+const nonNegative = (v: unknown, fallback: number) => {
+  const n = Number(v ?? fallback);
+  return Number.isFinite(n) && n >= 0 ? n : fallback;
+};
+
 /** Removes the person from this club. Account, bookings and payments stay for the books. */
 export async function removeMemberAction(clubSlug: string, userId: string) {
   const authCheck = await verifyClubAdmin(clubSlug);
@@ -826,6 +832,8 @@ export async function removeMemberAction(clubSlug: string, userId: string) {
   const r = await prisma.tenantUser.deleteMany({ where: { tenantId, userId, role: { not: "PLATFORM_ADMIN" } } });
   if (!r.count) return { success: false as const, error: "Mitglied nicht gefunden." };
   await prisma.membership.updateMany({ where: { tenantId, userId, status: "PENDING" }, data: { status: "CANCELLED" } });
+  // a running Abo would otherwise be auto-renewed by the cron and re-add the person
+  await prisma.membership.updateMany({ where: { tenantId, userId, status: "ACTIVE" }, data: { status: "EXPIRED", endsAt: new Date() } });
   revalidatePath(`/c/${clubSlug}/admin`, "layout");
   return { success: true as const };
 }
