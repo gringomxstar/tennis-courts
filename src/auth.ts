@@ -7,6 +7,8 @@ import { prisma } from "@/lib/prisma";
 import { TenantRole } from "@/types";
 import { demoModeOn, isDemoEmail } from "@/lib/demo";
 
+const DUMMY_HASH = bcrypt.hashSync("dummy", 10);
+
 const loginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(1),
@@ -57,6 +59,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         });
 
         if (!dbUser || !dbUser.passwordHash) {
+          await bcrypt.compare(password, DUMMY_HASH); // same timing as a wrong password: no account probing
           return null; // Benutzer nicht gefunden -> CredentialsSignin
         }
 

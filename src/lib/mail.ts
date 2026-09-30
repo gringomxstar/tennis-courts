@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { bookingLink } from "@/lib/booking-link";
+import { bookingLink, bookingToken } from "@/lib/booking-link";
 
 const appUrl = () => process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
@@ -66,7 +66,7 @@ export async function sendBookingConfirmation(bookingId: string) {
       m.slot,
       b.totalCost ? `Betrag: CHF ${Number(b.totalCost).toFixed(2)}` : "",
       b.paymentMethod ? (PAY_NOTE[b.paymentMethod] ?? "") : "",
-      b.paymentStatus === "PAID" ? `Quittung: ${appUrl()}/invoice/${b.id}` : "",
+      b.paymentStatus === "PAID" ? `Quittung: ${appUrl()}/invoice/${b.id}?t=${bookingToken(b.id)}` : "",
       "",
       `Buchung ansehen oder stornieren: ${bookingLink(b.tenant.slug, b.id)}`,
     ].join("\n")

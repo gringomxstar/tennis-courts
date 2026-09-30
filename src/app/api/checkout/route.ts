@@ -80,6 +80,15 @@ export async function POST(req: Request) {
       create: { tenantId: plan.tenantId, userId: user!.id, role: "GUEST" },
     });
 
+    // The next season is already bought (paid Abo starting later): a second purchase would stack another season.
+    const nextBought = await prisma.membership.findFirst({
+      where: { tenantId: plan.tenantId, userId: user!.id, status: "ACTIVE", startsAt: { gt: new Date() } },
+      select: { id: true },
+    });
+    if (nextBought) {
+      return NextResponse.json({ error: "Du hast die nächste Saison bereits gekauft." }, { status: 409 });
+    }
+
     // ==========================================
     // MODE A: KAUF AUF RECHNUNG (Offline E-Banking)
     // ==========================================

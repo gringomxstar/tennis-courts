@@ -76,9 +76,6 @@ export function ClubSettingsForm({
   const [closingHour, setClosingHour] = useState<number>(
     initialSettings?.closingHour ?? 22
   );
-  const [slotDurationMinutes, setSlotDurationMinutes] = useState<number>(
-    initialSettings?.slotDurationMinutes ?? 60
-  );
   const initialDeadline = cancelDeadlineMinutes(initialSettings);
   const [deadlineUnit, setDeadlineUnit] = useState<"min" | "h">(initialDeadline % 60 === 0 && initialDeadline > 0 ? "h" : "min");
   const [deadlineValue, setDeadlineValue] = useState<number>(initialDeadline % 60 === 0 && initialDeadline > 0 ? initialDeadline / 60 : initialDeadline);
@@ -151,7 +148,6 @@ export function ClubSettingsForm({
       const res = await updateClubSettingsAction(clubSlug, {
         openingHour: Number(openingHour),
         closingHour: Number(closingHour),
-        slotDurationMinutes: Number(slotDurationMinutes),
         cancellationDeadlineMinutes: Math.round(Number(deadlineValue) * (deadlineUnit === "h" ? 60 : 1)),
         allowGuestBookings,
         demoMode,
@@ -239,19 +235,6 @@ export function ClubSettingsForm({
                   {String(h).padStart(2, "0")}:00 Uhr
                 </option>
               ))}
-            </select>
-          </label>
-          <label className="col-span-2 block @min-[640px]:col-span-1">
-            <span className={label}>Slot-Dauer (Einzel)</span>
-            <select
-              id="slotDurationMinutes"
-              value={slotDurationMinutes}
-              onChange={(e) => setSlotDurationMinutes(Number(e.target.value))}
-              className={input}
-            >
-              <option value={45}>45 Minuten</option>
-              <option value={60}>60 Minuten (1 Stunde)</option>
-              <option value={90}>90 Minuten (1.5 Stunden)</option>
             </select>
           </label>
           <label className="col-span-2 block @min-[640px]:col-span-1">
