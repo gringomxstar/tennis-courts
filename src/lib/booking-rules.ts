@@ -84,7 +84,7 @@ const weekStart = (t: number) => {
  * Horizon: the Abo plan's own bookingWindowDays (set per plan), else 7 days.
  */
 export function checkBookingWindow(i: {
-  settings: Pick<TenantSettings, "openingHour" | "closingHour" | "slotDurationMinutes"> | null | undefined;
+  settings: Pick<TenantSettings, "openingHour" | "closingHour"> | null | undefined;
   plan?: { bookingWindowDays: number } | null;
   start: Date;
   end: Date;
@@ -93,7 +93,7 @@ export function checkBookingWindow(i: {
   const now = i.now ?? Date.now();
   const open = i.settings?.openingHour ?? 0;
   const close = i.settings?.closingHour ?? 24;
-  const grid = (i.settings?.slotDurationMinutes ?? 60) / 60;
+  const grid = 1; // the UI only offers full hours; the old "Slot-Dauer" setting had no effect and is gone
   const a = clubTime(i.start).hour;
   // end may be midnight: measure the end from the start, not as a clock time
   const b = a + (i.end.getTime() - i.start.getTime()) / 3_600_000;
