@@ -93,7 +93,7 @@ body { background: var(--pg-bg); color: var(--pg-fg); font-family: "Outfit", -ap
 .heat .cl { font-size: 11px; color: var(--ink-3); text-align: center; }
 .heat .q { aspect-ratio: 1; border-radius: 6px; background: #eef3f1; } .heat .q.l1 { background: #cde8df } .heat .q.l2 { background: #7fc7ae } .heat .q.l3 { background: var(--brand-deep) } .heat .q.x { background: repeating-linear-gradient(135deg,#dfe6e3 0 3px,#f3f6f5 3px 6px) }
 .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12.5px; color: var(--ink-2); margin-top: 12px; }
-.legend i { display: inline-block; width: 12px; height: 12px; border-radius: 4px; verticallign: -2px; margin-right: 6px; }
+.legend i { display: inline-block; width: 12px; height: 12px; border-radius: 4px; vertical-align: -2px; margin-right: 6px; }
 .donut { display: grid; grid-template-columns: 120px 1fr; gap: 16px; align-items: center; }
 .donut svg { width: 120px; height: 120px; transform: rotate(-90deg); } .donut .c { position: relative; } .donut .c b { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 22px; font-weight: 700; letter-spacing: -.03em; } .donut .c b small { font-size: 11px; font-weight: 500; color: var(--ink-3); letter-spacing: 0; }
 .kvs { display: flex; flex-direction: column; gap: 8px; font-size: 13.5px; } .kvs div { display: flex; justify-content: space-between; gap: 10px; } .kvs span:last-child { font-weight: 600; }
@@ -152,7 +152,7 @@ body { background: var(--pg-bg); color: var(--pg-fg); font-family: "Outfit", -ap
 .search input { border: 0; outline: 0; background: transparent; flex: 1; color: var(--ink); min-width: 0; } .search svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 2.2; stroke-linecap: round; }
 table.t { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 14px; }
 .t th { text-align: left; font-size: 12.5px; color: var(--ink-3); font-weight: 600; padding: 8px 12px 12px; }
-.t td { padding: 9px 12px; verticallign: middle; white-space: nowrap; border-top: 1px solid var(--line); }
+.t td { padding: 9px 12px; vertical-align: middle; white-space: nowrap; border-top: 1px solid var(--line); }
 .t tr.sel td { background: var(--brand-tint); } .t tr.sel td:first-child { border-radius: 14px 0 0 14px; } .t tr.sel td:last-child { border-radius: 0 14px 14px 0; }
 .t td.name { font-weight: 600; } .t td.name .w { display: flex; align-items: center; gap: 10px; } .t td.name small { display: block; color: var(--ink-3); font-weight: 500; font-size: 12.5px; }
 .t td:first-child, .t th:first-child { width: 40px; padding-right: 0; } .t input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--brand-deep); }
@@ -177,7 +177,7 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 
 .lrow { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid var(--line); }
 .lrow .g { flex: 1; min-width: 0; } .lrow b { display: block; font-size: 15px; font-weight: 600; } .lrow small { display: block; color: var(--ink-3); font-size: 12.5px; }
 .lrow.tap { cursor: pointer; } .lrow .chev { color: var(--ink-3); font-size: 20px; font-weight: 500; }
-.lrow .g b .dot { margin-right: 6px; verticallign: 1px; }
+.lrow .g b .dot { margin-right: 6px; vertical-align: 1px; }
 .tm { width: 56px; flex: none; } .tm b { font-size: 18px; letter-spacing: -.02em; }
 .btn.danger { background: var(--bad-bg); color: var(--bad); box-shadow: none; }
 .btn.wide { width: 100%; height: 50px; font-size: 15.5px; }
@@ -438,7 +438,7 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 
           <div class="card pad stack">
             <button class="btn pri wide" data-go="login">Mitglied anmelden</button>
             <button class="btn ghost wide" data-go="cal">Als Gast buchen</button>
-            <div class="center m3">Ohne Konto. Bezahlen mit Twint oder Karte.</div>
+            <div class="center m3">Ohne Konto.</div>
           </div>
           <div class="card pad"><div class="lst"><div class="lrow tap" data-go="abos-neu"><div class="g"><b>Mitglied werden</b><small>Abo wählen, dann Konto erstellen. Saison bis 31. März, ab CHF 60.</small></div><button class="btn sm">Mitglied werden</button></div></div></div>
           <div class="card pad"><div class="ch"><h2>Jetzt frei</h2><span class="link" data-go="cal">Alle Plätze</span></div>
@@ -585,10 +585,9 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 
           <div class="card pad stack">
             <label class="fld"><span>Name</span><input value="Petra Sommer"></label>
             <div class="row2"><label class="fld"><span>E-Mail</span><input type="email" value="petra.sommer@bluewin.ch"></label><label class="fld"><span>Handy</span><input type="tel" value="079 555 21 90"></label></div>
-            <div><span class="l2" style="display:block;margin-bottom:7px">Bezahlen mit</span><div class="seg"><button aria-pressed="true">Twint</button><button>Karte</button></div></div>
             <div><span class="l2" style="display:block;margin-bottom:7px">Mitspieler</span><div class="seg"><button aria-pressed="true">Auch Gast</button><button>Mitglied mit Abo</button></div></div>
             <div class="sum"><span>Dein Anteil</span><b>CHF 15</b><span>Anteil Mitspieler, Gast</span><b>CHF 15</b><span class="tot">Du bezahlst</span><b class="tot">CHF 30</b><span class="n">Bestätigung und Storno-Link kommen per E-Mail.</span></div>
-            <button class="btn pri wide">Mit Twint bezahlen · CHF 30</button>
+            <button class="btn pri wide">Bezahlen · CHF 30</button>
           </div>
           <div class="center m3">Mitglied? <span class="link" data-go="login">Anmelden</span> und mit Abo spielen.</div>
         </div>
@@ -716,7 +715,6 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 
     <div><span class="l">Dauer</span><div class="seg"><button aria-pressed="true">1 Stunde</button><button>2 Stunden (Doppel)</button></div></div>
     <div><span class="l">Mitspieler</span><div class="people"><span class="chip" aria-pressed="true"><span class="av a2">TM</span>Tobias <small style="opacity:.7">zuletzt</small></span><span class="chip"><span class="av a1">MB</span>Marc</span><span class="chip"><span class="av a3">AK</span>Anna</span><span class="chip add">+ Suchen</span><span class="chip add">+ Gast</span></div></div>
     <div class="sum"><span>Du, Abo deckt deinen Anteil</span><b>CHF 0</b><span>Tobias, Abo abgelaufen</span><b>CHF 15</b><span class="tot">Du bezahlst</span><b class="tot">CHF 15</b><span class="n">Ein Abo deckt nur den eigenen Anteil. Den Rest bezahlt, wer bucht.</span></div>
-    <div><span class="l">Bezahlen mit</span><div class="seg"><button aria-pressed="true">Twint</button><button>Karte</button><button>Guthaben 50</button></div></div>
     <button class="btn pri wide" data-go="res-3">Reservieren · CHF 15 <b class="tapn">3</b></button>
   </div>
   <div class="bs" id="bs-ok" role="dialog" aria-label="Bestätigt">
@@ -821,7 +819,7 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 
     start: "Start: Platzkarte zeigt die nächsten freien Slots. Ein Tipp auf einen Slot öffnet direkt das Buchungs-Sheet: 2 Tipps bis zur Buchung. Angepasst: der runde Plus-Button trägt auf dem Handy jetzt den Text Reservieren.",
     cal: "Kalender (Handy wie heute): Tagesleiste, dann Liste (pro Platz eine Zeile mit Stunden, seitwärts scrollbar, ab der aktuellen Stunde) oder Raster (Plätze × Stunden). Buchen: Kalender, freie Stunde, Reservieren = 3 Tipps. Desktop: Raster mit Formular rechts (unverändert).",
     "res-1": "Buchen, Schritt 1: Tipp 1 Kalender, Tipp 2 freie Stunde in der Liste (Platz 5, 18:00). Die pinken Zahlen sind nur Anmerkungen im Entwurf.",
-    "res-2": "Buchen, Schritt 2: Sheet mit letztem Mitspieler vorausgewählt, Dauer, Preis-Split (Abo deckt den eigenen Anteil, Rest zahlt, wer bucht), Zahlart. Tipp 3 Reservieren.",
+    "res-2": "Buchen, Schritt 2: Sheet mit letztem Mitspieler vorausgewählt, Dauer, Preis-Split (Abo deckt den eigenen Anteil, Rest zahlt, wer bucht). Zahlart wählt man danach in Stripe Checkout. Tipp 3 Reservieren.",
     "res-3": "Buchen, Schritt 3: Bestätigung. Total 3 Tipps über den Kalender (Liste und Raster gleich), 2 Tipps über die Platzkarte auf Start. Anderer Mitspieler = 1 Tipp mehr.",
     book: "Buchungen: Kommend/Vergangen wie heute. Tipp auf eine Buchung öffnet das Detail. Serien mit Serie stornieren sieht nur, wer Trainer ist.",
     detail: "Buchungsdetail: Spieler mit Abo-Status, Preis, Stornieren direkt sichtbar.",
@@ -832,7 +830,7 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 
     login: "Login: heutige Struktur bleibt (E-Mail, Passwort, Anmelden, Registrieren). Gezeigt mit Fehlerzustand. Neu: Gast-Buchung ohne Konto.",
     "abos-neu": "Abo wählen (neu), abgemeldet von Mitglied werden: gleiche Karten ohne Abgelaufen-Hinweis, Saison Erwachsene Tennis vorausgewählt, ein Tipp auf Konto erstellen und bezahlen.",
     register: "Registrieren: vier Felder, eine Checkbox, ein Button. Kommt nach der Abo-Wahl (Mitglied werden), danach bezahlen.",
-    gast: "Gast-Buchung: Slot oben, drei Felder, Zahlart Twint oder Karte, Preis-Split, ein Button.",
+    gast: "Gast-Buchung: Slot oben, drei Felder, Preis-Split, ein Button Bezahlen. Zahlart (Twint oder Karte) wählt man danach in Stripe Checkout.",
     hub: "Verwaltung Übersicht: eine Kachel pro Bereich mit der wichtigsten Zahl. Oben am Desktop die Admin-Pillen.",
     heute: "Heute: Regen-Schalter zuoberst (ein Tipp sperrt alle Sandplätze, wie heute Sperren), dann Kennzahlen, Belegung, nächste Buchungen.",
     sperren: "Sperren: Formular mit Grund, Plätzen, Zeitraum, Wiederholen und Warnung zu betroffenen Buchungen; daneben die Liste.",

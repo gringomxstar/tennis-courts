@@ -23,14 +23,14 @@ Umschalter oben in drei Gruppen (Mitglied, Zugang, Verwaltung), jede Seite bei 3
 **Mitglied**
 - **Start:** Hero-Karte (Verlauf, Uhrzeit 60px, Avatare, drei Aktionen), Platzkarte mit freien Slots als Buttons (Tipp öffnet direkt das Buchungs-Sheet), Kommende Buchungen, Heatmap, Abo-Donut. Plus-Button trägt auf dem Handy jetzt Text („Reservieren“).
 - **Kalender** (Desktop bleibt: Raster Plätze × Stunden, Formular rechts 320px). Handy wie heute: Tagesleiste, Umschalter Liste/Raster. Liste = pro Platz eine Zeile mit Stunden-Chips, seitwärts scrollbar, beginnt bei der aktuellen Stunde; Raster = 9 Plätze × Stunden. Tipp auf freie Stunde öffnet das Buchungs-Sheet. (Variante A mit Stundenliste und Platz-Chips verworfen.)
-- **Buchen in 3 Zuständen:** 1 Slot gewählt, 2 Sheet (Dauer, Mitspieler mit letztem vorausgewählt, Preis-Split „Abo deckt eigenen Anteil, Rest zahlt, wer bucht“, Zahlart Twint/Karte/Guthaben), 3 Bestätigung.
+- **Buchen in 3 Zuständen:** 1 Slot gewählt, 2 Sheet (Dauer, Mitspieler mit letztem vorausgewählt, Preis-Split „Abo deckt eigenen Anteil, Rest zahlt, wer bucht“; keine Zahlart-Wahl im Formular, die kommt in Stripe Checkout), 3 Bestätigung.
   - **Tipps:** über den Kalender 3 (Kalender → freie Stunde → Reservieren), in Liste und Raster gleich. Über die Platzkarte auf Start 2. Anderen Mitspieler wählen = +1.
 - **Buchungen:** Kommend/Vergangen, Tipp öffnet **Buchungsdetail**-Sheet (Spieler mit Abo-Status, Preis, Stornieren). Serien mit „Serie stornieren“ nur für Trainer.
 - **Profil** (heutige Reihenfolge): Guthaben-Karte im Verlauf mit Aufladen, Abo, Daten, Rechnungen, Schalter, Abmelden.
 - **Abos** (heutige Struktur), zwei Zustände: **Verlängern** (Mitglied: Abgelaufen-Hinweis, letztes Abo vorausgewählt, ein Tipp verlängert) und **Abo wählen (neu)** (abgemeldet über „Mitglied werden“: kein Hinweis, Saison Erwachsene Tennis vorausgewählt, Kaufleiste „Konto erstellen und bezahlen“ führt zu Registrieren). Beide: Sportart, Für mich/Als Paar, Optionen, Kaufleiste unten mit Auto-Verlängern.
 - **Rechnung:** Beleg mit Status, PDF/E-Mail, weitere Belege, offener Betrag direkt bezahlbar.
 
-**Zugang** (ohne Navigation): **Einstieg** (abgemeldet, heutige Struktur: Mitglied anmelden primär, Als Gast buchen, Mitglied werden → Abo-Seite, dort Abo wählen, dann Registrieren und bezahlen; „Jetzt frei“ als seitwärts scrollende Slot-Reihe; ohne Abo keine Mitglied-Buchung), **Login** (mit Fehlerzustand, Gast-Button), **Registrieren**, **Gast-Buchung** (Slot, Name/E-Mail/Handy, Twint oder Karte, Preis-Split).
+**Zugang** (ohne Navigation): **Einstieg** (abgemeldet, heutige Struktur: Mitglied anmelden primär, Als Gast buchen, Mitglied werden → Abo-Seite, dort Abo wählen, dann Registrieren und bezahlen; „Jetzt frei“ als seitwärts scrollende Slot-Reihe; ohne Abo keine Mitglied-Buchung), **Login** (mit Fehlerzustand, Gast-Button), **Registrieren**, **Gast-Buchung** (Slot, Name/E-Mail/Handy, Preis-Split, Button „Bezahlen · CHF 30“; Twint oder Karte erst in Stripe Checkout).
 
 **Verwaltung**
 - **Übersicht (/admin):** Kacheln pro Bereich mit der wichtigsten Zahl.
