@@ -17,7 +17,7 @@ import { revalidatePath } from "next/cache";
 import { computeBookingCost, needsFloodlight, settleBooking } from "@/lib/pricing";
 import { BlockReason, BookingParticipant, PaymentMethod, SportType, TenantSettings } from "@/types";
 import { sendBookingCancellation, sendBookingConfirmation, sendMail } from "@/lib/mail";
-import { ballMachineConflict, cancelDeadlineMinutes, checkBookingRules, deadlineText, lateBookingCutoff, weeklyStarts } from "@/lib/booking-rules";
+import { ballMachineConflict, cancelDeadlineMinutes, checkBookingRules, checkBookingWindow, deadlineText, lateBookingCutoff, weeklyStarts } from "@/lib/booking-rules";
 import { randomUUID } from "node:crypto";
 import { logMoney } from "@/lib/audit";
 import { InsufficientFundsError, debitWallets, refundBookingWallets } from "@/lib/wallet";
@@ -255,6 +255,11 @@ export async function createBookingAction(input: CreateBookingInput) {
         error: `Die Ballmaschine ist im gewählten Zeitraum bereits auf ${where} reserviert. Pro Club steht zeitgleich nur eine Maschine zur Verfügung.`,
       };
     }
+  }
+
+  if (!isClubAdmin && member?.role !== "COACH") {
+    const error = checkBookingWindow({ settings, plan: member?.plan, start: startDate, end: endDate });
+    if (error) return { success: false, error };
   }
 
   // Club rules, role/sport limits and membership-plan rules (against the real bookings)
@@ -894,6 +899,18 @@ export async function topUpWalletAction(input: { clubSlug: string; amount: numbe
   }
 }
 
+/** A block over live bookings would leave paid slots on an unusable court: the admin cancels those first. */
+async function bookingsInBlocks(tenantId: string, items: { courtId: string; startsAt: Date; endsAt: Date }[]) {
+  const n = await prisma.booking.count({
+    where: {
+      tenantId,
+      status: { in: ["CONFIRMED", "PENDING"] },
+      OR: items.map((i) => ({ courtId: i.courtId, startsAt: { lt: i.endsAt }, endsAt: { gt: i.startsAt } })),
+    },
+  });
+  return n ? `Im Zeitraum gibt es noch ${n} Buchung${n === 1 ? "" : "en"}. Bitte zuerst stornieren, dann sperren.` : null;
+}
+
 export async function createCourtBlockAction(input: {
   clubSlug: string;
   /** one block per entry; the admin form sends one per day and court */
@@ -933,6 +950,8 @@ export async function createCourtBlockAction(input: {
   }
 
   if (process.env.DATABASE_URL) {
+    const busy = await bookingsInBlocks(tenant.id, input.items.map((i) => ({ courtId: i.courtId, startsAt: new Date(i.startsAt), endsAt: new Date(i.endsAt) })));
+    if (busy) return { success: false, error: busy };
     try {
       await prisma.courtBlock.createMany({
         data: input.items.map((i) => ({
@@ -1026,6 +1045,8 @@ export async function updateCourtBlockAction(input: {
   const data = { courtId: input.courtId, startsAt, endsAt, reason: input.reason, description: input.description?.trim() || null };
 
   if (process.env.DATABASE_URL) {
+    const busy = await bookingsInBlocks(tenant.id, [{ courtId: input.courtId, startsAt, endsAt }]);
+    if (busy) return { success: false, error: busy };
     const r = await prisma.courtBlock.updateMany({ where: { id: input.blockId, tenantId: tenant.id }, data }).catch(() => null);
     if (!r?.count) return { success: false, error: "Sperre nicht gefunden." };
   } else {

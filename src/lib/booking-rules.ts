@@ -78,6 +78,32 @@ const weekStart = (t: number) => {
   return d.getTime() - ((d.getUTCDay() + 6) % 7) * DAY;
 };
 
+/**
+ * Opening hours, slot grid and how far ahead a booking may start (club time). The UI only offers
+ * valid slots, but the server action can be called directly. Club admins and coaches skip this.
+ * Horizon: the Abo plan's own bookingWindowDays (set per plan), else 7 days.
+ */
+export function checkBookingWindow(i: {
+  settings: Pick<TenantSettings, "openingHour" | "closingHour"> | null | undefined;
+  plan?: { bookingWindowDays: number } | null;
+  start: Date;
+  end: Date;
+  now?: number;
+}): string | null {
+  const now = i.now ?? Date.now();
+  const open = i.settings?.openingHour ?? 0;
+  const close = i.settings?.closingHour ?? 24;
+  const grid = 1; // the UI only offers full hours; the old "Slot-Dauer" setting had no effect and is gone
+  const a = clubTime(i.start).hour;
+  // end may be midnight: measure the end from the start, not as a clock time
+  const b = a + (i.end.getTime() - i.start.getTime()) / 3_600_000;
+  if (a < open || b > close) return `Gebucht werden kann von ${open} bis ${close} Uhr.`;
+  if (((a - open) / grid) % 1 > 1e-9) return "Ungültige Startzeit.";
+  const days = i.plan?.bookingWindowDays ?? 7;
+  if (i.start.getTime() - now > days * DAY) return `Du kannst höchstens ${days} Tage im Voraus buchen.`;
+  return null;
+}
+
 /** Error message for the first broken rule, or null when the booking is allowed. Club admins skip this. */
 export function checkBookingRules(i: RuleInput): string | null {
   const now = i.now ?? Date.now();

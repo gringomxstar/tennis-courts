@@ -66,3 +66,14 @@ assert.equal(short.method, "ONLINE", "wallet 10 does not cover 30: Stripe checko
 assert.equal(short.checkout, 30, "Stripe charges the full 30");
 assert.equal(short.walletAfter, 10, "wallet unchanged");
 console.log("payment rule ok");
+
+// floodlight counts the start minutes: 18:30 + 60 min runs to 19:30 (January = UTC+1)
+{
+  const lit = { hasLighting: true };
+  const at = (h: number, m: number) => new Date(Date.UTC(2030, 0, 7, h - 1, m));
+  assert.equal(needsFloodlight(lit, at(18, 0), 60), false);
+  assert.equal(needsFloodlight(lit, at(18, 30), 60), true);
+  assert.equal(needsFloodlight(lit, at(18, 45), 30), true);
+  assert.equal(needsFloodlight({ hasLighting: false }, at(18, 30), 60), false);
+  console.log("floodlight minutes ok");
+}
