@@ -11,13 +11,15 @@ import { useNow } from "@/components/app/use-now";
 import { hhmm, longDate } from "@/lib/courts";
 
 const STATUS: Record<string, [string, string]> = {
-  CONFIRMED: ["Bestätigt", "bg-paid-bg text-paid-fg"],
-  PENDING: ["Wartet auf Zahlung", "bg-inset text-muted-foreground"],
-  CANCELLED: ["Storniert", "bg-clay text-white"],
-  EXPIRED: ["Abgelaufen", "bg-inset text-muted-foreground"],
-  COMPLETED: ["Gespielt", "bg-inset text-muted-foreground"],
+  CONFIRMED: ["Bestätigt", "bg-ok-bg text-ok"],
+  PENDING: ["Wartet auf Zahlung", "bg-warn-bg text-warn"],
+  CANCELLED: ["Storniert", "bg-bad-bg text-bad"],
+  EXPIRED: ["Abgelaufen", "bg-bad-bg text-bad"],
+  COMPLETED: ["Gespielt", "bg-bg text-ink-2"],
 };
 const PAY: Record<string, string> = { ONLINE: "online", ON_SITE: "vor Ort", INVOICE: "auf Rechnung", WALLET: "vom Guthaben" };
+const shell = "mx-auto flex w-full max-w-[460px] flex-col gap-4 px-5 pb-8 pt-[60px] @min-[640px]:px-0 @min-[640px]:pt-2";
+const input = "h-12 w-full rounded-[14px] bg-bg px-4 text-[15px] text-ink outline-none focus:shadow-[inset_0_0_0_2px_var(--brand-deep)]";
 
 export function GuestBookingCard({
   token,
@@ -56,7 +58,7 @@ export function GuestBookingCard({
   const [armed, setArmed] = useState(false);
   const [busy, setBusy] = useState(false);
   const start = new Date(b.startsAt);
-  const [statusText, statusCls] = STATUS[b.status] ?? [b.status, "bg-inset text-muted-foreground"];
+  const [statusText, statusCls] = STATUS[b.status] ?? [b.status, "bg-bg text-ink-2"];
   const canCancel = now > 0 && (b.status === "CONFIRMED" || b.status === "PENDING") && now < Date.parse(b.cancellableUntil);
 
   async function cancel() {
@@ -73,63 +75,56 @@ export function GuestBookingCard({
 
   if (aborted)
     return (
-      <div className="px-5 pt-[66px] lg:max-w-[560px] lg:pt-12">
-        <h1 className="text-[34px] font-bold leading-[1.1] tracking-[-.035em]">Zahlung abgebrochen</h1>
-        <p className="mt-2 text-[17px] text-muted-foreground">Nichts passiert: Es wurde nichts belastet und der Platz ist wieder frei.</p>
-        <Link
-          href={`/c/${slug}/calendar`}
-          className="mt-6 flex h-[54px] w-full items-center justify-center rounded-[17px] bg-clay text-[17px] font-bold text-white active:scale-[.97]"
-        >
+      <div className={shell}>
+        <h1 className="text-[28px] font-bold leading-[1.1] tracking-[-.03em]">Zahlung abgebrochen</h1>
+        <p className="text-[16px] text-ink-2">Nichts passiert: Es wurde nichts belastet und der Platz ist wieder frei.</p>
+        <Link href={`/c/${slug}/calendar`} className="btn btn-pri h-[54px] w-full text-[16px]">
           Platz neu wählen
         </Link>
       </div>
     );
 
   return (
-    <div className="px-5 pt-[66px] lg:max-w-[560px] lg:pt-12">
-      <h1 className="text-[34px] font-bold tracking-[-.035em]">Meine Buchung</h1>
-      <div className="mt-0.5 text-[15px] text-muted-foreground">{b.clubName}</div>
+    <div className={shell}>
+      <div>
+        <h1 className="text-[28px] font-bold tracking-[-.03em]">Meine Buchung</h1>
+        <div className="text-[14px] text-ink-2">{b.clubName}</div>
+      </div>
 
       {justPaid && b.status === "CONFIRMED" && (
-        <div role="status" className="mt-4 rounded-[18px] bg-paid-bg px-4 py-3 text-[15px] font-semibold text-paid-fg">
+        <div role="status" className="rounded-[16px] bg-ok-bg px-4 py-3 text-[15px] font-semibold text-ok">
           Zahlung erhalten, deine Buchung ist bestätigt. Die Bestätigung kommt auch per E-Mail.
         </div>
       )}
 
-      <div className="card mt-4 p-5">
+      <div className="card flex flex-col gap-4 p-5">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <div className="text-[15px] font-semibold text-muted-foreground">{now ? longDate(start) : ""}</div>
+            <div className="text-[14px] font-semibold text-ink-2">{now ? longDate(start) : ""}</div>
             <div className="whitespace-nowrap text-[30px] font-bold leading-[1.1] tracking-[-.04em]">
               {now ? `${hhmm(start)} – ${hhmm(new Date(b.endsAt))}` : ""}
             </div>
-            <div className="mt-1 text-[17px] font-semibold">{b.court}</div>
+            <div className="mt-1 text-[16px] font-semibold">{b.court}</div>
           </div>
-          <span className={`shrink-0 rounded-full px-3 py-1 text-[13px] font-bold ${statusCls}`}>{statusText}</span>
+          <span className={`pill shrink-0 ${statusCls}`}>{statusText}</span>
         </div>
         {b.total > 0 && (
-          <div className="mt-4 flex justify-between rounded-[18px] bg-inset px-4 py-3 text-[16px] font-semibold">
+          <div className="sum">
             <span>
-              Betrag{b.paymentMethod ? ` · ${PAY[b.paymentMethod] ?? ""}` : ""}
-              {b.paymentStatus === "PAID" ? (b.status === "CANCELLED" ? " · zurückerstattet" : " · bezahlt") : ""}
+              Betrag{b.paymentMethod ? `, ${PAY[b.paymentMethod] ?? ""}` : ""}
+              {b.paymentStatus === "PAID" ? (b.status === "CANCELLED" ? ", zurückerstattet" : ", bezahlt") : ""}
             </span>
-            <span>CHF {b.total.toFixed(2)}</span>
+            <b>CHF {b.total.toFixed(2)}</b>
           </div>
         )}
         {canCancel ? (
-          <button
-            type="button"
-            onClick={cancel}
-            disabled={busy}
-            className={`mt-4 flex h-[50px] w-full items-center justify-center gap-2 rounded-[16px] text-[16px] font-bold ${armed ? "bg-clay text-white" : "bg-inset text-clay-text"}`}
-          >
-            {busy && <Spinner />}
+          <button type="button" onClick={cancel} disabled={busy} className={`btn h-12 w-full text-[15px] ${armed ? "bg-bad text-white" : "text-bad"}`}>
             {armed ? "Wirklich stornieren?" : "Buchung stornieren"}
           </button>
         ) : (
           (b.status === "CONFIRMED" || b.status === "PENDING") &&
           now > 0 && (
-            <div className="mt-4 text-[14px] text-muted-foreground">
+            <div className="text-[14px] text-ink-2">
               Die Storno-Frist ist abgelaufen.{supportEmail ? ` Bei Fragen: ${supportEmail}` : ""}
             </div>
           )
@@ -144,8 +139,8 @@ export function GuestBookingCard({
         ))}
 
       {minPlanPrice != null && (
-        <Link href={`/c/${slug}/abos`} className="mt-4 block text-center text-[15px] font-semibold text-clay-text">
-          Öfter hier? Mit Abo ohne Platzgebühr – ab CHF {minPlanPrice} · Saison bis 31. März
+        <Link href={`/c/${slug}/abos`} className="text-center text-[15px] font-semibold text-brand-deep">
+          Öfter hier? Mit Abo ohne Platzgebühr, ab CHF {minPlanPrice}, Saison bis 31. März
         </Link>
       )}
     </div>
@@ -153,7 +148,7 @@ export function GuestBookingCard({
 }
 
 const Check = () => (
-  <svg aria-hidden width="18" height="18" viewBox="0 0 24 24" fill="none" className="shrink-0 text-clay">
+  <svg aria-hidden width="18" height="18" viewBox="0 0 24 24" fill="none" className="shrink-0 text-brand-deep">
     <path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
@@ -173,12 +168,12 @@ function ClaimAccount({ slug, bookingId, token, email }: { slug: string; booking
   }
 
   return (
-    <form onSubmit={submit} className="card mt-4 p-5">
-      <h2 className="text-[22px] font-bold leading-[1.15] tracking-[-.03em]">Nächstes Mal ohne Formular.</h2>
-      <p className="mt-1 text-[15px] text-muted-foreground">
-        Setz ein Passwort – deine E-Mail <span className="font-semibold text-foreground">{email}</span> haben wir schon.
+    <form onSubmit={submit} className="card flex flex-col gap-3 p-5">
+      <h2 className="text-[20px] font-bold leading-[1.15] tracking-[-.02em]">Nächstes Mal ohne Formular.</h2>
+      <p className="text-[15px] text-ink-2">
+        Setz ein Passwort – deine E-Mail <span className="font-semibold text-ink">{email}</span> haben wir schon.
       </p>
-      <ul className="mt-4 flex flex-col gap-2 text-[15px] font-semibold">
+      <ul className="flex flex-col gap-2 text-[15px] font-semibold">
         {["Buchen mit zwei Taps", "Alle Buchungen an einem Ort", "Direkt in der App stornieren"].map((l) => (
           <li key={l} className="flex items-center gap-2.5">
             <Check />
@@ -197,12 +192,12 @@ function ClaimAccount({ slug, bookingId, token, email }: { slug: string; booking
         value={password}
         onChange={(e) => setPassword(e.target.value)}
         placeholder="Passwort (mind. 6 Zeichen)"
-        className="mt-4 h-[50px] w-full rounded-[15px] border border-border bg-inset px-4 text-[16px] text-foreground outline-none focus-visible:border-clay"
+        className={input}
       />
       <button
         type="submit"
         disabled={busy}
-        className="mt-2.5 flex h-[54px] w-full items-center justify-center gap-2.5 rounded-[17px] bg-clay text-[17px] font-bold text-white disabled:opacity-70"
+        className="btn btn-pri h-[54px] w-full text-[16px]"
       >
         {busy && <Spinner />}
         Konto erstellen
@@ -225,10 +220,10 @@ function SendAccountLink({ slug, bookingId, token, email }: { slug: string; book
   }
 
   return (
-    <div className="mt-4 flex items-center gap-3 rounded-[22px] border border-border bg-card px-4 py-3.5">
+    <div className="card flex items-center gap-3 px-5 py-4">
       <div className="min-w-0 flex-1 text-[15px]">
         <div className="font-bold">Konto erstellen?</div>
-        <div className="truncate text-muted-foreground">
+        <div className="truncate text-ink-2">
           {state === "sent" ? `Link ist unterwegs an ${email}` : `Wir schicken dir einen Link an ${email}`}
         </div>
       </div>
@@ -237,9 +232,8 @@ function SendAccountLink({ slug, bookingId, token, email }: { slug: string; book
           type="button"
           onClick={send}
           disabled={state === "busy"}
-          className="flex h-[40px] shrink-0 items-center gap-2 rounded-[13px] bg-inset px-4 text-[15px] font-bold text-clay-text disabled:opacity-70"
+          className="btn h-10 shrink-0"
         >
-          {state === "busy" && <Spinner />}
           Link senden
         </button>
       )}
