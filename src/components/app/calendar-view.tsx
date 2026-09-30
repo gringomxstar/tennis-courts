@@ -234,6 +234,16 @@ export function CalendarView({
     setMulti(false);
     router.refresh();
   }
+  const multiBar = (pos: string) => (
+          <div className={cn("z-[6] flex flex-wrap items-center gap-2 rounded-[18px] bg-ink p-3 text-card shadow-card", pos)}>
+            <b className="px-2 text-[14px]">{marked.size} Kacheln ({kursItems().length} Buchungen)</b>
+            <ColorPicker dark value={kursColor} onChange={setKursColor} />
+            <input aria-label="Kursname" value={kurs} onChange={(e) => setKurs(e.target.value)} placeholder="Kursname" maxLength={80} className="h-10 min-w-0 flex-1 rounded-[12px] bg-card px-3 text-[15px] text-foreground outline-none" />
+            <button type="button" disabled={!marked.size || !kurs.trim() || kursBusy} onClick={bookKurs} className="btn btn-primary h-10">
+              Als Kurs buchen
+            </button>
+          </div>
+  );
   const step = weekMode ? 7 : 1;
   const mon = addDays(date ?? startOfToday(), -(((date ?? startOfToday()).getDay() + 6) % 7));
   const weekCourt = shown.find((c) => c.id === weekCourtId) ?? shown[0];
@@ -318,16 +328,7 @@ export function CalendarView({
           )}
         </div>
         )}
-        {multi && (
-          <div className="sticky bottom-3 z-[6] mt-3 flex flex-wrap items-center gap-2 rounded-[18px] bg-ink p-3 text-card shadow-card">
-            <b className="px-2 text-[14px]">{marked.size} Kacheln ({kursItems().length} Buchungen)</b>
-            <ColorPicker dark value={kursColor} onChange={setKursColor} />
-            <input aria-label="Kursname" value={kurs} onChange={(e) => setKurs(e.target.value)} placeholder="Kursname" maxLength={80} className="h-10 min-w-0 flex-1 rounded-[12px] bg-card px-3 text-[15px] text-foreground outline-none" />
-            <button type="button" disabled={!marked.size || !kurs.trim() || kursBusy} onClick={bookKurs} className="btn btn-primary h-10">
-              Als Kurs buchen
-            </button>
-          </div>
-        )}
+        {multi && multiBar('sticky bottom-3 mt-3')}
         <div className="mt-3 flex flex-wrap gap-3.5 text-[12.5px] text-ink-2">
           {userId && <span className="flex items-center gap-1.5"><i className="inline-block h-3 w-3 rounded-[4px] bg-me" />Meine Buchung</span>}
           {(["MEMBER", "GUEST", "COACH"] as const).map((r) => (
@@ -348,8 +349,16 @@ export function CalendarView({
       <div className="@min-[1024px]:hidden">
       <div className="flex items-center justify-between gap-3 px-5 pt-[60px] @min-[640px]:px-0 @min-[640px]:pt-2">
         <h1 className="text-[28px] font-semibold leading-[1.05] tracking-[-.02em]">Kalender</h1>
-        <LabeledSwitch left="Liste" right="Raster" label="Rasteransicht" on={view === "grid"} onChange={(g) => pickView(g ? "grid" : "list")} />
+        <div className="flex items-center gap-2">
+          {(admin || isCoach) && (
+            <button type="button" aria-pressed={multi} className={cn("btn h-10", multi && "bg-ink text-card")} onClick={() => { setMulti(!multi); setMarked(new Map()); }}>
+              Mehrere
+            </button>
+          )}
+          <LabeledSwitch left="Liste" right="Raster" label="Rasteransicht" on={view === "grid"} onChange={(g) => pickView(g ? "grid" : "list")} />
+        </div>
       </div>
+      {multi && <div className="px-5 pt-2 text-[13px] text-ink-2 @min-[640px]:px-0">Freie Kacheln antippen, dann unten als Kurs buchen.</div>}
 
       {ready && view === "list" && (
         <>
@@ -402,7 +411,7 @@ export function CalendarView({
                           style={taken}
                           className={cn(
                             "flex h-[58px] w-[72px] flex-none items-center justify-center rounded-[14px] text-[17px] font-semibold transition-transform duration-300 ease-spring sm:h-[48px] sm:w-auto sm:min-w-0 sm:rounded-[12px] sm:text-[14px]",
-                            state === "free" && "bg-bg text-ink active:scale-[.92]",
+                            state === "free" && (marked.has(markKey(c, start)) ? "bg-brand-soft text-brand-deep shadow-[inset_0_0_0_2px_var(--brand-deep)]" : "bg-bg text-ink active:scale-[.92]"),
                             state === "mine" && "bg-brand-deep text-white active:scale-[.92]",
                             state === "blocked" && "stripes text-ink-3",
                             state === "taken" && "cursor-default",
@@ -464,7 +473,7 @@ export function CalendarView({
                           style={state === "taken" ? { background: bookingColor(b, tenant.settingsJson), color: "#fff" } : undefined}
                           className={cn(
                             "box-border flex h-full w-full items-center rounded-[9px] px-2.5 text-left text-[14px] font-semibold leading-tight transition-transform duration-[250ms] ease-spring",
-                            state === "free" && "bg-bg active:scale-[.94]",
+                            state === "free" && (marked.has(markKey(c, start)) ? "bg-brand-soft text-brand-deep shadow-[inset_0_0_0_2px_var(--brand-deep)]" : "bg-bg active:scale-[.94]"),
                             state === "mine" && "bg-me text-white active:scale-[.94]",
                             state === "blocked" && "stripes cursor-default text-ink-3",
                             state === "taken" && "cursor-default",
@@ -488,6 +497,7 @@ export function CalendarView({
         </>
       )}
 
+      {multi && multiBar('sticky bottom-24 mx-5 mt-3 @min-[640px]:mx-0')}
       </div>
 
       {deskGrid}
