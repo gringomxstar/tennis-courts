@@ -69,7 +69,7 @@ export function AbosView({
   const sports = (["TENNIS", "PADEL", "COMBO"] as const).filter((s) => plans.some((p) => sportOf(p) === s));
   const [sport, setSport] = useState<Sport>(start ? sportOf(start) : (sports[0] ?? "TENNIS"));
   const [who, setWho] = useState<1 | 2>(start ? personsOf(start) : 1);
-  const [sel, setSel] = useState(start?.id);
+  const [sel, setSel] = useState(initialPlan ? start?.id : undefined);
   const [year, setYear] = useState("");
   const [partner, setPartner] = useState({ firstName: "", lastName: "", email: "" });
   const [paying, setPaying] = useState<{ id: string; m: Method } | null>(null);
@@ -232,7 +232,7 @@ export function AbosView({
     COMBO: (
       <span className={seg}>
         {dot("linear-gradient(90deg,var(--sand) 50%,var(--padel) 50%)")}Beides
-        {maxSaving > 0 && <small className="opacity-70">spart bis {fmt(maxSaving)}</small>}
+        {maxSaving > 0 && <small className="hidden opacity-70 @min-[640px]:inline">spart bis {fmt(maxSaving)}</small>}
       </span>
     ),
   };

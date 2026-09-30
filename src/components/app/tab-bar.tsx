@@ -66,7 +66,7 @@ export function TabBar({
     : tabs.filter(([href]) => href !== `${base}/admin`).map(([href, l]) => [href, l]);
   // prefix match: /admin/* lights Verwaltung
   const activeOf = (hrefs: string[]) =>
-    hrefs.filter((href) => path === href || path.startsWith(href + "/")).sort((a, b) => b.length - a.length)[0];
+    hrefs.filter((href) => path === href || (href !== base && path.startsWith(href + "/"))).sort((a, b) => b.length - a.length)[0];
   const active = activeOf(tabs.map(([h]) => h));
   const activePill = activeOf(pills.map(([h]) => h));
   const main = tabs.filter(([href]) => href !== `${base}/admin`);
