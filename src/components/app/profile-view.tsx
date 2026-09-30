@@ -225,25 +225,6 @@ export function ProfileView({
                   </div>
                 </div>
 
-                {walletTx.length > 0 && (
-                  <div className="card p-5">
-                    <h2 className="text-[17px] font-bold">Guthaben-Bewegungen</h2>
-                    <ul className="mt-2 divide-y divide-border">
-                      {walletTx.map((t) => (
-                        <li key={t.id} className="flex items-baseline justify-between gap-3 py-2.5">
-                          <div className="min-w-0">
-                            <div className="truncate text-[15px] font-semibold">{t.description}</div>
-                            <small className="text-[13px] text-ink-2">{t.date}</small>
-                          </div>
-                          <b className={`shrink-0 text-[15px] ${t.amount > 0 ? "text-ok" : ""}`}>
-                            {t.amount > 0 ? "+" : "−"} {fmt(Math.abs(t.amount))}
-                          </b>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
                 <div className="card p-5">
                   <div className="flex items-center justify-between gap-3">
                     <h2 className="text-[17px] font-bold">Mein Abo</h2>
@@ -352,6 +333,28 @@ export function ProfileView({
             </div>
           </div>
         </div>
+      )}
+
+      {user && member && walletTx.length > 0 && (
+        <details className="card group mt-4 p-5">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
+            <h2 className="text-[17px] font-bold">Guthaben-Bewegungen</h2>
+            <svg aria-hidden width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="text-muted-foreground transition-transform group-open:rotate-180"><path d="m6 9 6 6 6-6" /></svg>
+          </summary>
+          <ul className="mt-2 max-h-[320px] divide-y divide-border overflow-y-auto">
+            {walletTx.map((t) => (
+              <li key={t.id} className="flex items-baseline justify-between gap-3 py-2.5">
+                <div className="min-w-0">
+                  <div className="truncate text-[15px] font-semibold">{t.description}</div>
+                  <small className="text-[13px] text-ink-2">{t.date}</small>
+                </div>
+                <b className={`shrink-0 text-[15px] ${t.amount > 0 ? "text-ok" : ""}`}>
+                  {t.amount > 0 ? "+" : "−"} {fmt(Math.abs(t.amount))}
+                </b>
+              </li>
+            ))}
+          </ul>
+        </details>
       )}
     </div>
   );
