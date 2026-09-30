@@ -72,6 +72,33 @@ export default async function AdminMembersPage({ params }: { params: Promise<{ c
     for (const u of users) profile.set(u.id, { birthDate: u.birthDate?.toISOString().slice(0, 10) ?? "", gender: u.gender ?? "" });
   }
 
+  // hours played per weekday (Mo-So) in the current week, for the detail bar chart
+  const week = new Map<string, number[]>();
+  if (process.env.DATABASE_URL) {
+    const zh = (d: Date) => new Date(d.toLocaleString("en-US", { timeZone: "Europe/Zurich" }));
+    const mon = zh(new Date());
+    mon.setHours(0, 0, 0, 0);
+    mon.setDate(mon.getDate() - ((mon.getDay() + 6) % 7));
+    const from = new Date(mon.getTime() - 86_400_000);
+    const to = new Date(mon.getTime() + 8 * 86_400_000);
+    const bs = await prisma.booking.findMany({
+      where: { tenantId: tenant.id, status: { in: ["CONFIRMED", "COMPLETED"] }, startsAt: { gte: from, lt: to } },
+      select: { startsAt: true, endsAt: true, organizerId: true, participants: { select: { userId: true } } },
+    });
+    for (const b of bs) {
+      const s = zh(b.startsAt);
+      const off = Math.floor((new Date(s).setHours(0, 0, 0, 0) - mon.getTime()) / 86_400_000);
+      if (off < 0 || off > 6) continue;
+      const hrs = (b.endsAt.getTime() - b.startsAt.getTime()) / 3_600_000;
+      for (const u of new Set([b.organizerId, ...b.participants.map((p) => p.userId ?? "")])) {
+        if (!u) continue;
+        const w = week.get(u) ?? [0, 0, 0, 0, 0, 0, 0];
+        w[off] += hrs;
+        week.set(u, w);
+      }
+    }
+  }
+
   const rows: MemberRow[] = members
     // guest checkouts create GUEST users; keep them only if they bought a membership
     .filter((m) => m.role !== "PLATFORM_ADMIN" && (m.role !== "GUEST" || best.has(m.id)))
@@ -97,6 +124,7 @@ export default async function AdminMembersPage({ params }: { params: Promise<{ c
         renewedUntil: renewal.get(m.id)?.endsAt?.toISOString() ?? "",
         renewalOpen: renewal.get(m.id)?.status === "PENDING",
         history: history.get(m.id) ?? [],
+        week: week.get(m.id) ?? [0, 0, 0, 0, 0, 0, 0],
       };
     });
 
