@@ -3,7 +3,7 @@ import { CalendarView } from "@/components/app/calendar-view";
 
 export default async function CalendarPage({ params }: { params: Promise<{ clubSlug: string }> }) {
   const { clubSlug } = await params;
-  const d = await loadClubData(clubSlug);
+  const d = await loadClubData(clubSlug, 8, { members: true });
   return (
     <CalendarView
       tenant={d.tenant}

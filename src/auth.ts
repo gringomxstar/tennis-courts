@@ -17,10 +17,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   callbacks: {
     ...authConfig.callbacks,
     // Switching demo mode off must also end running demo sessions, not only new logins.
-    // Costs one query per auth() call, but only for the demo personas.
+    // Costs one query per 5 min, but only for the demo personas.
     async jwt(params) {
       const token = await authConfig.callbacks!.jwt!(params);
       if (!token || params.user || !isDemoEmail(token.email)) return token;
+      // re-check at most every 5 min instead of on every auth() call
+      const t = token as typeof token & { demoChk?: number };
+      if (t.demoChk && Date.now() - t.demoChk < 300_000) return token;
+      t.demoChk = Date.now();
       const live = await prisma.tenantUser.findMany({
         where: { user: { email: token.email! } },
         select: { tenant: { select: { settingsJson: true } } },

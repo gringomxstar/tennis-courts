@@ -12,7 +12,7 @@ function pooledUrl() {
   if (!raw) return undefined;
   try {
     const u = new URL(raw);
-    if (!u.searchParams.has("connection_limit")) u.searchParams.set("connection_limit", "3");
+    if (!u.searchParams.has("connection_limit")) u.searchParams.set("connection_limit", "10");
     return u.toString();
   } catch {
     return raw;
@@ -23,7 +23,7 @@ export const prisma =
   globalForPrisma.prisma ??
   new PrismaClient({
     datasourceUrl: pooledUrl(),
-    log: process.env.NODE_ENV === "development" ? ["query", "error", "warn"] : ["error"],
+    log: ["error", "warn"],
   });
 
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;

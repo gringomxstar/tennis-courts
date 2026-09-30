@@ -312,10 +312,20 @@ export async function activePlanSports(tenantId: string, userIds?: string[]): Pr
 export async function getTenantMembers(tenantId: string): Promise<UserSummary[]> {
   if (hasDbConfigured) {
     try {
-      const [tenantUsers, sports] = await Promise.all([
-        prisma.tenantUser.findMany({ where: { tenantId }, include: { user: true } }),
-        activePlanSports(tenantId),
-      ]);
+      const now = new Date();
+      const tenantUsers = await prisma.tenantUser.findMany({
+        where: { tenantId },
+        include: {
+          user: {
+            include: {
+              memberships: {
+                where: { tenantId, status: "ACTIVE", startsAt: { lte: now }, OR: [{ endsAt: null }, { endsAt: { gt: now } }] },
+                include: { plan: true },
+              },
+            },
+          },
+        },
+      });
       if (tenantUsers.length > 0) {
         return tenantUsers.map((tu) => ({
           id: tu.user.id,
@@ -324,7 +334,7 @@ export async function getTenantMembers(tenantId: string): Promise<UserSummary[]>
           lastName: tu.user.lastName,
           phone: tu.user.phone,
           role: tu.role as TenantRole,
-          planSports: sports.get(tu.user.id) ?? null,
+          planSports: tu.user.memberships.length ? planFromDb(tu.user.memberships[tu.user.memberships.length - 1].plan).sports ?? ["TENNIS"] : null,
         }));
       }
     } catch (e) {
@@ -344,10 +354,12 @@ export async function getUserBookings(userId: string, tenantId: string): Promise
           tenantId,
           // EXPIRED = abandoned checkout, never a real booking
           status: { notIn: ["CANCELLED", "EXPIRED"] },
+          startsAt: { gte: new Date(Date.now() - 90 * 86_400_000) },
           OR: [{ organizerId: userId }, { participants: { some: { userId } } }],
         },
         include: bookingInclude,
         orderBy: { startsAt: "asc" },
+        take: 200,
       });
       return mergeById(dbBookings.map(mapPrismaBooking), mock);
     } catch (e) {
