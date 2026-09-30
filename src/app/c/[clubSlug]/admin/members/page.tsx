@@ -18,6 +18,7 @@ export default async function AdminMembersPage({ params }: { params: Promise<{ c
     startsAt: Date; endsAt: Date | null; paidAt: Date | null; pricePaid: number | null;
   }>();
   const profile = new Map<string, { birthDate: string; gender: string }>();
+  const hasPassword = new Set<string>(); // registered accounts (vs. password-less guest-checkout identities)
   const renewal = new Map<string, { endsAt: Date | null; status: string }>();
   const history = new Map<string, { at: string; text: string; by: string }[]>();
   if (process.env.DATABASE_URL) {
@@ -67,9 +68,12 @@ export default async function AdminMembersPage({ params }: { params: Promise<{ c
   if (process.env.DATABASE_URL) {
     const users = await prisma.user.findMany({
       where: { tenantUsers: { some: { tenantId: tenant.id } } },
-      select: { id: true, birthDate: true, gender: true },
+      select: { id: true, birthDate: true, gender: true, passwordHash: true },
     });
-    for (const u of users) profile.set(u.id, { birthDate: u.birthDate?.toISOString().slice(0, 10) ?? "", gender: u.gender ?? "" });
+    for (const u of users) {
+      if (u.passwordHash) hasPassword.add(u.id);
+      profile.set(u.id, { birthDate: u.birthDate?.toISOString().slice(0, 10) ?? "", gender: u.gender ?? "" });
+    }
   }
 
   // hours played per weekday (Mo-So) in the current week, for the detail bar chart
@@ -100,8 +104,8 @@ export default async function AdminMembersPage({ params }: { params: Promise<{ c
   }
 
   const rows: MemberRow[] = members
-    // guest checkouts create GUEST users; keep them only if they bought a membership
-    .filter((m) => m.role !== "PLATFORM_ADMIN" && (m.role !== "GUEST" || best.has(m.id)))
+    // guest checkouts create password-less GUEST identities: hide them unless they bought a membership or registered (set a password)
+    .filter((m) => m.role !== "PLATFORM_ADMIN" && (m.role !== "GUEST" || best.has(m.id) || hasPassword.has(m.id)))
     .map((m) => {
       const ms = best.get(m.id);
       return {
