@@ -67,7 +67,7 @@ body { background: var(--pg-bg); color: var(--pg-fg); font-family: "Outfit", -ap
 .court svg { position: absolute; inset: 0; width: 100%; height: 100%; }
 .court .lbl { position: absolute; top: 16px; left: 16px; display: inline-flex; align-items: center; gap: 8px; background: rgba(255,255,255,.18); backdrop-filter: blur(10px); border-radius: 999px; padding: 7px 12px 7px 8px; font-size: 13px; font-weight: 600; }
 .court .lbl i { width: 22px; height: 22px; border-radius: 50%; background: #fff; display: inline-block; }
-.court .foot { position: absolute; left: 16px; right: 16px; bottom: 16px; display: flex; gap: 8px; flex-wrap: wrap; }
+.court .foot { position: absolute; left: 16px; right: 16px; bottom: 16px; display: flex; gap: 8px; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; } .court .foot .chip { flex: none; }
 .court .foot .chip { background: rgba(255,255,255,.92); box-shadow: none; color: var(--ink); height: 38px; }
 .court .foot .chip b { font-size: 15px; }
 
@@ -223,7 +223,8 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 
 .bars.y { height: 130px; gap: 6px; } .bars.y div { background: #cde8df; } .bars.y div.hi { background: var(--brand-deep); } .bars-x.y { gap: 6px; }
 .courtrows .cr { padding: 12px 0; border-top: 1px solid var(--line); } .courtrows .cr:first-child { border-top: 0; padding-top: 0; }
 .courtrows .cr > div:first-child { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; } .courtrows .cr b { font-size: 15px; } .courtrows .cr small { color: var(--ink-3); font-size: 12.5px; }
-.hscroll { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; } .hscroll .chip { flex: none; height: 38px; box-shadow: none; background: var(--bg); font-size: 14px; }
+.hscroll { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; } .slots { padding: 2px 2px 6px; margin: 0 -2px; } .slot { flex: none; width: 128px; padding: 14px 16px; border: 0; text-align: left; cursor: pointer; display: flex; flex-direction: column; gap: 2px; background: var(--bg); box-shadow: none; } .slot b { font-size: 32px; font-weight: 700; letter-spacing: -.04em; line-height: 1.1; } .slot span { display: flex; align-items: center; gap: 6px; font-weight: 600; } .slot small { color: var(--ink-3); font-size: 12.5px; }
+.hscroll .chip { flex: none; height: 38px; box-shadow: none; background: var(--bg); font-size: 14px; }
 .hscroll .chip.taken { color: var(--ink-3); text-decoration: line-through; opacity: .7; } .hscroll .chip.mine { background: var(--brand-deep); color: #fff; } .hscroll .chip.past { opacity: .35; }
 .grid9 { display: grid; grid-template-columns: 44px repeat(9, minmax(0, 1fr)); gap: 4px; align-items: center; }
 .grid9 .h { font-size: 11.5px; font-weight: 700; color: var(--ink-2); text-align: center; } .grid9 .r { font-size: 13px; font-weight: 600; }
@@ -440,9 +441,9 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 
             <button class="btn ghost wide" data-go="cal-a">Als Gast buchen</button>
             <div class="center m3">Ohne Konto. Bezahlen mit Twint oder Karte.</div>
           </div>
-          <div class="card pad"><div class="lst"><div class="lrow tap" data-go="register"><div class="g"><b>Mitglied werden</b><small>Konto erstellen, dann Abo wählen. Saison bis 31. März, ab CHF 60.</small></div><button class="btn sm">Mitglied werden</button></div></div></div>
+          <div class="card pad"><div class="lst"><div class="lrow tap" data-go="abos"><div class="g"><b>Mitglied werden</b><small>Abo wählen, dann Konto erstellen. Saison bis 31. März, ab CHF 60.</small></div><button class="btn sm">Mitglied werden</button></div></div></div>
           <div class="card pad"><div class="ch"><h2>Jetzt frei</h2><span class="link" data-go="cal-a">Alle Plätze</span></div>
-            <div class="courts"><button class="chip" data-go="cal-a"><b>17:00</b> Platz 2</button><button class="chip" data-go="cal-a"><b>18:00</b> Platz 5</button><button class="chip" data-go="cal-a"><b>19:00</b> Central</button></div></div>
+            <div class="hscroll slots"><button class="card slot" data-go="cal-a"><small>Morgen</small><b>17:00</b><span><i class="dot d-sand"></i>Platz 2</span><small>Sand</small></button><button class="card slot" data-go="cal-a"><small>Morgen</small><b>18:00</b><span><i class="dot d-sand"></i>Platz 5</span><small>Sand</small></button><button class="card slot" data-go="cal-a"><small>Morgen</small><b>19:00</b><span><i class="dot d-hard"></i>Central</span><small>Allwetter</small></button><button class="card slot" data-go="cal-a"><small>Morgen</small><b>20:00</b><span><i class="dot d-padel"></i>Padel 1</span><small>Padel</small></button></div></div>
         </div>
       </section>
 
@@ -569,9 +570,9 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 
             <label class="fld"><span>E-Mail</span><input type="email" value="lea.brunner@bluewin.ch"></label>
             <label class="fld"><span>Passwort</span><input type="password" value="••••••••••"><span class="hint">mindestens 8 Zeichen</span></label>
             <label class="ck"><input type="checkbox" checked>Ich akzeptiere Statuten und Datenschutz des TC Marly.</label>
-            <button class="btn pri wide" data-go="abos">Konto erstellen</button>
+            <button class="btn pri wide" data-go="start">Konto erstellen und bezahlen</button>
           </div>
-          <div class="banner ok"><div class="g">Danach wählst du dein Abo. Mit Abo buchst du als Mitglied.</div></div>
+          <div class="banner ok"><div class="g">Dein Abo: Saison Erwachsene, CHF 450. Nach dem Bezahlen buchst du als Mitglied.</div></div>
           <div class="center m3">Schon ein Konto? <span class="link" data-go="login">Anmelden</span></div>
         </div>
       </section>
@@ -833,9 +834,9 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 
     profil: "Profil: heutige Reihenfolge (Guthaben, Abo, Daten, Design, Abmelden) bleibt, nur im v3-Stil. Neu: Rechnungen mit offenem Betrag.",
     abos: "Abos: heutige Struktur (Sportart, Für mich/Als Paar, Kaufleiste unten mit Auto-Verlängern) bleibt. Neu: abgelaufenes Abo ist vorausgewählt, ein Tipp verlängert.",
     rechnung: "Rechnung: Beleg mit Status, PDF und E-Mail, darunter weitere Belege. Offener Betrag direkt bezahlbar.",
-    entry: "Einstieg (abgemeldet), heutige Struktur: drei Wege, Mitglied anmelden (primär), Als Gast buchen (Kalender als Gast), Mitglied werden (Konto, dann Abo). Ohne Abo gibt es keine Mitglied-Buchung.",
+    entry: "Einstieg (abgemeldet), heutige Struktur: drei Wege, Mitglied anmelden (primär), Als Gast buchen (Kalender als Gast), Mitglied werden (Abo-Seite, dort Abo wählen, dann Konto erstellen und bezahlen). "Jetzt frei" scrollt seitwärts. Ohne Abo gibt es keine Mitglied-Buchung.",
     login: "Login: heutige Struktur bleibt (E-Mail, Passwort, Anmelden, Registrieren). Gezeigt mit Fehlerzustand. Neu: Gast-Buchung ohne Konto.",
-    register: "Registrieren: vier Felder, eine Checkbox, ein Button. Danach direkt zur Abo-Wahl.",
+    register: "Registrieren: vier Felder, eine Checkbox, ein Button. Kommt nach der Abo-Wahl (Mitglied werden), danach bezahlen.",
     gast: "Gast-Buchung: Slot oben, drei Felder, Zahlart Twint oder Karte, Preis-Split, ein Button.",
     hub: "Verwaltung Übersicht: eine Kachel pro Bereich mit der wichtigsten Zahl. Oben am Desktop die Admin-Pillen.",
     heute: "Heute: Regen-Schalter zuoberst (ein Tipp sperrt alle Sandplätze, wie heute Sperren), dann Kennzahlen, Belegung, nächste Buchungen.",

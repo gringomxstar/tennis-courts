@@ -32,7 +32,7 @@ Umschalter oben in drei Gruppen (Mitglied, Zugang, Verwaltung), jede Seite bei 3
 - **Abos** (heutige Struktur): abgelaufenes Abo vorausgewählt, Sportart, Für mich/Als Paar, Optionen, Kaufleiste unten mit Auto-Verlängern, ein Tipp verlängert.
 - **Rechnung:** Beleg mit Status, PDF/E-Mail, weitere Belege, offener Betrag direkt bezahlbar.
 
-**Zugang** (ohne Navigation): **Einstieg** (abgemeldet, heutige Struktur: Mitglied anmelden primär, Als Gast buchen, Mitglied werden; ohne Abo keine Mitglied-Buchung), **Login** (mit Fehlerzustand, Gast-Button), **Registrieren**, **Gast-Buchung** (Slot, Name/E-Mail/Handy, Twint oder Karte, Preis-Split).
+**Zugang** (ohne Navigation): **Einstieg** (abgemeldet, heutige Struktur: Mitglied anmelden primär, Als Gast buchen, Mitglied werden → Abo-Seite, dort Abo wählen, dann Registrieren und bezahlen; „Jetzt frei“ als seitwärts scrollende Slot-Reihe; ohne Abo keine Mitglied-Buchung), **Login** (mit Fehlerzustand, Gast-Button), **Registrieren**, **Gast-Buchung** (Slot, Name/E-Mail/Handy, Twint oder Karte, Preis-Split).
 
 **Verwaltung**
 - **Übersicht (/admin):** Kacheln pro Bereich mit der wichtigsten Zahl.
