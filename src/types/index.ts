@@ -157,6 +157,8 @@ export interface Booking {
   notes?: string | null;
   /** Trainer weekly series this booking belongs to. */
   seriesId?: string;
+  /** Kursfarbe (#rrggbb), nur Kurs-Buchungen */
+  color?: string;
   paymentStatus?: "UNPAID" | "PAID" | "WAIVED";
   paymentMethod?: PaymentMethod;
   organizer?: {
