@@ -59,14 +59,16 @@ export async function grantMembership(tenantId: string, userId: string, planId: 
     pricePaid: price,
     paidAt: new Date(),
   };
-  if (pending) await prisma.membership.update({ where: { id: pending.id }, data });
-  else await prisma.membership.create({ data: { userId, tenantId, membershipPlanId: planId, ...data } });
+  const { id } = pending
+    ? await prisma.membership.update({ where: { id: pending.id }, data })
+    : await prisma.membership.create({ data: { userId, tenantId, membershipPlanId: planId, ...data } });
   await prisma.tenantUser.upsert({
     where: { tenantId_userId: { tenantId, userId } },
     create: { tenantId, userId, role: "MEMBER" },
     update: {},
   });
   await prisma.tenantUser.updateMany({ where: { tenantId, userId, role: "GUEST" }, data: { role: "MEMBER" } });
+  return id; // undefined on a webhook retry (already granted)
 }
 
 /** Second person of a Paar-Abo: got it for free with the buyer's purchase, so the buyer renews it, not the partner. */

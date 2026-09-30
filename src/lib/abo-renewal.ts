@@ -97,10 +97,11 @@ export async function runAboRenewals(now = new Date()) {
           const partner = customer.metadata?.[partnerKey(m.tenantId)];
           // partner first: once the buyer is renewed, `next` skips this membership for good
           if (partner) await grantPartnerMembership(m.tenantId, plan.id, JSON.parse(partner) as Partner, pi.id);
-          await grantMembership(m.tenantId, m.userId, plan.id, pi.id, pi.amount / 100);
+          const newId = await grantMembership(m.tenantId, m.userId, plan.id, pi.id, pi.amount / 100);
           await sendMail(m.user.email, `Abo verlängert: ${m.tenant.name}`, [
             `Hallo ${m.user.firstName}`, "",
             `dein Abo «${plan.name}» wurde automatisch um eine Saison verlängert (CHF ${pi.amount / 100}).`,
+            newId ? `Quittung: ${appUrl()}/invoice/${newId}` : "",
             `Automatische Verlängerung ausschalten: ${appUrl()}/c/${m.tenant.slug}/abos`,
           ].join("\n"));
           done.renewed++;

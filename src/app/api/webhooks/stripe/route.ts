@@ -3,6 +3,7 @@ import Stripe from "stripe";
 import { getStripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
 import { grantMembership, grantPartnerMembership } from "@/lib/membership";
+import { sendAboReceipt } from "@/lib/mail";
 import { rememberAutoRenew } from "@/lib/abo-renewal";
 import { markBookingPaid, releaseUnpaidBooking } from "@/lib/booking-payment";
 import { creditTopUpSession } from "@/lib/wallet";
@@ -122,7 +123,14 @@ async function handlePaymentSuccess(stripeCustomerId: string, metadata?: Record<
 
   // Abo aus dieser App (idempotent bei Webhook-Retries); grantMembership stuft GUEST → MEMBER hoch
   if (metadata?.planId && tenantId) {
-    await grantMembership(tenantId, user.id, metadata.planId, ref, pricePaid);
+    const membershipId = await grantMembership(tenantId, user.id, metadata.planId, ref, pricePaid);
+    if (membershipId) {
+      const [plan, tenant] = await Promise.all([
+        prisma.membershipPlan.findUnique({ where: { id: metadata.planId }, select: { name: true } }),
+        prisma.tenant.findUnique({ where: { id: tenantId }, select: { name: true } }),
+      ]);
+      if (plan && tenant) await sendAboReceipt(user.email, user.firstName, plan.name, tenant.name, membershipId);
+    }
     if (metadata.partnerEmail) {
       await grantPartnerMembership(tenantId, metadata.planId, {
         email: metadata.partnerEmail,

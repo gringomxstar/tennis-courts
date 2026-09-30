@@ -80,7 +80,7 @@ export async function loadStats(tenantId: string, year: number, openHour: number
     prisma.membership.findMany({
       where: { tenantId },
       select: {
-        userId: true, startsAt: true, endsAt: true, status: true, pricePaid: true, paidAt: true, createdAt: true,
+        id: true, userId: true, startsAt: true, endsAt: true, status: true, pricePaid: true, paidAt: true, createdAt: true,
         plan: { select: { name: true, price: true } },
         user: { select: { firstName: true, lastName: true, email: true } },
       },
@@ -329,6 +329,7 @@ const PAY_LABEL: Record<string, string> = { PAID: "bezahlt", UNPAID: "offen", WA
 export const EXPORTS = {
   buchungen: "Buchungen",
   kasse: "Kassenjournal (Monate)",
+  abos: "Abo-Zahlungen",
   wallet: "Guthaben-Bewegungen",
   mitglieder: "Mitgliederliste",
 } as const;
@@ -359,6 +360,15 @@ export function exportRows(s: Stats, type: ExportType): unknown[][] {
       ["Offene Posten", s.kasse.open.toFixed(2)],
       ["Erlassen", s.kasse.waived.toFixed(2)],
       ["Guthaben-Saldo aller Mitglieder (Verbindlichkeit, heute)", s.kasse.wallet.liability.toFixed(2)],
+    ];
+  }
+  if (type === "abos") {
+    return [
+      ["Bezahlt am", "Name", "E-Mail", "Abo", "Gültig von", "Gültig bis", "Betrag CHF", "Referenz"],
+      ...s.raw.paidMemberships.filter((m) => chDate(s.raw.aboDate(m)).endsWith(String(s.year))).map((m) => [
+        chDate(s.raw.aboDate(m)), name(m.user), m.user.email, m.plan.name, chDate(m.startsAt), chDate(m.endsAt),
+        s.raw.aboAmount(m).toFixed(2), m.id,
+      ]),
     ];
   }
   if (type === "wallet") {

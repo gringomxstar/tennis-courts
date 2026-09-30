@@ -56,9 +56,9 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
       subtitle={paid ? "Danke, die Zahlung ist eingegangen." : "Dein Zugang wird freigeschaltet, sobald die Zahlung bei uns eingegangen ist."}
       clubName={membership.tenant.name}
       clubAddress={membership.tenant.address}
-      docLabel="Rechnung"
+      docLabel={paid ? "Quittung" : "Rechnung"}
       number={invoiceNumber}
-      toLabel="Rechnung an"
+      toLabel={paid ? "Quittung für" : "Rechnung an"}
       toName={`${membership.user.firstName} ${membership.user.lastName}`}
       toEmail={membership.user.email}
       meta={[
