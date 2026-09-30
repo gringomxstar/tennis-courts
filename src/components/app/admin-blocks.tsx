@@ -101,7 +101,7 @@ export function AdminBlocks({
         <div className="mt-0.5 text-[15px] text-muted-foreground">Plätze für Regen, Pflege oder Turnier sperren</div>
       </div>
 
-      <div className="grid items-start gap-3.5 px-5 pb-8 pt-4 @min-[640px]:gap-4 @min-[640px]:px-0 @min-[1100px]:grid-cols-2">
+      <div className="grid grid-cols-1 items-start gap-3.5 px-5 pb-8 pt-4 @min-[640px]:gap-4 @min-[640px]:px-0 @min-[1100px]:grid-cols-2">
         <section className="card p-4 @min-[640px]:p-5">
           <h2 className="text-[18px] font-bold tracking-[-.02em]">Neue Sperre</h2>
           <p className="mt-1 text-[14px] text-ink-3">Auch über mehrere Tage.</p>
@@ -239,8 +239,8 @@ function Planned({ slug, courts, blocks, now }: { slug: string; courts: Court[];
               />
               {court && <Dot color={courtColor(court)} size={9} />}
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2 text-[15px] font-bold">
-                  <span className="truncate">{(g.length === courts.length ? "Alle Plätze" : names.join(", ")) || "Platz"} · {REASON_LABEL[b.reason]}</span>
+                <div className="flex items-start gap-2 text-[15px] font-bold">
+                  <span className="min-w-0 break-words">{(g.length === courts.length ? "Alle Plätze" : names.join(", ")) || "Platz"} · {REASON_LABEL[b.reason]}</span>
                   {start.getTime() <= now && <span className="pill bg-bad-bg text-bad">aktiv</span>}
                 </div>
                 <div className="text-[13px] text-ink-3">
