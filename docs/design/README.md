@@ -29,7 +29,7 @@ Umschalter oben in drei Gruppen (Mitglied, Zugang, Verwaltung), jede Seite bei 3
   - **Tipps:** über den Kalender 3 (Kalender → Platz/Stunde → Reservieren), in A und B gleich. Über die Platzkarte auf Start 2. Anderen Mitspieler wählen = +1.
 - **Buchungen:** Kommend/Vergangen, Tipp öffnet **Buchungsdetail**-Sheet (Spieler mit Abo-Status, Preis, Stornieren). Serien mit „Serie stornieren“ nur für Trainer.
 - **Profil** (heutige Reihenfolge): Guthaben-Karte im Verlauf mit Aufladen, Abo, Daten, Rechnungen, Schalter, Abmelden.
-- **Abos** (heutige Struktur): abgelaufenes Abo vorausgewählt, Sportart, Für mich/Als Paar, Optionen, Kaufleiste unten mit Auto-Verlängern, ein Tipp verlängert.
+- **Abos** (heutige Struktur), zwei Zustände: **Verlängern** (Mitglied: Abgelaufen-Hinweis, letztes Abo vorausgewählt, ein Tipp verlängert) und **Abo wählen (neu)** (abgemeldet über „Mitglied werden“: kein Hinweis, Saison Erwachsene Tennis vorausgewählt, Kaufleiste „Konto erstellen und bezahlen“ führt zu Registrieren). Beide: Sportart, Für mich/Als Paar, Optionen, Kaufleiste unten mit Auto-Verlängern.
 - **Rechnung:** Beleg mit Status, PDF/E-Mail, weitere Belege, offener Betrag direkt bezahlbar.
 
 **Zugang** (ohne Navigation): **Einstieg** (abgemeldet, heutige Struktur: Mitglied anmelden primär, Als Gast buchen, Mitglied werden → Abo-Seite, dort Abo wählen, dann Registrieren und bezahlen; „Jetzt frei“ als seitwärts scrollende Slot-Reihe; ohne Abo keine Mitglied-Buchung), **Login** (mit Fehlerzustand, Gast-Button), **Registrieren**, **Gast-Buchung** (Slot, Name/E-Mail/Handy, Twint oder Karte, Preis-Split).
