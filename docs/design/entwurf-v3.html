@@ -500,24 +500,25 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 
         </div>
       </section>
 
-      <!-- ABOS (heutige Struktur, v3-Stil) -->
+      <!-- ABOS (alte informative Seite mit Jahrgang, v3-Stil) -->
       <section class="screen" data-screen="abos">
-        <div class="ph"><div><h1><span class="abo-renew">Abos</span><span class="abo-new">Mitglied werden</span></h1><div class="sub">Saison 2026/27, einmal zahlen, bis 31. März 2027 ohne Platzgebühr spielen.</div></div></div>
-        <div class="banner abo-renew"><div class="g"><b>Dein Abo ist am 31.3.2026 abgelaufen</b>Dein letztes Abo ist vorausgewählt. Ein Tipp unten verlängert es.</div></div>
-        <div class="cols">
-          <div class="card pad stack">
-            <div class="ch" style="margin:0"><h2>Abo wählen</h2></div>
-            <div class="seg"><button aria-pressed="true"><i class="dot d-sand"></i> Tennis</button><button><i class="dot d-padel"></i> Padel</button><button>Beides</button></div>
-            <div class="seg"><button aria-pressed="true">Für mich</button><button>Als Paar</button></div>
-            <button class="opt" aria-pressed="true"><span class="radio"></span><span class="g"><b>Saison Erwachsene</b><small><span class="abo-renew">dein letztes Abo, </span>am beliebtesten</small></span><span class="pr">CHF 450</span></button>
-            <button class="opt"><span class="radio"></span><span class="g"><b>Student bis 25</b><small>mit Ausweis</small></span><span class="pr">CHF 200</span></button>
-            <button class="opt"><span class="radio"></span><span class="g"><b>Junior U18</b><small>Jahrgang 2009 und jünger</small></span><span class="pr">CHF 120</span></button>
-            <button class="opt"><span class="radio"></span><span class="g"><b>Senior 65+</b></span><span class="pr">CHF 350</span></button>
+        <div class="ph"><div><h1><span class="abo-renew">Abos</span><span class="abo-new">Mitglied werden</span></h1><div class="sub">Dein Platz. Die ganze Saison. Einmal zahlen, vom 1. April bis 31. März spielen.</div></div></div>
+        <div class="banner abo-renew"><div class="g"><b>Dein Abo ist am 31.3.2026 abgelaufen</b>Dein letztes Abo ist markiert. Ein Tipp auf Bezahlen verlängert es.</div></div>
+        <div class="card pad stack">
+          <div class="seg" id="ab-sport"><button aria-pressed="true" data-v="tennis"><i class="dot d-sand"></i> Tennis</button><button data-v="padel"><i class="dot d-padel"></i> Padel</button><button data-v="combo">Beides <small style="opacity:.7">spart bis 200</small></button></div>
+          <div class="row2" style="align-items:end">
+            <div class="seg" id="ab-who"><button aria-pressed="true" data-v="single">Für mich</button><button data-v="couple">Als Paar</button></div>
+            <label class="fld"><span>Jahrgang</span><input id="ab-year" inputmode="numeric" maxlength="4" value="1985"></label>
           </div>
+          <div class="m3" id="ab-fit" style="color:var(--brand-deep);font-weight:600"></div>
+          <div class="m3" id="ab-anchor"></div>
         </div>
-        <div class="card bigpay">
-          <label class="ck"><input type="checkbox" checked>Jedes Jahr automatisch verlängern (nur mit Karte, jederzeit kündbar)</label>
-          <button class="btn pri wide abo-renew">Verlängern · CHF 450 mit Twint oder Karte</button><button class="btn pri wide abo-new" data-go="register">Konto erstellen und bezahlen · CHF 450</button>
+        <div class="cols" id="ab-main"></div>
+        <div class="card pad"><div class="ch" style="margin-bottom:6px"><h2>Weitere Tarife</h2><span class="m3" id="ab-morenote"></span></div><div class="lst" id="ab-more"></div></div>
+        <div class="cols">
+          <div class="card pad"><b style="display:block;font-size:15px">Sofort freigeschaltet</b><div class="m3">Nach der Zahlung buchst du direkt. Keine Woche warten.</div></div>
+          <div class="card pad"><b style="display:block;font-size:15px">Gültig bis 31. März</b><div class="m3">Die Saison läuft vom 1. April bis 31. März. Beitritt jederzeit.</div></div>
+          <div class="card pad"><b style="display:block;font-size:15px">Gäste willkommen</b><div class="m3">Mo–Fr 11–13 Uhr spielen Nichtmitglieder gratis mit dir, wenn ihr danach im Club esst.</div></div>
         </div>
       </section>
 
@@ -807,6 +808,54 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 
   document.getElementById("vb-list").innerHTML = VB; document.getElementById("grid9").innerHTML = G;
   document.getElementById("setcourts").innerHTML = courts.map(function (c, i) { return '<div class="lrow"><span class="dot" style="background:' + col[c[1]] + '"></span><div class="g"><b>' + c[0] + '</b><small>' + tname[c[1]] + (c[1] == "padel" ? "" : ", Flutlicht") + '</small></div><button class="sw" aria-pressed="' + (i != 4) + '" aria-label="' + c[0] + ' buchbar"></button></div>'; }).join("");
 
+  // Abos: Tarife laut tennismarly.ch (Saison 1.4.–31.3.), Jahrgang schlägt die Kategorie vor
+  var CATS = [
+    { id: "kind", name: "Kinder", cond: "bis 12 J.", t: [60], p: [60], c: [110] },
+    { id: "junior", name: "Junioren", cond: "13–18 J.", t: [100], p: [100], c: [150], main: 1 },
+    { id: "jung", name: "Junge Erwachsene", cond: "bis 26 J.", t: [200] },
+    { id: "student", name: "Studierende & Lehrlinge", cond: "bis 30 J., mit Ausweis", t: [200], p: [185], c: [250], proof: 1 },
+    { id: "adult", name: "Erwachsene", cond: "ab 19 J.", t: [380, 550], p: [290, 400], c: [480, 750], main: 1, last: 1 },
+    { id: "senior", name: "Senioren", cond: "ab 65 J.", t: [300, 550], p: [230, 400], c: [400, 750], main: 1 },
+    { id: "soleil", name: "Abo Soleil", cond: "Mo–Fr 8–16 Uhr", t: [200] },
+    { id: "rolli", name: "Rollstuhltennis", cond: "Rollstuhl", t: [100] }
+  ];
+  var KEY = { tennis: "t", padel: "p", combo: "c" }, ab = { sport: "tennis", who: "single" };
+  function price(c, s) { var a = c[KEY[s || ab.sport]]; if (!a) return null; return ab.who == "couple" ? (a[1] || null) : a[0]; }
+  function fitFor(a) { return a == null ? null : a <= 12 ? "kind" : a <= 18 ? "junior" : a >= 65 ? "senior" : "adult"; }
+  function feats(c) {
+    var f = [];
+    if (ab.sport != "padel") f.push("Alle 8 Tennisplätze ohne Platzgebühr");
+    if (ab.sport != "tennis") f.push("Padel-Court ohne Platzgebühr");
+    f.push("Online reservieren bis 7 Tage im Voraus");
+    if (ab.who == "couple") f.push("Zwei Personen, ein Haushalt");
+    if (ab.sport == "combo" && c.t && c.p) { var i = ab.who == "couple" ? 1 : 0, s = c.t[i] + c.p[i], p = price(c); if (s && p) f.push("CHF " + (s - p) + " günstiger als einzeln"); }
+    return f;
+  }
+  function renderAbos() {
+    var y = parseInt(document.getElementById("ab-year").value, 10), a = y > 1900 && y <= 2026 ? 2026 - y : null, fit = fitFor(a);
+    var main = CATS.filter(function (c) { return c.main && price(c) != null; }), rest = CATS.filter(function (c) { return !c.main && price(c) != null; });
+    document.getElementById("ab-main").innerHTML = main.map(function (c) {
+      var p = price(c), on = c.id == fit;
+      return '<div class="card pad stack"' + (on ? ' style="box-shadow:inset 0 0 0 2px var(--brand-deep),var(--sh)"' : '') + '>' +
+        '<div class="ch" style="margin:0"><div><h2>' + c.name + '</h2><div class="m3">' + c.cond + '</div></div>' + (on ? '<span class="pill p-ok"><i></i>passt zu dir</span>' : c.last ? '<span class="pill p-off abo-renew">dein letztes Abo</span>' : '') + '</div>' +
+        '<div style="font-size:34px;font-weight:700;letter-spacing:-.03em;line-height:1">CHF ' + p + '<small style="font-size:14px;font-weight:500;color:var(--ink-3);margin-left:6px">/ Saison</small></div>' +
+        '<div class="m3">' + (ab.who == "couple" ? "CHF " + p / 2 + " pro Person" : ab.sport == "tennis" ? "Als Gast nach " + Math.ceil(p / 30) + " Stunden bezahlt" : "&nbsp;") + '</div>' +
+        '<div class="lst">' + feats(c).map(function (f) { return '<div class="lrow" style="padding:7px 0"><span style="color:var(--ok);font-weight:700">✓</span><div class="g">' + f + '</div></div>'; }).join("") + '</div>' +
+        '<button class="btn ' + (on ? 'pri' : 'ghost') + ' wide abo-renew">Bezahlen · CHF ' + p + '</button><button class="btn ' + (on ? 'pri' : 'ghost') + ' wide abo-new" data-go="register">Bezahlen · CHF ' + p + '</button></div>';
+    }).join("");
+    document.getElementById("ab-more").innerHTML = rest.map(function (c) { var p = price(c), on = c.id == fit; return '<div class="lrow"><div class="g"><b>' + c.name + '</b><small>' + c.cond + '</small></div><b style="white-space:nowrap">CHF ' + p + '</b><button class="btn sm' + (on ? ' pri" style="background:var(--brand-deep);color:#fff' : '') + '">Auswählen</button></div>'; }).join("") || '<div class="m3">Paar-Abos gibt es für Erwachsene und Senioren.</div>';
+    document.getElementById("ab-morenote").textContent = rest.length ? "Ermässigungen mit Alters- oder Ausweis-Nachweis" : "";
+    var ad = price(CATS[4]);
+    document.getElementById("ab-anchor").innerHTML = ab.sport == "tennis" ? "Als Gast zahlst du CHF 30 pro Stunde. Das Erwachsenen-Abo ist nach " + Math.ceil(ad / 30) + " Stunden bezahlt, danach spielst du bis 31. März ohne Platzgebühr."
+      : ab.sport == "padel" ? "Als Gast zahlst du CHF 40 pro Stunde Padel. Das Erwachsenen-Abo ist nach " + Math.ceil(ad / 40) + " Stunden bezahlt."
+      : "Tennis und Padel zusammen: Erwachsene sparen CHF " + ((ab.who == "couple" ? 550 + 400 : 380 + 290) - ad) + " gegenüber zwei einzelnen Abos.";
+    var fc = fit && CATS.filter(function (c) { return c.id == fit; })[0];
+    document.getElementById("ab-fit").textContent = fc ? "→ " + fc.name + (a > 18 && a <= 30 ? " (bis 30 J. mit Ausweis günstiger, siehe Weitere Tarife)" : "") : "Jahrgang eingeben, dann schlagen wir das passende Abo vor.";
+  }
+  ["ab-sport", "ab-who"].forEach(function (id) { document.getElementById(id).addEventListener("click", function (e) { var b = e.target.closest("button"); if (!b) return; ab[id == "ab-sport" ? "sport" : "who"] = b.dataset.v; setTimeout(renderAbos, 0); }); });
+  document.getElementById("ab-year").addEventListener("input", renderAbos);
+  renderAbos();
+
   // screen -> [section, nav, calendar variant, overlay, show taps]
   var S = { start: ["start","start"], cal: ["cal","cal"],
     "res-1": ["cal","cal","","",1], "res-2": ["cal","cal","","res",1], "res-3": ["cal","cal","","ok",1],
@@ -824,11 +873,11 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 
     book: "Buchungen: Kommend/Vergangen wie heute. Tipp auf eine Buchung öffnet das Detail. Serien mit Serie stornieren sieht nur, wer Trainer ist.",
     detail: "Buchungsdetail: Spieler mit Abo-Status, Preis, Stornieren direkt sichtbar.",
     profil: "Profil: heutige Reihenfolge (Guthaben, Abo, Daten, Design, Abmelden) bleibt, nur im v3-Stil. Neu: Rechnungen mit offenem Betrag.",
-    abos: "Abos: heutige Struktur (Sportart, Für mich/Als Paar, Kaufleiste unten mit Auto-Verlängern) bleibt. Neu: abgelaufenes Abo ist vorausgewählt, ein Tipp verlängert.",
+    abos: "Abos wie die alte Seite: Sportart, Für mich/Als Paar, Jahrgang schlägt das Abo vor (Rahmen + passt zu dir), drei Hauptkarten mit Leistungen, Weitere Tarife, Infos. Pro Karte nur ein Button Bezahlen, danach Stripe Checkout (Twint oder Karte). Kein Auto-Verlängern-Block mehr.",
     rechnung: "Rechnung: Beleg mit Status, PDF und E-Mail, darunter weitere Belege. Offener Betrag direkt bezahlbar.",
     entry: "Einstieg (abgemeldet), heutige Struktur: drei Wege, Mitglied anmelden (primär), Als Gast buchen (Kalender als Gast), Mitglied werden (Abo-Seite, dort Abo wählen, dann Konto erstellen und bezahlen). „Jetzt frei“ scrollt seitwärts. Ohne Abo gibt es keine Mitglied-Buchung.",
     login: "Login: heutige Struktur bleibt (E-Mail, Passwort, Anmelden, Registrieren). Gezeigt mit Fehlerzustand. Neu: Gast-Buchung ohne Konto.",
-    "abos-neu": "Abo wählen (neu), abgemeldet von Mitglied werden: gleiche Karten ohne Abgelaufen-Hinweis, Saison Erwachsene Tennis vorausgewählt, ein Tipp auf Konto erstellen und bezahlen.",
+    "abos-neu": "Mitglied werden: gleiche Seite ohne Abgelaufen-Hinweis. Bezahlen führt erst zu Konto erstellen, dann Stripe Checkout.",
     register: "Registrieren: vier Felder, eine Checkbox, ein Button. Kommt nach der Abo-Wahl (Mitglied werden), danach bezahlen.",
     gast: "Gast-Buchung: Slot oben, drei Felder, Preis-Split, ein Button Bezahlen. Zahlart (Twint oder Karte) wählt man danach in Stripe Checkout.",
     hub: "Verwaltung Übersicht: eine Kachel pro Bereich mit der wichtigsten Zahl. Oben am Desktop die Admin-Pillen.",
