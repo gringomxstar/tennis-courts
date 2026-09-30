@@ -1,3 +1,5 @@
+import { after } from "next/server";
+import { syncPendingBookingPayments } from "@/lib/booking-payment";
 import { loadClubData } from "@/lib/club-data";
 import { getTenantContext } from "@/lib/tenant";
 import { CalendarView } from "@/components/app/calendar-view";
@@ -6,6 +8,8 @@ export default async function CalendarPage({ params }: { params: Promise<{ clubS
   const { clubSlug } = await params;
   const { isTenantAdmin } = await getTenantContext(clubSlug);
   const d = await loadClubData(clubSlug, 8, { admin: isTenantAdmin, members: true });
+  // Abgebrochene Zahlungen: nach Stripe-Ablauf (30 min) Slot freigeben, auch ohne Webhook.
+  after(() => syncPendingBookingPayments(d.tenant.id));
   return (
     <CalendarView
       tenant={d.tenant}
