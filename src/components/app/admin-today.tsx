@@ -75,6 +75,17 @@ export function AdminToday({
   const nameOf = (b: Booking) =>
     b.organizer ? `${b.organizer.firstName} ${b.organizer.lastName}`.trim() : b.participants.find((p) => p.guestName)?.guestName ?? "Gast";
 
+  /** "Max Muster + Anna B. + Peter (Gast)" — Buchender zuerst, dann alle Mitspieler. */
+  const playersOf = (b: Booking) =>
+    [
+      nameOf(b),
+      ...b.participants
+        .filter((p) => p.role !== "ORGANIZER" && p.role !== "COACH")
+        .map((p) => (p.user ? `${p.user.firstName} ${p.user.lastName}`.trim() : p.guestName ? `${p.guestName} (Gast)` : "")),
+    ]
+      .filter(Boolean)
+      .join(" + ");
+
   function cancel(b: Booking) {
     const name = nameOf(b);
     startTransition(async () => {
@@ -203,7 +214,7 @@ export function AdminToday({
                       {court && <Dot color={courtColor(court)} size={9} />}
                       {court ? courtLabel(court).name : ""}
                     </div>
-                    <div className="truncate text-[13px] text-ink-3">{name}</div>
+                    <div className="truncate text-[13px] text-ink-3">{b.bookingType === "COACH" ? `Training · ${playersOf(b)}` : playersOf(b)}</div>
                   </div>
                   <button type="button" onClick={() => cancel(b)} aria-label={`Buchung von ${name} stornieren`} className="btn btn-ghost !h-9 text-bad">
                     Stornieren
