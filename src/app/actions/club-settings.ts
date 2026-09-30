@@ -541,11 +541,14 @@ export async function updateClubBrandingAction(
   clubSlug: string,
   brandColor: string | null,
   logo?: string | null,
-  bookingColors?: TenantSettings["bookingColors"]
+  bookingColors?: TenantSettings["bookingColors"],
+  name?: string
 ) {
   const authCheck = await verifyClubAdmin(clubSlug);
   if (!authCheck.authorized || !authCheck.tenant) return { success: false as const, error: authCheck.error };
   if (!process.env.DATABASE_URL) return { success: false as const, error: "Branding braucht eine Datenbank." };
+  const clubName = name?.trim();
+  if (name !== undefined && (!clubName || clubName.length > 60)) return { success: false as const, error: "Der Clubname braucht 1–60 Zeichen." };
   if (brandColor !== null && !HEX.test(brandColor)) return { success: false as const, error: "Ungültige Farbe." };
   const roleColors = Object.entries(bookingColors ?? {});
   if (roleColors.some(([k, v]) => !["MEMBER", "GUEST", "COACH"].includes(k) || !HEX.test(v ?? ""))) {
@@ -564,7 +567,7 @@ export async function updateClubBrandingAction(
   }
   await prisma.tenant.update({
     where: { id: tenant.id },
-    data: { settingsJson: settings as object, ...(logo !== undefined ? { logoUrl: logo } : {}) },
+    data: { settingsJson: settings as object, ...(clubName ? { name: clubName } : {}), ...(logo !== undefined ? { logoUrl: logo } : {}) },
   });
   revalidatePath(`/c/${clubSlug}`, "layout");
   return { success: true as const };

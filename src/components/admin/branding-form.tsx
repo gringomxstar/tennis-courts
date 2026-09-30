@@ -41,7 +41,7 @@ function toDataUrl(file: File): Promise<string> {
 
 const preview = (hex: string) => document.documentElement.style.setProperty("--tennis-clay", hex);
 
-export function BrandingForm({ clubSlug, clubName, color: initialColor, logo: initialLogo, bookingColors }: {
+export function BrandingForm({ clubSlug, clubName: initialName, color: initialColor, logo: initialLogo, bookingColors }: {
   clubSlug: string;
   clubName: string;
   color?: string;
@@ -49,6 +49,7 @@ export function BrandingForm({ clubSlug, clubName, color: initialColor, logo: in
   bookingColors?: TenantSettings["bookingColors"];
 }) {
   const router = useRouter();
+  const [clubName, setClubName] = useState(initialName);
   const [color, setColor] = useState(initialColor ?? DEFAULT);
   const [logo, setLogo] = useState<string | null | undefined>(undefined); // undefined = unchanged
   const [roleColors, setRoleColors] = useState({ ...BOOKING_COLORS, ...bookingColors });
@@ -74,7 +75,7 @@ export function BrandingForm({ clubSlug, clubName, color: initialColor, logo: in
 
   async function save() {
     setBusy(true);
-    const res = await updateClubBrandingAction(clubSlug, color.toLowerCase() === DEFAULT ? null : color, logo, roleColors).catch(() => null);
+    const res = await updateClubBrandingAction(clubSlug, color.toLowerCase() === DEFAULT ? null : color, logo, roleColors, clubName).catch(() => null);
     setBusy(false);
     if (!res?.success) return void toast.error(res?.error ?? "Speichern fehlgeschlagen.");
     toast("Branding gespeichert");
@@ -84,8 +85,11 @@ export function BrandingForm({ clubSlug, clubName, color: initialColor, logo: in
 
   return (
     <section className="card p-5">
-      <h2 className="text-[22px] font-bold tracking-[-.02em]">Clubfarbe & Logo</h2>
-      <p className="mt-1 text-[15px] leading-[1.4] text-muted-foreground">Die Farbe gilt für Buttons, freie Slots und Markierungen in der ganzen App.</p>
+      <h2 className="text-[22px] font-bold tracking-[-.02em]">Clubname, Farbe & Logo</h2>
+      <p className="mt-1 text-[15px] leading-[1.4] text-muted-foreground">Die Farbe gilt für Buttons, freie Slots und Markierungen in der ganzen App. Name, Logo und Farbe erscheinen auch als Tab-Titel, Favicon und App-Symbol auf dem Home-Bildschirm.</p>
+
+      <div className="mt-4 text-[13px] font-bold uppercase tracking-[.06em] text-muted-foreground">Clubname</div>
+      <input value={clubName} onChange={(e) => setClubName(e.target.value)} maxLength={60} aria-label="Clubname" className="mt-2.5 h-12 w-full rounded-[14px] border border-border bg-transparent px-4 text-[16px] font-semibold" />
 
       <div className="mt-4 text-[13px] font-bold uppercase tracking-[.06em] text-muted-foreground">Farbe</div>
       <div className="mt-2.5 flex flex-wrap gap-2.5" role="radiogroup" aria-label="Clubfarbe">
