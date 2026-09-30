@@ -307,7 +307,7 @@ export function HomeView({
                 {hours.map((h, i) => (
                   <span key={h} className={`text-center text-[11px] text-ink-3 ${i % 2 ? "invisible @min-[640px]:visible" : ""}`}>{h}</span>
                 ))}
-                {data.ordered.map((c) => (
+                {courts.map((c) => (
                   <div key={c.id} className="contents">
                     <span className="truncate text-[12.5px] font-semibold text-ink-2">{courtLabel(c).name}</span>
                     {hours.map((h) => {

@@ -261,7 +261,7 @@ export function CalendarView({
         )}
         <LabeledSwitch left="Tag" right="Woche" label="Wochenansicht" on={weekMode} onChange={setWeekMode} />
         <button type="button" className="btn w-[42px] px-0" aria-label={weekMode ? "Vorwoche" : "Vortag"} disabled={day === 0} onClick={() => setDay(Math.max(0, day - step))}>‹</button>
-        <span className="btn">{weekMode ? `${mon.toLocaleDateString("de-CH", { day: "numeric", month: "numeric" })} – ${addDays(mon, 6).toLocaleDateString("de-CH", { day: "numeric", month: "numeric" })}` : longDate(date)}</span>
+        <span className="btn min-w-[28ch] tabular-nums">{weekMode ? `${mon.toLocaleDateString("de-CH", { day: "numeric", month: "numeric" })} – ${addDays(mon, 6).toLocaleDateString("de-CH", { day: "numeric", month: "numeric" })}` : longDate(date)}</span>
         <button type="button" className="btn w-[42px] px-0" aria-label={weekMode ? "Folgewoche" : "Folgetag"} disabled={day + step > days.length - 1 && (weekMode ? day >= days.length - 1 : true)} onClick={() => setDay(Math.min(days.length - 1, day + step))}>›</button>
         <button type="button" className="btn btn-ghost" disabled={day === 0} onClick={() => setDay(0)}>Heute</button>
       </div>
