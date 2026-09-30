@@ -28,6 +28,7 @@ export function BookingsView({
   slug,
   userId,
   isCoach = false,
+  hasAbo = false,
   bookings,
   courts,
   cancelDeadlineMinutes = 24 * 60,
@@ -35,6 +36,7 @@ export function BookingsView({
   slug: string;
   userId?: string;
   isCoach?: boolean;
+  hasAbo?: boolean;
   bookings: Booking[];
   courts: Court[];
   /** Same rule as cancelDeadlineError in actions/booking.ts — don't offer a button that can only fail. */
@@ -170,7 +172,7 @@ export function BookingsView({
                         </div>
                         {up && <span className={`pill ${pill[1]}`}>{pill[0]}</span>}
                       </div>
-                      {up && (
+                      {up && (b.organizerId === userId || hasAbo) && (
                         <div className="mt-2.5 flex flex-wrap items-center gap-2 pl-[76px]">
                           {late ? (
                             <small className="text-[13px] text-ink-2">Stornieren nur bis {deadlineText(cancelDeadlineMinutes)} vor Spielbeginn.</small>

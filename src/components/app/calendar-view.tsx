@@ -505,7 +505,7 @@ export function CalendarView({
       {deskGrid}
 
       <BookingSheet slug={tenant.slug} settings={tenant.settingsJson} slot={sheet.slot} onClose={sheet.close} pool={partners} isAnon={!userId} guestRate={guestRate} needPartner={needPartner} planSports={planSports} wallet={wallet} />
-      <BookingDetailSheet slug={tenant.slug} settings={tenant.settingsJson} booking={detail} court={courts.find((c) => c.id === detail?.courtId)} userId={userId} admin={admin} onClose={() => setDetail(null)} />
+      <BookingDetailSheet slug={tenant.slug} settings={tenant.settingsJson} booking={detail} court={courts.find((c) => c.id === detail?.courtId)} userId={userId} admin={admin} hasAbo={planSports != null} onClose={() => setDetail(null)} />
     </>
   );
 }

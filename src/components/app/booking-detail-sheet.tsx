@@ -19,6 +19,7 @@ export function BookingDetailSheet({
   court,
   userId,
   admin = false,
+  hasAbo = false,
   onClose,
 }: {
   slug: string;
@@ -27,6 +28,8 @@ export function BookingDetailSheet({
   court: Court | undefined;
   userId?: string;
   admin?: boolean;
+  /** Running Abo: a co-player may cancel too. */
+  hasAbo?: boolean;
   onClose: () => void;
 }) {
   const router = useRouter();
@@ -55,7 +58,7 @@ export function BookingDetailSheet({
   const started = start ? start.getTime() <= now : true;
   const tooLate = start ? start.getTime() - now < deadline * 60_000 : true;
   const own = b?.organizerId === userId;
-  const canCancel = !started && (admin || (own && !tooLate));
+  const canCancel = !started && (admin || ((own || (hasAbo && !!userId && b?.participants.some((p) => p.userId === userId))) && !tooLate));
 
   async function cancel() {
     if (!b) return;

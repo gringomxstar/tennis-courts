@@ -35,7 +35,7 @@ export async function sendMail(to: string, subject: string, text: string): Promi
 
 async function loadBookingForMail(bookingId: string) {
   const b = await prisma.booking
-    .findUnique({ where: { id: bookingId }, include: { organizer: true, court: true, tenant: true } })
+    .findUnique({ where: { id: bookingId }, include: { organizer: true, court: true, tenant: true, participants: { include: { user: true } } } })
     .catch(() => null);
   if (!b) return null;
   const when = b.startsAt.toLocaleString("de-CH", {
@@ -44,7 +44,16 @@ async function loadBookingForMail(bookingId: string) {
     timeStyle: "short",
   });
   const end = b.endsAt.toLocaleTimeString("de-CH", { timeZone: "Europe/Zurich", timeStyle: "short" });
-  return { b, slot: `${b.court.name}, ${when} – ${end}`, when };
+  // co-players and guests with an email (the organizer gets his own mail)
+  const seen = new Set([b.organizer.email.toLowerCase()]);
+  const others: { email: string; firstName: string }[] = [];
+  for (const p of b.participants) {
+    const email = (p.user?.email ?? p.guestEmail)?.toLowerCase();
+    if (p.role === "ORGANIZER" || !email || seen.has(email)) continue;
+    seen.add(email);
+    others.push({ email, firstName: p.user?.firstName ?? p.guestName ?? "" });
+  }
+  return { b, slot: `${b.court.name}, ${when} – ${end}`, when, others };
 }
 
 const PAY_NOTE: Record<string, string> = {
@@ -56,6 +65,15 @@ export async function sendBookingConfirmation(bookingId: string) {
   const m = await loadBookingForMail(bookingId);
   if (!m) return false;
   const { b } = m;
+  const org = b.organizer;
+  await Promise.all(m.others.map((o) =>
+    sendMail(o.email, `Reservation: ${b.court.name}, ${m.when}`, [
+      `Hallo ${o.firstName}`.trim(), "",
+      `${org.firstName} ${org.lastName} hat beim ${b.tenant.name} einen Platz für euch reserviert:`,
+      m.slot, "",
+      `Deine Buchungen: ${appUrl()}/c/${b.tenant.slug}/bookings`,
+    ].join("\n"))
+  ));
   return sendMail(
     b.organizer.email,
     `Buchung bestätigt: ${b.court.name}, ${m.when}`,
@@ -77,6 +95,13 @@ export async function sendBookingCancellation(bookingId: string, refund: number)
   const m = await loadBookingForMail(bookingId);
   if (!m) return false;
   const { b } = m;
+  await Promise.all(m.others.map((o) =>
+    sendMail(o.email, `Reservation storniert: ${b.court.name}, ${m.when}`, [
+      `Hallo ${o.firstName}`.trim(), "",
+      `die Reservation beim ${b.tenant.name} wurde storniert:`,
+      m.slot,
+    ].join("\n"))
+  ));
   return sendMail(
     b.organizer.email,
     `Buchung storniert: ${b.court.name}, ${m.when}`,

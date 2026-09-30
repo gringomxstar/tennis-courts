@@ -718,6 +718,18 @@ export async function cancelSeriesAction(bookingId: string, clubSlug: string) {
   return { success: true as const, cancelled: r.count };
 }
 
+async function isAboCoPlayer(bookingId: string, tenantId: string, userId: string) {
+  const now = new Date();
+  const [part, abo] = await Promise.all([
+    prisma.bookingParticipant.count({ where: { bookingId, userId } }),
+    prisma.membership.count({
+      // startsAt ≤ now: same "running Abo" test as getMemberContext
+      where: { tenantId, userId, status: "ACTIVE", startsAt: { lte: now }, OR: [{ endsAt: null }, { endsAt: { gt: now } }] },
+    }),
+  ]);
+  return part > 0 && abo > 0;
+}
+
 function cancelDeadlineError(startsAt: Date, settings: TenantSettings | null | undefined) {
   const t = startsAt.getTime();
   if (Date.now() >= t) return "Vergangene oder laufende Spiele können nicht storniert werden.";
@@ -796,7 +808,8 @@ export async function cancelBookingAction(bookingId: string, clubSlug: string) {
   if (!booking || booking.tenantId !== tenant.id) {
     return { success: false, error: "Buchung nicht gefunden." };
   }
-  if (booking.organizerId !== userId && !isClubAdmin) {
+  // organizer, club admin, or a co-player who holds a running Abo (refund still goes to the organizer's payment)
+  if (booking.organizerId !== userId && !isClubAdmin && !(await isAboCoPlayer(booking.id, tenant.id, userId))) {
     return { success: false, error: "Du hast keine Berechtigung, diese Buchung zu stornieren." };
   }
   if (!isClubAdmin) {
