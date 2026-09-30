@@ -167,6 +167,10 @@ export async function createBookingAction(input: CreateBookingInput) {
         (await prisma.user.create({
           data: { email: guestEmail, firstName: guestFirstName, lastName: guestLastName, passwordHash: null },
         }));
+      // ponytail: per-email cap only; a script with random emails needs a Vercel Firewall rate-limit rule on this route
+      if ((await prisma.booking.count({ where: { organizerId: guestUser.id, status: "PENDING", createdAt: { gt: new Date(Date.now() - 35 * 60_000) } } })) >= 3) {
+        return { success: false, error: "Du hast schon mehrere Buchungen, die auf Zahlung warten. Bitte schliesse zuerst eine ab." };
+      }
       await prisma.tenantUser.upsert({
         where: { tenantId_userId: { tenantId: tenant.id, userId: guestUser.id } },
         update: {},

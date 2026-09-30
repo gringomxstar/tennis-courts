@@ -4,10 +4,11 @@ import { PrintButton } from "@/components/ui/print-button";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { formatIban } from "@/lib/iban";
+import { verifyBookingToken } from "@/lib/booking-link";
 import type { TenantSettings } from "@/types";
 
-export default async function InvoicePage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+export default async function InvoicePage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ t?: string }> }) {
+  const [{ id }, { t }] = await Promise.all([params, searchParams]);
 
   const membership = await prisma.membership.findUnique({
     where: { id },
@@ -17,7 +18,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
   // A membership invoice requires a logged-in owner or tenant admin. A guest booking
   // receipt has no account to check against — see BookingReceipt below for that trust model.
   if (!membership) {
-    return <BookingReceipt id={id} />;
+    return <BookingReceipt id={id} token={t} />;
   }
 
   const session = await auth();
@@ -94,9 +95,10 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
 }
 
 // Receipt for a paid court booking (guest or member). Guests have no account to check
-// ownership against, so — same trust model as Stripe's own hosted receipt links — the
-// unguessable booking id itself is treated as the access key; no login is required here.
-async function BookingReceipt({ id }: { id: string }) {
+// ownership against, so the signed link token from the mail is the access key (booking ids
+// are visible elsewhere and must not open a receipt).
+async function BookingReceipt({ id, token }: { id: string; token: string | undefined }) {
+  if (!verifyBookingToken(id, token)) notFound();
   const booking = await prisma.booking.findUnique({
     where: { id },
     include: { tenant: true, organizer: true, court: true },
