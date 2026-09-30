@@ -10,7 +10,7 @@ import {
   getMemberContext,
 } from "@/lib/data";
 import { syncPendingBookingPayments } from "@/lib/booking-payment";
-import { frequentPartners, toPerson } from "@/lib/partners";
+import { frequentPartners, isPartner, toPerson } from "@/lib/partners";
 import type { Booking } from "@/types";
 
 /** What the browser may see of other people's bookings: never emails, names only for club members. */
@@ -74,7 +74,7 @@ export async function loadClubData(slug: string, days = 8, opts: { admin?: boole
     blocks,
     myBookings: mine,
     // the member directory is for club members only; GUEST accounts can be created by anyone
-    members: showNames ? members.filter((m) => m.role !== "GUEST" && m.role !== "PLATFORM_ADMIN").map(toPerson) : [],
+    members: showNames ? members.filter(isPartner).map(toPerson) : [],
     partners: user && showNames ? frequentPartners(mine, user.id, members) : [],
     wallet: wallet?.balance ?? 0,
     /** Days ahead the user may book (membership plan), null = club default. */

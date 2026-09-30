@@ -192,6 +192,8 @@ export interface UserSummary {
   isPlatformAdmin?: boolean;
   /** sports the running Abo covers; null = no Abo */
   planSports?: SportType[] | null;
+  /** has set a password (registered guest accounts count as partners) */
+  hasAccount?: boolean;
 }
 
 export interface MembershipPlan {
