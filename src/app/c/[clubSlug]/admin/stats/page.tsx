@@ -270,7 +270,7 @@ export default async function AdminStatsPage({ params, searchParams }: {
               {([
                 ["Buchungen", gv.cur.bookings, gv.prev.bookings, String],
                 ["Spielstunden", gv.cur.hours, gv.prev.hours, String],
-                ["Einnahmen Buchungen", gv.cur.bookingRevenue, gv.prev.bookingRevenue, chf],
+                ["Einnahmen Buchungen (ohne Guthaben)", gv.cur.bookingRevenue, gv.prev.bookingRevenue, chf],
                 ["Einnahmen Abos", gv.cur.aboRevenue, gv.prev.aboRevenue, chf],
               ] as const).map(([label, c, p, f]) => (
                 <tr key={label} className="border-b border-border last:border-0">

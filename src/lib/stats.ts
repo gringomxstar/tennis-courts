@@ -218,7 +218,8 @@ export async function loadStats(tenantId: string, year: number, openHour: number
       bookings: p.length,
       hours: r2(p.reduce((s, b) => s + hours(b), 0)),
       guests: p.reduce((s, b) => s + b.participants.filter((x) => x.role === "GUEST").length + (b.bookingType === "GUEST" ? 1 : 0), 0),
-      bookingRevenue: r2(paidIn(y).reduce((s, b) => s + Number(b.totalCost), 0)),
+      // Guthaben-Buchungen are not counted: that money came in with the top-up
+      bookingRevenue: r2(paidIn(y).filter((b) => b.paymentMethod !== "WALLET").reduce((s, b) => s + Number(b.totalCost), 0)),
       aboRevenue: r2(paidMemberships.filter((m) => inYear(aboDate(m), y)).reduce((s, m) => s + aboAmount(m), 0)),
     };
   };
