@@ -12,6 +12,28 @@ const field =
 const cap = "block text-[12.5px] font-bold uppercase tracking-[.06em] text-muted-foreground";
 const WD = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
 
+export const KURS_COLORS = ["7c5cff", "e5484d", "f5a524", "2f9e6f", "0ea5e9", "d6409f", "64748b"];
+
+/** Kursfarbe: eine Reihe Farbpunkte. */
+export function ColorPicker({ value, onChange, dark = false }: { value: string; onChange: (c: string) => void; dark?: boolean }) {
+  return (
+    <div role="radiogroup" aria-label="Kursfarbe" className="flex flex-wrap gap-2">
+      {KURS_COLORS.map((c) => (
+        <button
+          key={c}
+          type="button"
+          role="radio"
+          aria-checked={value === c}
+          aria-label={`#${c}`}
+          onClick={() => onChange(c)}
+          className={cn("h-8 w-8 rounded-full", value === c && (dark ? "ring-2 ring-white ring-offset-2 ring-offset-ink" : "ring-2 ring-ink ring-offset-2 ring-offset-card"))}
+          style={{ background: `#${c}` }}
+        />
+      ))}
+    </div>
+  );
+}
+
 type Line = { courtId: string; time: string; hours: number };
 export type CourseSummary = {
   kursId: string;
@@ -20,6 +42,7 @@ export type CourseSummary = {
   name: string;
   count: number;
   next: string;
+  color?: string;
   courts: { courtId: string; minutes: number; count: number }[];
 };
 
@@ -30,6 +53,7 @@ export function CoachBlockForm({ slug, courts, courses }: { slug: string; courts
   const router = useRouter();
   const today = dayStr(new Date());
   const [name, setName] = useState("");
+  const [color, setColor] = useState(KURS_COLORS[0]);
   const [days, setDays] = useState<number[]>([]);
   const [from, setFrom] = useState(today);
   const [until, setUntil] = useState(today);
@@ -57,6 +81,7 @@ export function CoachBlockForm({ slug, courts, courses }: { slug: string; courts
     const res = await createCoachBlockAction({
       clubSlug: slug,
       name,
+      color,
       items: dates.flatMap((date) =>
         lines.map((l) => ({ courtId: l.courtId, startsAt: new Date(`${date}T${l.time}`).toISOString(), durationMinutes: Math.round(l.hours * 60) }))
       ),
@@ -75,6 +100,13 @@ export function CoachBlockForm({ slug, courts, courses }: { slug: string; courts
           <span className={cap}>Kursname</span>
           <input className={field} value={name} onChange={(e) => setName(e.target.value)} placeholder="z.B. Juniorenkurs" maxLength={80} required />
         </label>
+
+        <div>
+          <span className={cap}>Farbe</span>
+          <div className="mt-1.5">
+            <ColorPicker value={color} onChange={setColor} />
+          </div>
+        </div>
 
         <div>
           <span className={cap}>Wochentage</span>
@@ -148,6 +180,7 @@ export function CoachBlockForm({ slug, courts, courses }: { slug: string; courts
 function Course({ slug, c, courts }: { slug: string; c: CourseSummary; courts: Court[] }) {
   const router = useRouter();
   const [name, setName] = useState(c.name);
+  const [color, setColor] = useState(c.color ?? KURS_COLORS[0]);
   const [mins, setMins] = useState(Object.fromEntries(c.courts.map((x) => [x.courtId, x.minutes / 60])));
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -167,6 +200,7 @@ function Course({ slug, c, courts }: { slug: string; c: CourseSummary; courts: C
           clubSlug: slug,
           kursId: c.kursId,
           name,
+          color,
           courts: c.courts.map((x) => ({ courtId: x.courtId, minutes: Math.round((mins[x.courtId] ?? x.minutes / 60) * 60) })),
         }),
       "Gespeichert."
@@ -184,6 +218,7 @@ function Course({ slug, c, courts }: { slug: string; c: CourseSummary; courts: C
         <span className={cap}>Kursname</span>
         <input className={field} value={name} onChange={(e) => setName(e.target.value)} maxLength={80} />
       </label>
+      <ColorPicker value={color} onChange={setColor} />
       {c.courts.map((x) => (
         <div key={x.courtId} className="grid grid-cols-[1fr_.7fr_auto] items-end gap-2">
           <div className="pb-3 text-[15px] font-semibold">

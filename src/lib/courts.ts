@@ -5,7 +5,8 @@ export const BOOKING_COLORS: Record<LimitRole, string> = { MEMBER: "#38b58a", GU
 export const BOOKING_ROLE_LABEL: Record<LimitRole, string> = { MEMBER: "Mitglied", GUEST: "Gast", COACH: "Trainer" };
 
 /** Calendar color of a booking by its type; tournaments/events etc. use the member color. */
-export function bookingColor(b: Pick<Booking, "bookingType"> | undefined, settings?: TenantSettings | null) {
+export function bookingColor(b: (Pick<Booking, "bookingType"> & { color?: string }) | undefined, settings?: TenantSettings | null) {
+  if (b?.color) return b.color;
   const role: LimitRole = b?.bookingType === "GUEST" ? "GUEST" : b?.bookingType === "COACH" ? "COACH" : "MEMBER";
   return settings?.bookingColors?.[role] ?? BOOKING_COLORS[role];
 }

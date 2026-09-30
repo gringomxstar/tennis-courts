@@ -4,6 +4,7 @@ import { Fragment, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { createCoachBlockAction } from "@/app/actions/booking";
 import { useRouter } from "next/navigation";
+import { ColorPicker, KURS_COLORS } from "@/components/app/coach-block-form";
 import { BookingSheet } from "@/components/app/booking-sheet";
 import { BookingDetailSheet } from "@/components/app/booking-detail-sheet";
 import { LabeledSwitch } from "@/components/app/switch";
@@ -77,6 +78,7 @@ export function CalendarView({
   const [multi, setMulti] = useState(false);
   const [marked, setMarked] = useState<Map<string, { court: Court; start: Date }>>(new Map());
   const [kurs, setKurs] = useState("");
+  const [kursColor, setKursColor] = useState(KURS_COLORS[0]);
   const [kursBusy, setKursBusy] = useState(false);
   const markKey = (c: Court, start: Date) => `${c.id}|${start.getTime()}`
   const [weekCourtId, setWeekCourtId] = useState<string | null>(null);
@@ -176,7 +178,7 @@ export function CalendarView({
     const inert = state === "taken" && !admin;
     const ev =
       state === "mine" || state === "taken"
-        ? { bg: state === "mine" ? "var(--me)" : bookingColor(b, tenant.settingsJson), fg: "#fff", title: (b && shortName(b)) || (state === "mine" ? "Du" : "Belegt"), sub: state === "mine" ? "Meine Buchung" : b ? BOOKING_ROLE_LABEL[b.bookingType === "GUEST" ? "GUEST" : b.bookingType === "COACH" ? "COACH" : "MEMBER"] : "" }
+        ? { bg: b?.color ?? (state === "mine" ? "var(--me)" : bookingColor(b, tenant.settingsJson)), fg: "#fff", title: (b && shortName(b)) || (state === "mine" ? "Du" : "Belegt"), sub: state === "mine" ? "Meine Buchung" : b ? BOOKING_ROLE_LABEL[b.bookingType === "GUEST" ? "GUEST" : b.bookingType === "COACH" ? "COACH" : "MEMBER"] : "" }
         : state === "blocked"
           ? { bg: "var(--block)", fg: "var(--ink)", title: blockLabel(c, start), sub: "" }
           : null;
@@ -223,7 +225,7 @@ export function CalendarView({
   };
   async function bookKurs() {
     setKursBusy(true);
-    const res = await createCoachBlockAction({ clubSlug: tenant.slug, name: kurs, items: kursItems() });
+    const res = await createCoachBlockAction({ clubSlug: tenant.slug, name: kurs, color: kursColor, items: kursItems() });
     setKursBusy(false);
     if (!res.success) return void toast(res.error);
     toast(`Kurs gebucht: ${res.created} Termine`);
@@ -319,6 +321,7 @@ export function CalendarView({
         {multi && (
           <div className="sticky bottom-3 z-[6] mt-3 flex flex-wrap items-center gap-2 rounded-[18px] bg-ink p-3 text-card shadow-card">
             <b className="px-2 text-[14px]">{marked.size} Kacheln ({kursItems().length} Buchungen)</b>
+            <ColorPicker dark value={kursColor} onChange={setKursColor} />
             <input aria-label="Kursname" value={kurs} onChange={(e) => setKurs(e.target.value)} placeholder="Kursname" maxLength={80} className="h-10 min-w-0 flex-1 rounded-[12px] bg-card px-3 text-[15px] text-foreground outline-none" />
             <button type="button" disabled={!marked.size || !kurs.trim() || kursBusy} onClick={bookKurs} className="btn btn-primary h-10">
               Als Kurs buchen

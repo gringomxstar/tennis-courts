@@ -454,6 +454,8 @@ export async function createBookingAction(input: CreateBookingInput) {
 // ponytail: a series is tagged via idempotencyKey "series:<id>:<n>" instead of a schema column; add Booking.seriesId if series need more than cancel-all
 const SERIES = "series:";
 const KURS = "kurs:";
+const HEX = /^[0-9a-f]{6}$/i;
+// Kursfarbe steckt als 4. Teil im Key (kurs:<id>:<n>:<hex>), keine Migration. ponytail: echtes Feld bei Bedarf.
 const seriesOf = (key: string | null | undefined) => (key?.startsWith(SERIES) || key?.startsWith(KURS) ? key.split(":")[1] : undefined);
 
 /**
@@ -557,6 +559,8 @@ export async function createCoachSeriesAction(input: {
 export async function createCoachBlockAction(input: {
   clubSlug: string;
   name: string;
+  /** rrggbb without # */
+  color?: string;
   items: { courtId: string; startsAt: string; durationMinutes: number }[];
 }) {
   const session = await auth();
@@ -614,7 +618,7 @@ export async function createCoachBlockAction(input: {
             totalCost: 0,
             paymentMethod: null,
             paymentStatus: "WAIVED",
-            idempotencyKey: `${KURS}${kursId}:${n}`,
+            idempotencyKey: `${KURS}${kursId}:${n}${input.color && HEX.test(input.color) ? `:${input.color}` : ""}`,
             notes: name,
             participants: { create: [{ userId, role: "COACH", invitationStatus: "ACCEPTED" }] },
           },
@@ -638,6 +642,7 @@ export async function editCoachCourseAction(input: {
   clubSlug: string;
   kursId: string;
   name?: string;
+  color?: string;
   courts?: { courtId: string; minutes?: number; remove?: boolean }[];
 }) {
   const session = await auth();
@@ -683,6 +688,9 @@ export async function editCoachCourseAction(input: {
     ...updates.map((u) => prisma.booking.update({ where: { id: u.id }, data: { endsAt: u.endsAt } })),
     ...(removed.length
       ? [prisma.booking.updateMany({ where: { id: { in: removed } }, data: { status: "CANCELLED", cancelledAt: now, cancelledById: session.user.id } })]
+      : []),
+    ...(input.color && HEX.test(input.color)
+      ? future.filter((b) => !removed.includes(b.id)).map((b) => prisma.booking.update({ where: { id: b.id }, data: { idempotencyKey: `${KURS}${input.kursId}:${b.idempotencyKey!.split(":")[2]}:${input.color}` } }))
       : []),
     ...(name ? [prisma.booking.updateMany({ where: { id: { in: future.map((b) => b.id) } }, data: { notes: name } })] : []),
   ]);

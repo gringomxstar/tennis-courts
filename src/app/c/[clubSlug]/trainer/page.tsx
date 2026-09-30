@@ -25,7 +25,7 @@ export default async function TrainerPage({ params }: { params: Promise<{ clubSl
   const byKurs = new Map<string, CourseSummary>();
   for (const r of rows) {
     const kursId = r.idempotencyKey!.split(":")[1];
-    const c = byKurs.get(kursId) ?? { kursId, bookingId: r.id, name: r.notes ?? "Kurs", count: 0, next: r.startsAt.toISOString(), courts: [] };
+    const c = byKurs.get(kursId) ?? { kursId, bookingId: r.id, name: r.notes ?? "Kurs", color: r.idempotencyKey!.split(":")[3], count: 0, next: r.startsAt.toISOString(), courts: [] };
     const minutes = (r.endsAt.getTime() - r.startsAt.getTime()) / 60_000;
     const line = c.courts.find((x) => x.courtId === r.courtId);
     if (line) line.count++;
