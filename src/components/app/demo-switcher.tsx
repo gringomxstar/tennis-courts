@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { toast } from "sonner";
 import { quickDemoLogin, signOutToClubAction } from "@/app/actions/auth";
@@ -66,6 +67,9 @@ export function DemoSwitcher({ slug, personas, current }: { slug: string; person
             );
           })}
         </div>
+        <Link href="/fuer-clubs" className="mt-3 flex min-h-[44px] items-center justify-center text-[15px] font-bold text-clay-text">
+          Alle Funktionen für Clubs →
+        </Link>
       </Sheet>
     </>
   );

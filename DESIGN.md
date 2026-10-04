@@ -40,3 +40,4 @@ Breakpoints are container queries on the app wrapper, not viewport queries.
 - Sperren: reasons include Wintersperre ("Ganze Tage" = one 00:00–00:00 block per court, up to 366 days); the planned list groups blocks.
 - No auto-renew for Abos: always a one-off payment, reminder mail before 31 March.
 - PWA: `app/manifest.ts` (standalone), per-club icon, safe-area insets.
+- Sales page `/fuer-clubs`: own look on purpose (Archivo display, clay accent, photo overlays), scoped under `.fc` in `src/app/fuer-clubs/fuer-clubs.css` so nothing leaks into the app. Screenshots in `src/assets/fuer-clubs/` come from `scripts/screens.ts` (guest views); copy stays plain and names no club.
