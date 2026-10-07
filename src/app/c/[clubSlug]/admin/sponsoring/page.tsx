@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { requireTenantAdmin } from "@/lib/tenant";
 import { prisma } from "@/lib/prisma";
-import { coversYear, renewalRate, yearlyAmount } from "@/lib/sponsoring";
+import { contractAmount, hasYear, renewalRate } from "@/lib/sponsoring";
 import { currentSponsorYear } from "@/lib/sponsor-server";
 import { AdminSponsoring, type SponsorRow } from "@/components/app/admin-sponsoring";
 
@@ -27,12 +27,11 @@ export default async function AdminSponsoringPage({ params, searchParams }: { pa
     prisma.sponsorTask.findMany({ where: { doneAt: null, sponsor: { tenantId: tenant.id } }, include: { sponsor: { select: { id: true, name: true } }, assignee: { select: { id: true, firstName: true, lastName: true } } }, orderBy: { createdAt: "asc" } }),
   ]);
 
-  const amountOf = (c: (typeof sponsors)[number]["contracts"][number]) => yearlyAmount(c.lines.map((l) => ({ quantity: l.quantity, unitPrice: Number(l.unitPrice) })), c.discountPct);
   const prevSet = new Set<string>(), curSet = new Set<string>();
   const rows: SponsorRow[] = sponsors.map((s) => {
-    const cur = s.contracts.find((c) => coversYear(c, year));
+    const cur = s.contracts.find((c) => hasYear(c, year));
     if (cur) curSet.add(s.id);
-    if (s.contracts.some((c) => coversYear(c, year - 1))) prevSet.add(s.id);
+    if (s.contracts.some((c) => hasYear(c, year - 1))) prevSet.add(s.id);
     const req = s.requests[0];
     const contact = s.contacts.find((c) => c.isPrimary) ?? s.contacts[0];
     return {
@@ -44,7 +43,7 @@ export default async function AdminSponsoringPage({ params, searchParams }: { pa
       owner: s.owner ? `${s.owner.firstName} ${s.owner.lastName}`.trim() : "",
       status: cur ? "CONFIRMED" : req?.status ?? "NONE",
       queued: Boolean(req && !req.sentAt && !cur),
-      amount: cur ? amountOf(cur) : 0,
+      amount: cur ? contractAmount(cur, year) : 0,
       runningUntil: cur && cur.years > 1 ? cur.startYear + cur.years - 1 : null,
       billed: s.invoices.reduce((a, i) => a + Number(i.amount), 0),
       paid: s.invoices.filter((i) => i.paidAt).reduce((a, i) => a + Number(i.amount), 0),

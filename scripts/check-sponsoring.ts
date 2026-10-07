@@ -2,7 +2,7 @@
 // covers every year of its term without a new request; portal hints "Nur noch 3 Plätze" / "Bereits vergeben".
 import assert from "node:assert/strict";
 import { isQRReferenceValid, isSCORReferenceValid } from "swissqrbill/utils";
-import { DAY, DISCOUNT, campaignStep, coversYear, dunningStep, itemHint, parseAddress, paymentReference, renewalRate, yearlyAmount } from "../src/lib/sponsoring";
+import { DAY, DISCOUNT, campaignStep, confirmedLines, contractAmount, coversYear, dunningStep, hasYear, holdsPlace, itemHint, parseAddress, paymentReference, renewalRate, unbilledLines, yearlyAmount } from "../src/lib/sponsoring";
 import { parseAmount, parseSponsors } from "../src/lib/sponsor-import";
 
 // discounts and yearly amount
@@ -79,5 +79,30 @@ assert.equal(rows[1].email, undefined);
 assert.deepEqual(errors.map((e) => e.line), [3, 4, 5]);
 assert.equal(parseSponsors("Name;Mail\n").errors.length, 0);
 assert.equal(parseSponsors("foo;bar\nx;y").errors[0].reason, "Kopfzeile mit Spalte «Firma» fehlt");
+
+// add-ons (owner 2026-10-07): bought later, run until the contract ends with its discount, full yearly price;
+// Stripe checkout holds the place but isn't confirmed or billed until paid
+{
+  const now = new Date("2027-05-10T10:00:00Z");
+  const c = {
+    startYear: 2027, years: 2, discountPct: 10, lines: [
+      { id: "main", quantity: 1, unitPrice: 1000, fromYear: null, pendingUntil: null },
+      { id: "addon", quantity: 2, unitPrice: 500, fromYear: 2027, pendingUntil: null },
+      { id: "late", quantity: 1, unitPrice: 300, fromYear: 2028, pendingUntil: null },
+      { id: "paying", quantity: 1, unitPrice: 400, fromYear: 2027, pendingUntil: new Date(now.getTime() + 60_000) },
+    ],
+  };
+  assert.deepEqual(confirmedLines(c, 2027).map((l) => l.id), ["main", "addon"]);
+  assert.deepEqual(confirmedLines(c, 2028).map((l) => l.id), ["main", "addon", "late"]);
+  assert.equal(contractAmount(c, 2027), 1800); // (1000 + 2×500) −10 %
+  assert.equal(contractAmount(c, 2028), 2070);
+  assert.equal(hasYear(c, 2029), false);
+  assert.equal(holdsPlace(c, c.lines[3], 2027, now), true); // checkout running → place held
+  assert.equal(holdsPlace(c, c.lines[3], 2027, new Date(now.getTime() + 120_000)), false); // expired → free again
+  // yearly invoice covered "main"; the add-on gets its own invoice
+  assert.deepEqual(unbilledLines(c, 2027, [{ lines: [{ lineId: "main" }] }]).map((l) => l.id), ["addon"]);
+  assert.deepEqual(unbilledLines(c, 2028, []).map((l) => l.id), ["main", "addon", "late"]);
+  assert.deepEqual(unbilledLines(c, 2027, [{ lines: null }]), []); // old invoice without snapshot covers everything
+}
 
 console.log("sponsoring ok");

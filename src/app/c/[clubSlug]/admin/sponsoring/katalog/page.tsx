@@ -1,6 +1,6 @@
 import { requireTenantAdmin } from "@/lib/tenant";
 import { prisma } from "@/lib/prisma";
-import { coversYear } from "@/lib/sponsoring";
+import { holdsPlace } from "@/lib/sponsoring";
 import { currentSponsorYear } from "@/lib/sponsor-server";
 import { SponsorNav } from "@/components/app/admin-sponsoring";
 import { SponsorCatalog } from "@/components/app/sponsor-catalog";
@@ -9,6 +9,7 @@ export default async function SponsorCatalogPage({ params, searchParams }: { par
   const [{ clubSlug }, { jahr }] = await Promise.all([params, searchParams]);
   const { tenant } = await requireTenantAdmin(clubSlug);
   const year = Number(jahr) || (await currentSponsorYear(tenant.id));
+  const now = new Date();
   const items = await prisma.sponsorItem.findMany({
     where: { tenantId: tenant.id },
     include: { lines: { where: { contract: { cancelledAt: null } }, include: { contract: { include: { sponsor: { select: { id: true, name: true } } } } } } },
@@ -25,7 +26,7 @@ export default async function SponsorCatalogPage({ params, searchParams }: { par
         slug={tenant.slug}
         year={year}
         items={items.map((it) => {
-          const cur = it.lines.filter((l) => coversYear(l.contract, year));
+          const cur = it.lines.filter((l) => holdsPlace(l.contract, l, year, now));
           return {
             id: it.id, name: it.name, description: it.description ?? "", price: Number(it.price), capacity: it.capacity, badge: it.badge ?? "",
             deliverables: it.deliverables, hasImage: Boolean(it.imageType), sortOrder: it.sortOrder, active: it.active,

@@ -15,12 +15,13 @@ export async function GET(req: Request, { params }: { params: Promise<{ clubSlug
   });
   const d = (x: Date | null) => (x ? x.toLocaleDateString("de-CH", { timeZone: "Europe/Zurich" }) : "");
   const rows = [
-    ["Rechnung", "Datum", "Fällig", "Sponsor", "Adresse", "Leistungen", "Jahr", "Rabatt %", "Betrag CHF", "Bezahlt am", "Status", "Mahnstufe"],
+    ["Rechnung", "Datum", "Fällig", "Sponsor", "Adresse", "Leistungen", "Jahr", "Rabatt %", "Betrag CHF", "Bezahlt am", "Zahlart", "Status", "Mahnstufe"],
     ...invoices.map((i) => [
       String(i.number), d(i.issuedAt), d(i.dueAt), i.sponsor.name,
       [i.sponsor.street, [i.sponsor.zip, i.sponsor.city].filter(Boolean).join(" ")].filter(Boolean).join(", "),
-      i.contract.lines.map((l) => `${l.quantity > 1 ? `${l.quantity}x ` : ""}${l.item.name}`).join(", "),
-      String(i.year), String(i.contract.discountPct), Number(i.amount).toFixed(2), d(i.paidAt),
+      ((i.lines as { name: string; quantity: number }[] | null) ?? i.contract.lines.map((l) => ({ name: l.item.name, quantity: l.quantity })))
+        .map((l) => `${l.quantity > 1 ? `${l.quantity}x ` : ""}${l.name}`).join(", "),
+      String(i.year), String(i.discountPct ?? i.contract.discountPct), Number(i.amount).toFixed(2), d(i.paidAt), i.paidVia === "stripe" ? "Karte/Twint (Stripe)" : i.paidAt ? "Bank" : "",
       i.paidAt ? "bezahlt" : i.dueAt < new Date() ? "überfällig" : "offen", String(Math.min(i.dunningLevel, 2)),
     ]),
   ];

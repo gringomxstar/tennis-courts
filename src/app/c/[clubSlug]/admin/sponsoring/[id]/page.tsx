@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireTenantAdmin } from "@/lib/tenant";
 import { prisma } from "@/lib/prisma";
-import { coversYear, freePlaces, yearlyAmount } from "@/lib/sponsoring";
+import { contractAmount, freePlaces, hasYear } from "@/lib/sponsoring";
 import { currentSponsorYear, portalUrl, takenByItem } from "@/lib/sponsor-server";
 import { SponsorCard } from "@/components/app/sponsor-card";
 
@@ -28,7 +28,7 @@ export default async function SponsorCardPage({ params }: { params: Promise<{ cl
     takenByItem(tenant.id, year),
     prisma.auditLog.findMany({ where: { tenantId: tenant.id, entityType: "Sponsor", entityId: s.id }, include: { actor: { select: { firstName: true, lastName: true } } }, orderBy: { createdAt: "desc" }, take: 200 }),
   ]);
-  const status = (y: number) => s.contracts.some((c) => coversYear(c, y)) ? "CONFIRMED" : s.requests.find((r) => r.year === y)?.status ?? "NONE";
+  const status = (y: number) => s.contracts.some((c) => !c.cancelledAt && hasYear(c, y)) ? "CONFIRMED" : s.requests.find((r) => r.year === y)?.status ?? "NONE";
 
   return (
     <>
@@ -50,8 +50,8 @@ export default async function SponsorCardPage({ params }: { params: Promise<{ cl
         items={items.map((it) => ({ id: it.id, name: it.name, price: Number(it.price), free: freePlaces(it.capacity, taken.get(it.id) ?? 0) }))}
         contracts={s.contracts.map((c) => ({
           id: c.id, startYear: c.startYear, years: c.years, discountPct: c.discountPct, source: c.source, cancelled: Boolean(c.cancelledAt),
-          amount: yearlyAmount(c.lines.map((l) => ({ quantity: l.quantity, unitPrice: Number(l.unitPrice) })), c.discountPct),
-          lines: c.lines.map((l) => ({ name: l.item.name, quantity: l.quantity, price: Number(l.unitPrice) })),
+          amount: contractAmount(c, Math.max(c.startYear, Math.min(year, c.startYear + c.years - 1))),
+          lines: c.lines.map((l) => ({ name: l.item.name, quantity: l.quantity, price: Number(l.unitPrice), fromYear: l.fromYear, pending: Boolean(l.pendingUntil) })),
           billedYears: s.invoices.filter((i) => i.contractId === c.id).map((i) => i.year),
         }))}
         years={[...new Set([year, ...s.requests.map((r) => r.year), ...s.contracts.flatMap((c) => Array.from({ length: c.years }, (_, i) => c.startYear + i))])].sort((a, b) => b - a).map((y) => ({ year: y, status: status(y) }))}

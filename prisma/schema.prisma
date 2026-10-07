@@ -578,11 +578,14 @@ model SponsorContract {
 }
 
 model SponsorContractLine {
-  id         String  @id @default(cuid())
-  contractId String
-  itemId     String
-  quantity   Int     @default(1)
-  unitPrice  Decimal @db.Decimal(10, 2) // catalog price at signing
+  id              String    @id @default(cuid())
+  contractId      String
+  itemId          String
+  quantity        Int       @default(1)
+  unitPrice       Decimal   @db.Decimal(10, 2) // catalog price at signing
+  fromYear        Int? // bought later (add-on): billed from this year until the contract ends; null = from startYear
+  pendingUntil    DateTime? // Stripe checkout running: place reserved until then, not yet confirmed or billed
+  stripeSessionId String?
 
   contract SponsorContract @relation(fields: [contractId], references: [id], onDelete: Cascade)
   item     SponsorItem     @relation(fields: [itemId], references: [id], onDelete: Restrict)
@@ -629,25 +632,29 @@ model SponsorRequest {
 }
 
 model SponsorInvoice {
-  id           String    @id @default(cuid())
-  tenantId     String
-  number       Int // per club, ascending
-  sponsorId    String
-  contractId   String
-  year         Int
-  amount       Decimal   @db.Decimal(10, 2)
-  issuedAt     DateTime  @default(now())
-  dueAt        DateTime
-  paidAt       DateTime?
-  dunningLevel Int       @default(0)
-  dunnedAt     DateTime?
-  sentAt       DateTime?
+  id              String    @id @default(cuid())
+  tenantId        String
+  number          Int // per club, ascending
+  sponsorId       String
+  contractId      String
+  year            Int
+  amount          Decimal   @db.Decimal(10, 2)
+  issuedAt        DateTime  @default(now())
+  dueAt           DateTime
+  paidAt          DateTime?
+  dunningLevel    Int       @default(0)
+  lines           Json? // snapshot [{lineId, name, quantity, unitPrice}] of what this invoice bills
+  discountPct     Int?
+  paidVia         String? // stripe | manual
+  stripeSessionId String?   @unique
+  dunnedAt        DateTime?
+  sentAt          DateTime?
 
   sponsor  Sponsor         @relation(fields: [sponsorId], references: [id], onDelete: Cascade)
   contract SponsorContract @relation(fields: [contractId], references: [id], onDelete: Cascade)
 
   @@unique([tenantId, number])
-  @@unique([contractId, year])
+  @@index([contractId, year]) // several per year: the yearly invoice plus add-on purchases
   @@map("sponsor_invoices")
 }
 

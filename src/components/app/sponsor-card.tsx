@@ -13,7 +13,7 @@ import {
 } from "@/app/actions/sponsoring";
 
 type Contact = { name: string; email: string; phone: string; role: string; isPrimary: boolean };
-type Contract = { id: string; startYear: number; years: number; discountPct: number; source: string; cancelled: boolean; amount: number; lines: { name: string; quantity: number; price: number }[]; billedYears: number[] };
+type Contract = { id: string; startYear: number; years: number; discountPct: number; source: string; cancelled: boolean; amount: number; lines: { name: string; quantity: number; price: number; fromYear: number | null; pending: boolean }[]; billedYears: number[] };
 type Invoice = { id: string; number: number; year: number; amount: number; dueAt: string; paidAt: string; dunningLevel: number; sent: boolean; overdue: boolean };
 const de = (iso: string) => new Date(iso).toLocaleDateString("de-CH");
 
@@ -45,7 +45,7 @@ export function SponsorCard(p: {
             <span className={cn("rounded-full px-3 py-1 text-[13px] font-bold", STATUS[p.status][1])}>{STATUS[p.status][0]}</span>
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
-            <button type="button" onClick={() => setContractOpen(true)} className={cn(pill, "bg-brand-deep text-white")}>+ Vertrag erfassen</button>
+            <button type="button" onClick={() => setContractOpen(true)} className={cn(pill, "bg-brand-deep text-white")}>{p.status === "CONFIRMED" ? "+ Leistungen dazu" : "+ Vertrag erfassen"}</button>
             <button type="button" onClick={() => navigator.clipboard.writeText(s.portal).then(() => toast.success("Link kopiert"))} className={cn(pill, "bg-bg text-ink")}>Portal-Link kopieren</button>
             <a href={s.portal} target="_blank" rel="noreferrer" className={cn(pill, "bg-bg text-ink")}>Portal öffnen</a>
             {p.status !== "CONFIRMED" && p.status !== "DECLINED" && (
@@ -84,7 +84,15 @@ export function SponsorCard(p: {
                     <b>{c.startYear}{c.years > 1 ? `–${end}` : ""}{c.cancelled ? " · storniert" : ""}</b>
                     <span className="text-[14px] tabular-nums">{chf(c.amount)} / Jahr{c.discountPct ? ` (−${c.discountPct} %)` : ""}</span>
                   </div>
-                  <div className="mt-1 text-[14px] text-ink-2">{c.lines.map((l) => `${l.quantity > 1 ? `${l.quantity}× ` : ""}${l.name}`).join(", ")}</div>
+                  <ul className="mt-1 text-[14px] text-ink-2">
+                    {c.lines.map((l, i) => (
+                      <li key={i}>
+                        {l.quantity > 1 ? `${l.quantity}× ` : ""}{l.name}
+                        {l.fromYear != null && <span className="text-ink-3"> · dazugekauft ab {l.fromYear}</span>}
+                        {l.pending && <span className="font-semibold text-warn"> · Online-Zahlung läuft</span>}
+                      </li>
+                    ))}
+                  </ul>
                   <div className="text-[12.5px] text-ink-3">{c.source === "portal" ? "online bestätigt" : c.source === "import" ? "aus Excel" : "vom Vorstand erfasst"}</div>
                   {!c.cancelled && (
                     <div className="mt-2 flex flex-wrap gap-2">
@@ -170,7 +178,7 @@ export function SponsorCard(p: {
         </section>
       </div>
 
-      <ContractSheet open={contractOpen} onClose={() => setContractOpen(false)} slug={p.slug} sponsorId={s.id} year={p.year} items={p.items} />
+      <ContractSheet open={contractOpen} onClose={() => setContractOpen(false)} slug={p.slug} sponsorId={s.id} year={p.year} items={p.items} running={p.contracts.find((c) => !c.cancelled && c.startYear <= p.year && p.year < c.startYear + c.years && p.status === "CONFIRMED") ?? null} />
     </div>
   );
 }
@@ -261,8 +269,9 @@ function Deliverables({ slug, sponsorId, year, items, pending, run }: {
   );
 }
 
-function ContractSheet({ open, onClose, slug, sponsorId, year, items }: {
+function ContractSheet({ open, onClose, slug, sponsorId, year, items, running }: {
   open: boolean; onClose: () => void; slug: string; sponsorId: string; year: number; items: { id: string; name: string; price: number; free: number | null }[];
+  running: Contract | null;
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
@@ -270,19 +279,23 @@ function ContractSheet({ open, onClose, slug, sponsorId, year, items }: {
   const [years, setYears] = useState(1);
   const [qty, setQty] = useState<Record<string, number>>({});
   const lines = Object.entries(qty).filter(([, q]) => q > 0).map(([itemId, quantity]) => ({ itemId, quantity }));
-  const total = yearlyAmount(lines.map((l) => ({ quantity: l.quantity, unitPrice: items.find((i) => i.id === l.itemId)?.price ?? 0 })), DISCOUNT[years]);
+  const total = yearlyAmount(lines.map((l) => ({ quantity: l.quantity, unitPrice: items.find((i) => i.id === l.itemId)?.price ?? 0 })), running ? running.discountPct : DISCOUNT[years]);
   return (
-    <Sheet open={open} onOpenChange={(o) => !o && onClose()} title="Vertrag erfassen">
-      <div className="text-[24px] font-bold tracking-[-.03em]">Vertrag erfassen</div>
-      <p className="mt-1 text-[13.5px] text-ink-3">Z.B. nach einer Zusage am Telefon. Die Rechnung für das erste Jahr geht sofort per E-Mail raus.</p>
-      <div className="mt-3 grid grid-cols-2 gap-3">
+    <Sheet open={open} onOpenChange={(o) => !o && onClose()} title={running ? "Leistungen dazu" : "Vertrag erfassen"}>
+      <div className="text-[24px] font-bold tracking-[-.03em]">{running ? "Leistungen dazukaufen" : "Vertrag erfassen"}</div>
+      <p className="mt-1 text-[13.5px] text-ink-3">
+        {running
+          ? `Läuft bis ${running.startYear + running.years - 1} wie der bestehende Vertrag${running.discountPct ? `, mit −${running.discountPct} %` : ""}. Voller Jahrespreis, die Zusatzrechnung geht sofort per E-Mail raus.`
+          : "Z.B. nach einer Zusage am Telefon. Die Rechnung für das erste Jahr geht sofort per E-Mail raus."}
+      </p>
+      {!running && <div className="mt-3 grid grid-cols-2 gap-3">
         <label className={fieldLabel}>Ab Jahr<input type="number" value={startYear} onChange={(e) => setStartYear(Number(e.target.value))} className={field} /></label>
         <label className={fieldLabel}>Laufzeit
           <select value={years} onChange={(e) => setYears(Number(e.target.value))} className={field}>
             {[1, 2, 3].map((y) => <option key={y} value={y}>{y} {y === 1 ? "Jahr" : `Jahre (−${DISCOUNT[y]} %)`}</option>)}
           </select>
         </label>
-      </div>
+      </div>}
       <ul className="mt-3 divide-y divide-line">
         {items.map((it) => {
           const q = qty[it.id] ?? 0;

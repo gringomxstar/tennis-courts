@@ -2,7 +2,8 @@ import { randomBytes } from "node:crypto";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { sendMail } from "@/lib/mail";
-import { DISCOUNT, PAYMENT_DAYS, DAY, campaignStep, chf, coversYear, dunningStep, yearlyAmount } from "@/lib/sponsoring";
+import { getStripe } from "@/lib/stripe";
+import { DISCOUNT, PAYMENT_DAYS, DAY, campaignStep, chf, confirmedLines, dunningStep, hasYear, holdsPlace, lineInYear, unbilledLines, yearlyAmount } from "@/lib/sponsoring";
 
 const appUrl = () => process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 export const portalUrl = (token: string) => `${appUrl()}/sponsor/${token}`;
@@ -23,91 +24,171 @@ const hello = (s: WithContacts) => {
   return c?.name ? `Guten Tag ${c.name}` : "Guten Tag";
 };
 
-/** Places taken per item in a year (all sponsors, cancelled contracts excluded). */
+/** Drops Stripe reservations whose checkout ran out (plus 10 min for late webhooks) and contracts left empty. */
+export async function purgeExpiredCheckouts(db: Prisma.TransactionClient = prisma) {
+  const { count } = await db.sponsorContractLine.deleteMany({ where: { pendingUntil: { lt: new Date() } } });
+  if (count) await db.sponsorContract.deleteMany({ where: { lines: { none: {} } } });
+}
+
+/** Places taken per item in a year: confirmed lines plus running checkouts (cancelled contracts excluded). */
 export async function takenByItem(tenantId: string, year: number, db: Prisma.TransactionClient = prisma) {
   const lines = await db.sponsorContractLine.findMany({
     where: { contract: { sponsor: { tenantId }, cancelledAt: null, startYear: { lte: year, gt: year - 3 } } },
-    select: { itemId: true, quantity: true, contract: { select: { startYear: true, years: true } } },
+    select: { itemId: true, quantity: true, fromYear: true, pendingUntil: true, contract: { select: { startYear: true, years: true } } },
   });
   const taken = new Map<string, number>();
-  for (const l of lines) if (coversYear(l.contract, year)) taken.set(l.itemId, (taken.get(l.itemId) ?? 0) + l.quantity);
+  const now = new Date();
+  for (const l of lines) if (holdsPlace(l.contract, l, year, now)) taken.set(l.itemId, (taken.get(l.itemId) ?? 0) + l.quantity);
   return taken;
 }
 
+/** Stripe checkout: Stripe ends the session after 30 min, the place stays held 10 min longer for a late webhook. */
+export const CHECKOUT_MINUTES = 30;
+const HOLD_MS = (CHECKOUT_MINUTES + 10) * 60_000;
+
 /**
- * Signs a contract (portal or admin): checks free places for every year of the term under a per-club lock,
- * fixes catalog prices and the duration discount, marks the year's request as confirmed and bills the first year.
+ * Buys catalog items for `year`: a new contract (1–3 years, duration discount) or, if the sponsor already
+ * has one running that year, an add-on until that contract ends with its discount (owner 2026-10-07: full
+ * yearly price, no pro rata). Checks free places for every year under a per-club lock. With `hold` the lines
+ * are only reserved (Stripe checkout); confirmPurchase() makes them count and bills them.
  */
-export async function createContract(o: {
-  tenantId: string; sponsorId: string; startYear: number; years: number;
-  lines: { itemId: string; quantity: number }[]; source: "portal" | "admin" | "import"; actorId: string | null;
+export async function buyItems(o: {
+  tenantId: string; sponsorId: string; year: number; years: number;
+  lines: { itemId: string; quantity: number }[]; source: "portal" | "admin" | "import"; actorId: string | null; hold?: boolean;
 }) {
-  if (![1, 2, 3].includes(o.years)) throw new Error("Laufzeit 1, 2 oder 3 Jahre.");
   const lines = o.lines.filter((l) => l.quantity > 0);
   if (!lines.length) throw new Error("Bitte mindestens eine Leistung wählen.");
-  const contract = await prisma.$transaction(async (tx) => {
+  const res = await prisma.$transaction(async (tx) => {
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${"sponsor:" + o.tenantId}))`;
-    const sponsor = await tx.sponsor.findFirst({ where: { id: o.sponsorId, tenantId: o.tenantId }, include: { contracts: true } });
+    await purgeExpiredCheckouts(tx);
+    const sponsor = await tx.sponsor.findFirst({ where: { id: o.sponsorId, tenantId: o.tenantId }, include: { contracts: { where: { cancelledAt: null }, include: { lines: true } } } });
     if (!sponsor) throw new Error("Sponsor nicht gefunden.");
+    const running = sponsor.contracts.find((c) => hasYear(c, o.year));
+    const years = running ? running.startYear + running.years - o.year : o.years;
+    if (!running && ![1, 2, 3].includes(years)) throw new Error("Laufzeit 1, 2 oder 3 Jahre.");
+    if (!running) for (let y = o.year; y < o.year + years; y++) if (sponsor.contracts.some((c) => hasYear(c, y))) throw new Error(`Für ${y} besteht bereits ein Vertrag.`);
     const items = await tx.sponsorItem.findMany({ where: { tenantId: o.tenantId, id: { in: lines.map((l) => l.itemId) }, active: true } });
     if (items.length !== new Set(lines.map((l) => l.itemId)).size) throw new Error("Eine Leistung ist nicht mehr im Katalog.");
-    for (let y = o.startYear; y < o.startYear + o.years; y++) {
-      if (sponsor.contracts.some((c) => coversYear(c, y))) throw new Error(`Für ${y} besteht bereits ein Vertrag.`);
+    for (let y = o.year; y < o.year + years; y++) {
       const taken = await takenByItem(o.tenantId, y, tx);
       for (const l of lines) {
         const it = items.find((i) => i.id === l.itemId)!;
         if (it.capacity != null && (taken.get(it.id) ?? 0) + l.quantity > it.capacity) throw new Error(`«${it.name}» ist ${y} bereits vergeben.`);
       }
     }
-    const c = await tx.sponsorContract.create({
-      data: {
-        sponsorId: o.sponsorId, startYear: o.startYear, years: o.years, discountPct: DISCOUNT[o.years], source: o.source,
-        lines: { create: lines.map((l) => ({ itemId: l.itemId, quantity: l.quantity, unitPrice: items.find((i) => i.id === l.itemId)!.price })) },
-      },
-      include: { lines: { include: { item: true } } },
-    });
-    await tx.sponsorRequest.upsert({
-      where: { sponsorId_year: { sponsorId: o.sponsorId, year: o.startYear } },
-      create: { sponsorId: o.sponsorId, year: o.startYear, status: "CONFIRMED", respondedAt: new Date() },
-      update: { status: "CONFIRMED", respondedAt: new Date() },
-    });
-    // the sponsor answered: the "no answer" task is obsolete
-    await tx.sponsorTask.updateMany({ where: { sponsorId: o.sponsorId, doneAt: null, title: NO_ANSWER(o.startYear) }, data: { doneAt: new Date() } });
-    return c;
+    const pendingUntil = o.hold ? new Date(Date.now() + HOLD_MS) : null;
+    const data = lines.map((l) => ({
+      itemId: l.itemId, quantity: l.quantity, unitPrice: items.find((i) => i.id === l.itemId)!.price,
+      fromYear: running ? o.year : null, pendingUntil,
+    }));
+    const contract = running
+      ? running
+      : await tx.sponsorContract.create({ data: { sponsorId: o.sponsorId, startYear: o.year, years, discountPct: DISCOUNT[years], source: o.source } });
+    const created = await Promise.all(data.map((d) => tx.sponsorContractLine.create({ data: { ...d, contractId: contract.id } })));
+    const amount = yearlyAmount(created.map((l) => ({ quantity: l.quantity, unitPrice: Number(l.unitPrice) })), contract.discountPct);
+    const what = created.map((l) => `${l.quantity > 1 ? `${l.quantity}× ` : ""}${items.find((i) => i.id === l.itemId)!.name}`).join(", ");
+    return { contract, lineIds: created.map((l) => l.id), amount, what, addOn: Boolean(running) };
   });
-  const amount = yearlyAmount(contract.lines.map((l) => ({ quantity: l.quantity, unitPrice: Number(l.unitPrice) })), contract.discountPct);
-  const what = contract.lines.map((l) => `${l.quantity > 1 ? `${l.quantity}× ` : ""}${l.item.name}`).join(", ");
-  await logSponsor(o.tenantId, o.sponsorId, o.actorId, `Vertrag ${o.startYear}${o.years > 1 ? `–${o.startYear + o.years - 1}` : ""}: ${what}, ${chf(amount)}/Jahr${contract.discountPct ? ` (−${contract.discountPct} %)` : ""}${o.source === "portal" ? " · online bestätigt" : ""}`);
-  await billYear(contract.id, o.startYear);
-  return contract;
+  return res;
 }
 
-/** Invoice + deliverables checklist for one contract year; idempotent. Sends the invoice mail right away. */
-export async function billYear(contractId: string, year: number) {
+/** Purchase is final (invoice chosen, or Stripe paid): confirm the year, log, bill the new lines. */
+export async function confirmPurchase(o: {
+  tenantId: string; sponsorId: string; contractId: string; year: number; lineIds: string[]; actorId: string | null; source: string;
+  paid?: { at: Date; stripeSessionId: string };
+}) {
+  await prisma.sponsorContractLine.updateMany({ where: { id: { in: o.lineIds } }, data: { pendingUntil: null } });
+  await prisma.sponsorRequest.upsert({
+    where: { sponsorId_year: { sponsorId: o.sponsorId, year: o.year } },
+    create: { sponsorId: o.sponsorId, year: o.year, status: "CONFIRMED", respondedAt: new Date() },
+    update: { status: "CONFIRMED", respondedAt: new Date() },
+  });
+  // the sponsor answered: the "no answer" task is obsolete
+  await prisma.sponsorTask.updateMany({ where: { sponsorId: o.sponsorId, doneAt: null, title: NO_ANSWER(o.year) }, data: { doneAt: new Date() } });
+  const c = await prisma.sponsorContract.findUniqueOrThrow({ where: { id: o.contractId }, include: { lines: { where: { id: { in: o.lineIds } }, include: { item: true } } } });
+  const end = c.startYear + c.years - 1;
+  const amount = yearlyAmount(c.lines.map((l) => ({ quantity: l.quantity, unitPrice: Number(l.unitPrice) })), c.discountPct);
+  const what = c.lines.map((l) => `${l.quantity > 1 ? `${l.quantity}× ` : ""}${l.item.name}`).join(", ");
+  const addOn = c.lines.some((l) => l.fromYear != null);
+  await logSponsor(o.tenantId, o.sponsorId, o.actorId,
+    `${addOn ? `Zusatz ab ${o.year}` : `Vertrag ${c.startYear}`}${end > o.year ? `–${end}` : ""}: ${what}, ${chf(amount)}/Jahr${c.discountPct ? ` (−${c.discountPct} %)` : ""}` +
+    (o.paid ? " · online bezahlt" : o.source === "portal" ? " · online bestätigt" : ""));
+  return billYear(o.contractId, o.year, o.paid);
+}
+
+/** Stripe webhook: checkout paid → lines confirmed, invoice marked paid. Idempotent per session. */
+export async function confirmSponsorCheckout(sessionId: string, at = new Date()) {
+  const done = await prisma.sponsorInvoice.findUnique({ where: { stripeSessionId: sessionId } });
+  if (done) return done;
+  const lines = await prisma.sponsorContractLine.findMany({ where: { stripeSessionId: sessionId }, include: { contract: { include: { sponsor: { include: { owner: true } } } } } });
+  if (!lines.length) {
+    console.error(`Sponsoring: bezahlte Checkout-Session ${sessionId} ohne Positionen (Reservation abgelaufen?)`);
+    return null;
+  }
+  const c = lines[0].contract;
+  const year = lines[0].fromYear ?? c.startYear;
+  const inv = await confirmPurchase({
+    tenantId: c.sponsor.tenantId, sponsorId: c.sponsorId, contractId: c.id, year, lineIds: lines.map((l) => l.id),
+    actorId: null, source: "portal", paid: { at, stripeSessionId: sessionId },
+  });
+  if (c.sponsor.owner?.email && inv) {
+    await sendMail(c.sponsor.owner.email, `Sponsoring ${year} bezahlt: ${c.sponsor.name}`, `${c.sponsor.name} hat online ${chf(Number(inv.amount))} bezahlt (Rechnung Nr. ${inv.number}).`);
+  }
+  return inv;
+}
+
+/**
+ * Sponsor starts a new purchase (or cancels) while an own checkout is still open: end it at Stripe.
+ * Paid in the meantime → confirm it; otherwise free the places.
+ */
+export async function settleOwnCheckouts(sponsorId: string) {
+  const open = await prisma.sponsorContractLine.findMany({ where: { pendingUntil: { not: null }, stripeSessionId: { not: null }, contract: { sponsorId } }, select: { stripeSessionId: true }, distinct: ["stripeSessionId"] });
+  for (const { stripeSessionId: id } of open) {
+    const stripe = getStripe();
+    await stripe.checkout.sessions.expire(id!).catch(() => null); // already completed/expired: fine
+    const paid = await stripe.checkout.sessions.retrieve(id!).then((x) => x.payment_status === "paid").catch(() => false);
+    if (paid) await confirmSponsorCheckout(id!);
+    else await releaseSponsorCheckout(id!);
+  }
+}
+
+/** Stripe checkout expired or cancelled: free the reserved places right away. */
+export async function releaseSponsorCheckout(sessionId: string) {
+  await prisma.sponsorContractLine.deleteMany({ where: { stripeSessionId: sessionId, pendingUntil: { not: null } } });
+  await prisma.sponsorContract.deleteMany({ where: { lines: { none: {} } } });
+}
+
+/**
+ * Bills a contract year: all confirmed lines of that year no invoice covers yet (the yearly invoice, or
+ * an add-on bought later), plus their deliverables. Idempotent. Mails the invoice, or the receipt if paid.
+ */
+export async function billYear(contractId: string, year: number, paid?: { at: Date; stripeSessionId: string }) {
   const c = await prisma.sponsorContract.findUnique({ where: { id: contractId }, include: { lines: { include: { item: true } }, sponsor: true } });
-  if (!c || !coversYear(c, year)) return null;
-  const labels = [...new Set(c.lines.flatMap((l) => l.item.deliverables))];
+  if (!c || !hasYear(c, year)) return null;
+  const labels = [...new Set(confirmedLines(c, year).flatMap((l) => l.item.deliverables))];
   if (labels.length) {
     await prisma.sponsorDeliverable.createMany({ data: labels.map((label) => ({ sponsorId: c.sponsorId, year, label })), skipDuplicates: true });
   }
-  const existing = await prisma.sponsorInvoice.findUnique({ where: { contractId_year: { contractId, year } } });
-  if (existing) return existing;
-  const amount = yearlyAmount(c.lines.map((l) => ({ quantity: l.quantity, unitPrice: Number(l.unitPrice) })), c.discountPct);
   const inv = await prisma.$transaction(async (tx) => {
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${"sponsor-inv:" + c.sponsor.tenantId}))`;
-    const again = await tx.sponsorInvoice.findUnique({ where: { contractId_year: { contractId, year } } });
-    if (again) return null;
+    const existing = await tx.sponsorInvoice.findMany({ where: { contractId, year }, select: { lines: true } });
+    const todo = unbilledLines(c, year, existing);
+    if (!todo.length) return null;
     const last = await tx.sponsorInvoice.aggregate({ where: { tenantId: c.sponsor.tenantId }, _max: { number: true } });
     const now = new Date();
     return tx.sponsorInvoice.create({
       data: {
-        tenantId: c.sponsor.tenantId, sponsorId: c.sponsorId, contractId, year, amount,
+        tenantId: c.sponsor.tenantId, sponsorId: c.sponsorId, contractId, year,
+        amount: yearlyAmount(todo.map((l) => ({ quantity: l.quantity, unitPrice: Number(l.unitPrice) })), c.discountPct),
+        lines: todo.map((l) => ({ lineId: l.id, name: l.item.name, quantity: l.quantity, unitPrice: Number(l.unitPrice) })),
+        discountPct: c.discountPct,
         number: (last._max.number ?? 1000) + 1, issuedAt: now, dueAt: new Date(now.getTime() + PAYMENT_DAYS * DAY),
+        ...(paid ? { paidAt: paid.at, paidVia: "stripe", stripeSessionId: paid.stripeSessionId } : {}),
       },
     });
   });
-  if (!inv) return prisma.sponsorInvoice.findUnique({ where: { contractId_year: { contractId, year } } });
-  await logSponsor(c.sponsor.tenantId, c.sponsorId, null, `Rechnung Nr. ${inv.number} (${year}) über ${chf(amount)} erstellt`);
+  if (!inv) return null;
+  await logSponsor(c.sponsor.tenantId, c.sponsorId, null, `Rechnung Nr. ${inv.number} (${year}) über ${chf(Number(inv.amount))} ${paid ? "erstellt und online bezahlt" : "erstellt"}`);
   await sendInvoiceMail(inv.id);
   return inv;
 }
@@ -119,7 +200,7 @@ async function loadInvoice(invoiceId: string) {
   });
 }
 
-/** Invoice mail (first time) or dunning mail (level 1/2). Marks sentAt on success. */
+/** Invoice mail (first time), receipt (paid online) or dunning mail (level 1/2). Marks sentAt on success. */
 export async function sendInvoiceMail(invoiceId: string, dunning?: 1 | 2) {
   const inv = await loadInvoice(invoiceId);
   const to = inv && mainContact(inv.sponsor)?.email;
@@ -127,30 +208,35 @@ export async function sendInvoiceMail(invoiceId: string, dunning?: 1 | 2) {
   const s = inv.sponsor;
   const club = s.tenant.name;
   const due = inv.dueAt.toLocaleDateString("de-CH", { timeZone: "Europe/Zurich" });
+  const end = inv.contract.startYear + inv.contract.years - 1;
   const running = inv.contract.years > 1 && inv.year > inv.contract.startYear;
-  const subject = dunning === 2 ? `2. Mahnung: Rechnung Nr. ${inv.number}, ${club}` : dunning ? `Zahlungserinnerung: Rechnung Nr. ${inv.number}, ${club}` : `Rechnung Sponsoring ${inv.year}: ${club}`;
+  const receipt = Boolean(inv.paidAt) && !dunning;
+  const subject = dunning === 2 ? `2. Mahnung: Rechnung Nr. ${inv.number}, ${club}` : dunning ? `Zahlungserinnerung: Rechnung Nr. ${inv.number}, ${club}`
+    : receipt ? `Zahlung erhalten: Sponsoring ${inv.year}, ${club}` : `Rechnung Sponsoring ${inv.year}: ${club}`;
   const body = dunning
     ? [`für das Sponsoring ${inv.year} ist die Rechnung Nr. ${inv.number} über ${chf(Number(inv.amount))} (fällig am ${due}) noch offen.`, "Falls Sie bereits bezahlt haben, betrachten Sie diese Mail als gegenstandslos."]
-    : [
-        running
-          ? `Ihr Sponsoring-Vertrag läuft bis ${inv.contract.startYear + inv.contract.years - 1}. Danke, dass Sie ${inv.year} wieder dabei sind.`
-          : `herzlichen Dank für Ihr Sponsoring ${inv.year}.`,
-        `Ihre Rechnung Nr. ${inv.number} über ${chf(Number(inv.amount))}, zahlbar bis ${due}:`,
-      ];
+    : receipt
+      ? [`herzlichen Dank! Ihre Zahlung über ${chf(Number(inv.amount))} für das Sponsoring ${inv.year} ist eingegangen.${end > inv.year ? ` Ab ${inv.year + 1} erhalten Sie die Rechnung jeweils per E-Mail.` : ""}`, `Quittung Nr. ${inv.number}:`]
+      : [
+          running
+            ? `Ihr Sponsoring-Vertrag läuft bis ${end}. Danke, dass Sie ${inv.year} wieder dabei sind.`
+            : `herzlichen Dank für Ihr Sponsoring ${inv.year}.`,
+          `Ihre Rechnung Nr. ${inv.number} über ${chf(Number(inv.amount))}, zahlbar bis ${due}:`,
+        ];
   const ok = await sendMail(to, subject, [
     hello(s), "", ...body,
-    `Rechnung mit QR-Einzahlungsschein: ${invoiceUrl(s.token, inv.id)}`,
-    "", `Logo und Auswahl: ${portalUrl(s.token)}`, "", `Freundliche Grüsse`, club,
+    receipt ? invoiceUrl(s.token, inv.id) : `Rechnung mit QR-Einzahlungsschein: ${invoiceUrl(s.token, inv.id)}`,
+    "", `Logo, Auswahl und weitere Leistungen: ${portalUrl(s.token)}`, "", `Freundliche Grüsse`, club,
   ].join("\n"));
   if (ok && !dunning) await prisma.sponsorInvoice.update({ where: { id: inv.id }, data: { sentAt: new Date() } });
   return ok;
 }
 
 async function sendRequestMail(sponsorId: string, year: number, reminder: boolean) {
-  const s = await prisma.sponsor.findUnique({ where: { id: sponsorId }, include: { contacts: true, tenant: true, contracts: true } });
+  const s = await prisma.sponsor.findUnique({ where: { id: sponsorId }, include: { contacts: true, tenant: true, contracts: { where: { cancelledAt: null }, include: { lines: true } } } });
   const to = s && mainContact(s)?.email;
   if (!s || !to) return false;
-  const prev = s.contracts.some((c) => coversYear(c, year - 1));
+  const prev = s.contracts.some((c) => hasYear(c, year - 1));
   return sendMail(to, `${reminder ? "Erinnerung: " : ""}Sponsoring ${year} beim ${s.tenant.name}`, [
     hello(s), "",
     prev ? `herzlichen Dank für Ihre Unterstützung ${year - 1}. Dürfen wir auch ${year} auf Sie zählen?` : `dürfen wir ${year} auf Ihre Unterstützung zählen?`,
@@ -191,10 +277,10 @@ export async function startCampaign(o: { tenantId: string; year: number; reminde
     create: { tenantId: o.tenantId, year: o.year, reminderDays: o.reminderDays, taskDays: o.taskDays },
     update: { reminderDays: o.reminderDays, taskDays: o.taskDays },
   });
-  const sponsors = await prisma.sponsor.findMany({ where: { tenantId: o.tenantId }, include: { contracts: true, requests: { where: { year: o.year } } } });
+  const sponsors = await prisma.sponsor.findMany({ where: { tenantId: o.tenantId }, include: { contracts: { where: { cancelledAt: null }, include: { lines: true } }, requests: { where: { year: o.year } } } });
   let running = 0, requested = 0;
   for (const s of sponsors) {
-    const c = s.contracts.find((x) => coversYear(x, o.year));
+    const c = s.contracts.find((x) => hasYear(x, o.year));
     if (c) {
       running++;
       if (s.requests[0]?.status !== "CONFIRMED") {
@@ -221,6 +307,7 @@ export async function runSponsoring(now = new Date(), tenantId?: string) {
   let budget = 250; // Brevo free plan: 300 mails/day, leave room for booking mails
   const stats = { sent: 0, reminded: 0, tasks: 0, billed: 0, dunned: 0 };
   const thisYear = now.getFullYear();
+  await purgeExpiredCheckouts();
 
   const campaigns = await prisma.sponsorCampaign.findMany({ where: { year: { gte: thisYear }, ...(tenantId ? { tenantId } : {}) } });
   for (const camp of campaigns) {
@@ -258,9 +345,10 @@ export async function runSponsoring(now = new Date(), tenantId?: string) {
   // running multi-year contracts: bill the current year from 1 January even without a campaign
   const contracts = await prisma.sponsorContract.findMany({
     where: { cancelledAt: null, startYear: { lte: thisYear, gt: thisYear - 3 }, invoices: { none: { year: thisYear } }, ...(tenantId ? { sponsor: { tenantId } } : {}) },
+    include: { lines: true },
   });
   for (const c of contracts) {
-    if (!coversYear(c, thisYear) || budget <= 0) continue;
+    if (!hasYear(c, thisYear) || budget <= 0) continue;
     budget--;
     await billYear(c.id, thisYear);
     stats.billed++;

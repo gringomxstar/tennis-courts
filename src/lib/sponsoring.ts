@@ -10,6 +10,33 @@ export type ContractLike = { startYear: number; years: number; cancelledAt?: Dat
 
 export const coversYear = (c: ContractLike, year: number) => !c.cancelledAt && c.startYear <= year && year < c.startYear + c.years;
 
+/** A contract line: bought with the contract or later as add-on (fromYear), possibly still in Stripe checkout (pendingUntil). */
+export type LineLike = { id?: string; quantity: number; unitPrice: number | { toString(): string }; fromYear?: number | null; pendingUntil?: Date | null };
+
+/** Line runs in that year: inside the contract term and not before its add-on year. */
+export const lineInYear = (c: ContractLike, l: Pick<LineLike, "fromYear">, year: number) => coversYear(c, year) && (l.fromYear ?? c.startYear) <= year;
+
+/** Confirmed (paid or on invoice) lines of a year; a running Stripe checkout doesn't count yet. */
+export const confirmedLines = <L extends LineLike>(c: ContractLike & { lines: L[] }, year: number) =>
+  c.lines.filter((l) => !l.pendingUntil && lineInYear(c, l, year));
+
+/** Sponsor is on board in that year (status "zugesagt"). */
+export const hasYear = (c: ContractLike & { lines: LineLike[] }, year: number) => confirmedLines(c, year).length > 0;
+
+/** Place taken in that year: confirmed, or reserved by a checkout that hasn't run out. */
+export const holdsPlace = (c: ContractLike, l: Pick<LineLike, "fromYear" | "pendingUntil">, year: number, now: Date) => lineInYear(c, l, year) && (!l.pendingUntil || l.pendingUntil > now);
+
+/** Yearly amount of a contract (all confirmed lines of that year, contract discount). */
+export const contractAmount = (c: ContractLike & { discountPct: number; lines: LineLike[] }, year: number) =>
+  yearlyAmount(confirmedLines(c, year).map((l) => ({ quantity: l.quantity, unitPrice: Number(l.unitPrice) })), c.discountPct);
+
+/** Lines of a year that no invoice of that year covers yet. Old invoices without snapshot cover every line. */
+export function unbilledLines<L extends LineLike & { id: string }>(c: ContractLike & { lines: L[] }, year: number, invoices: { lines: unknown }[]) {
+  if (invoices.some((i) => i.lines == null)) return [];
+  const billed = new Set(invoices.flatMap((i) => (i.lines as { lineId: string }[]).map((x) => x.lineId)));
+  return confirmedLines(c, year).filter((l) => !billed.has(l.id));
+}
+
 /** Amount billed per contract year, rounded to 5 Rappen. */
 export function yearlyAmount(lines: Line[], discountPct: number) {
   const gross = lines.reduce((s, l) => s + l.quantity * l.unitPrice, 0);

@@ -25,6 +25,11 @@ export default async function SponsorInvoicePage({ params }: { params: Promise<{
   const clubIban = ((t.settingsJson as TenantSettings | null)?.invoiceIban ?? "").replace(/\s/g, "").toUpperCase();
   const amount = Number(inv.amount);
   const c = inv.contract;
+  // what this invoice bills (snapshot); older invoices without snapshot bill the whole contract
+  const snap = inv.lines as { lineId: string; name: string; quantity: number; unitPrice: number }[] | null;
+  const lines = snap ?? c.lines.map((l) => ({ lineId: l.id, name: l.item.name, quantity: l.quantity, unitPrice: Number(l.unitPrice) }));
+  const discountPct = inv.discountPct ?? c.discountPct;
+  const addOn = Boolean(snap?.some((x) => c.lines.find((l) => l.id === x.lineId)?.fromYear != null));
   const clubAddress = parseAddress(t.address);
   // Without IBAN + structured club address the bill shows a SAMPLE QR (test IBAN from the SIX examples),
   // marked as such on the page and inside the QR data, so the module can be tried before the club is set up.
@@ -72,22 +77,22 @@ export default async function SponsorInvoicePage({ params }: { params: Promise<{
         <div className="mt-8 flex flex-wrap gap-x-8 gap-y-1 text-[14px] text-ink-2 print:text-black/70">
           <span>Datum: {de(inv.issuedAt)}</span>
           <span>Zahlbar bis: {de(inv.dueAt)}</span>
-          {inv.paidAt && <span>Bezahlt am: {de(inv.paidAt)}</span>}
+          {inv.paidAt && <span>Bezahlt am: {de(inv.paidAt)}{inv.paidVia === "stripe" ? " (Karte/Twint)" : ""}</span>}
         </div>
-        <h1 className="mt-6 text-[22px] font-bold tracking-[-.02em]">Sponsoring {inv.year}</h1>
+        <h1 className="mt-6 text-[22px] font-bold tracking-[-.02em]">Sponsoring {inv.year}{addOn ? ", Zusatz" : ""}</h1>
         {c.years > 1 && <p className="text-[14px] text-ink-2 print:text-black/70">Vertrag {c.startYear}–{c.startYear + c.years - 1}, Jahr {inv.year - c.startYear + 1} von {c.years}</p>}
         <table className="mt-4 w-full text-[15px]">
           <tbody>
-            {c.lines.map((l) => (
-              <tr key={l.id} className="border-b border-line">
-                <td className="py-2">{l.quantity > 1 ? `${l.quantity}× ` : ""}{l.item.name}</td>
+            {lines.map((l) => (
+              <tr key={l.lineId} className="border-b border-line">
+                <td className="py-2">{l.quantity > 1 ? `${l.quantity}× ` : ""}{l.name}</td>
                 <td className="py-2 text-right tabular-nums">{chf(l.quantity * Number(l.unitPrice))}</td>
               </tr>
             ))}
-            {c.discountPct > 0 && (
+            {discountPct > 0 && (
               <tr className="border-b border-line text-ink-2 print:text-black/70">
-                <td className="py-2">Rabatt {c.years} Jahre (−{c.discountPct} %)</td>
-                <td className="py-2 text-right tabular-nums">−{chf(c.lines.reduce((a, l) => a + l.quantity * Number(l.unitPrice), 0) - amount)}</td>
+                <td className="py-2">Rabatt {c.years} Jahre (−{discountPct} %)</td>
+                <td className="py-2 text-right tabular-nums">−{chf(lines.reduce((a, l) => a + l.quantity * l.unitPrice, 0) - amount)}</td>
               </tr>
             )}
             <tr className="font-bold">

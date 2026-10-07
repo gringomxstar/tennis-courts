@@ -4,10 +4,11 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { sendMail } from "@/lib/mail";
+import { getStripe } from "@/lib/stripe";
 import { getTenantContext } from "@/lib/tenant";
 import { coversYear, chf } from "@/lib/sponsoring";
 import { parseSponsors } from "@/lib/sponsor-import";
-import { NO_ANSWER, billYear, createContract, currentSponsorYear, logSponsor, newSponsorToken, sendInvoiceMail, startCampaign } from "@/lib/sponsor-server";
+import { CHECKOUT_MINUTES, NO_ANSWER, billYear, buyItems, confirmPurchase, settleOwnCheckouts, currentSponsorYear, logSponsor, newSponsorToken, sendInvoiceMail, startCampaign } from "@/lib/sponsor-server";
 
 type Res<T = object> = ({ success: true } & T) | { success: false; error: string };
 const fail = (e: unknown): { success: false; error: string } => ({ success: false, error: e instanceof Error ? e.message : String(e) });
@@ -176,7 +177,8 @@ export async function createContractAction(slug: string, sponsorId: string, star
     const { tenantId, actorId } = await admin(slug);
     await ownSponsor(tenantId, sponsorId);
     if (!Number.isInteger(startYear) || startYear < 2000 || startYear > 2100) throw new Error("Jahr ungültig.");
-    await createContract({ tenantId, sponsorId, startYear, years, lines: linesSchema.parse(lines), source: "admin", actorId });
+    const b = await buyItems({ tenantId, sponsorId, year: startYear, years, lines: linesSchema.parse(lines), source: "admin", actorId });
+    await confirmPurchase({ tenantId, sponsorId, contractId: b.contract.id, year: startYear, lineIds: b.lineIds, actorId, source: "admin" });
     refresh(slug);
     return { success: true };
   } catch (e) {
@@ -401,14 +403,67 @@ async function bySponsorToken(token: string) {
 }
 const refreshPortal = (token: string) => revalidatePath(`/sponsor/${token}`);
 
-export async function portalConfirmAction(token: string, lines: z.input<typeof linesSchema>, years: number): Promise<Res> {
+/**
+ * Sponsor buys in the portal: a new contract, or more items added to the running one (until its end, with its
+ * discount, full yearly price). pay "invoice" = final now, QR invoice by mail. pay "stripe" = places held for
+ * the checkout, confirmed by the webhook after payment (owner 2026-10-07).
+ */
+export async function portalBuyAction(token: string, lines: z.input<typeof linesSchema>, years: number, pay: "invoice" | "stripe"): Promise<Res<{ url?: string }>> {
   try {
     const s = await bySponsorToken(token);
     const year = await currentSponsorYear(s.tenantId);
-    await createContract({ tenantId: s.tenantId, sponsorId: s.id, startYear: year, years, lines: linesSchema.parse(lines), source: "portal", actorId: null });
-    if (s.owner?.email) {
-      await sendMail(s.owner.email, `Zusage Sponsoring ${year}: ${s.name}`, `${s.name} hat das Sponsoring ${year} online bestätigt${years > 1 ? ` (${years} Jahre)` : ""}. Die Rechnung ist verschickt.`);
+    const online = pay === "stripe";
+    if (online && !process.env.STRIPE_SECRET_KEY) throw new Error("Online-Zahlung ist nicht eingerichtet. Bitte «Auf Rechnung» wählen.");
+    if (process.env.STRIPE_SECRET_KEY) await settleOwnCheckouts(s.id); // e.g. came back from Stripe with the browser's back button
+    const b = await buyItems({ tenantId: s.tenantId, sponsorId: s.id, year, years, lines: linesSchema.parse(lines), source: "portal", actorId: null, hold: online });
+    if (!online) {
+      await confirmPurchase({ tenantId: s.tenantId, sponsorId: s.id, contractId: b.contract.id, year, lineIds: b.lineIds, actorId: null, source: "portal" });
+      if (s.owner?.email) {
+        await sendMail(s.owner.email, `${b.addOn ? "Zusatzkauf" : "Zusage"} Sponsoring ${year}: ${s.name}`, `${s.name} hat online ${b.addOn ? "dazugekauft" : "zugesagt"}: ${b.what} (${chf(b.amount)}/Jahr). Die Rechnung ist verschickt.`);
+      }
+      refreshPortal(token);
+      return { success: true };
     }
+    const base = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const end = b.contract.startYear + b.contract.years - 1;
+    try {
+      const contact = await prisma.sponsorContact.findFirst({ where: { sponsorId: s.id, email: { not: null } }, orderBy: { isPrimary: "desc" } });
+      const session = await getStripe().checkout.sessions.create({
+        mode: "payment",
+        ...(contact?.email ? { customer_email: contact.email } : {}),
+        line_items: [{
+          price_data: {
+            currency: "chf",
+            product_data: { name: `Sponsoring ${year} · ${s.tenant.name}`, description: `${b.what}${end > year ? ` · Vertrag bis ${end}, Betrag für ${year}` : ""}`.slice(0, 500) },
+            unit_amount: Math.round(b.amount * 100),
+          },
+          quantity: 1,
+        }],
+        metadata: { purpose: "sponsoring", sponsorId: s.id, contractId: b.contract.id },
+        expires_at: Math.floor(Date.now() / 1000) + CHECKOUT_MINUTES * 60,
+        success_url: `${base}/sponsor/${token}?bezahlt=1`,
+        cancel_url: `${base}/sponsor/${token}?abbruch={CHECKOUT_SESSION_ID}`,
+      });
+      await prisma.sponsorContractLine.updateMany({ where: { id: { in: b.lineIds } }, data: { stripeSessionId: session.id } });
+      return { success: true, url: session.url ?? undefined };
+    } catch (e) {
+      // no checkout → don't keep the places blocked
+      await prisma.sponsorContractLine.deleteMany({ where: { id: { in: b.lineIds } } });
+      await prisma.sponsorContract.deleteMany({ where: { id: b.contract.id, lines: { none: {} } } });
+      console.error("Sponsoring-Checkout:", e);
+      throw new Error("Online-Zahlung konnte nicht gestartet werden. Bitte nochmals versuchen oder «Auf Rechnung» wählen.");
+    }
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+/** Back from Stripe with "Abbrechen": end the session and free the held places at once. */
+export async function portalCancelCheckoutAction(token: string, sessionId: string): Promise<Res> {
+  try {
+    const s = await bySponsorToken(token);
+    const own = await prisma.sponsorContractLine.count({ where: { stripeSessionId: sessionId, pendingUntil: { not: null }, contract: { sponsorId: s.id } } });
+    if (own) await settleOwnCheckouts(s.id);
     refreshPortal(token);
     return { success: true };
   } catch (e) {

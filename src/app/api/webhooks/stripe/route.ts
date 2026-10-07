@@ -1,3 +1,4 @@
+import { confirmSponsorCheckout, releaseSponsorCheckout } from "@/lib/sponsor-server";
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { getStripe } from "@/lib/stripe";
@@ -40,6 +41,8 @@ export async function POST(req: Request) {
         if (session.payment_status !== "paid" && session.payment_status !== "no_payment_required") break;
         if (session.metadata?.purpose === "wallet_topup") {
           await creditTopUpSession(session.id);
+        } else if (session.metadata?.purpose === "sponsoring") {
+          await confirmSponsorCheckout(session.id);
         } else if (session.metadata?.bookingId) {
           await handleBookingPaymentSuccess(session.metadata.bookingId, session.id);
         } else {
@@ -57,6 +60,7 @@ export async function POST(req: Request) {
         if (expiredSession.metadata?.bookingId) {
           await handleBookingCheckoutExpired(expiredSession.metadata.bookingId);
         }
+        if (expiredSession.metadata?.purpose === "sponsoring") await releaseSponsorCheckout(expiredSession.id);
         break;
       }
 
