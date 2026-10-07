@@ -7,6 +7,9 @@ import { formatIban } from "@/lib/iban";
 import { chf, parseAddress, paymentReference } from "@/lib/sponsoring";
 import type { TenantSettings } from "@/types";
 
+/** QR-IBAN from the SIX QR-bill examples; only used for the clearly marked sample bill. */
+const SAMPLE_IBAN = "CH4431999123000889012";
+
 export const metadata: Metadata = { title: "Rechnung", robots: { index: false, follow: false } };
 
 /** Sponsor invoice with Swiss QR bill, opened from the personal link (mail, portal, admin card). */
@@ -19,27 +22,30 @@ export default async function SponsorInvoicePage({ params }: { params: Promise<{
   if (!inv || inv.sponsor.token !== token) notFound();
   const s = inv.sponsor;
   const t = s.tenant;
-  const iban = ((t.settingsJson as TenantSettings | null)?.invoiceIban ?? "").replace(/\s/g, "").toUpperCase();
+  const clubIban = ((t.settingsJson as TenantSettings | null)?.invoiceIban ?? "").replace(/\s/g, "").toUpperCase();
   const amount = Number(inv.amount);
   const c = inv.contract;
-  const reference = iban ? paymentReference(iban, inv.number) : "";
-  const creditor = parseAddress(t.address);
+  const clubAddress = parseAddress(t.address);
+  // Without IBAN + structured club address the bill shows a SAMPLE QR (test IBAN from the SIX examples),
+  // marked as such on the page and inside the QR data, so the module can be tried before the club is set up.
+  const sample = !clubIban || !clubAddress;
+  const iban = sample ? SAMPLE_IBAN : clubIban;
+  const creditor = clubAddress ?? { address: "Musterstrasse", buildingNumber: "1", zip: "1234", city: "Musterort" };
+  const reference = paymentReference(iban, inv.number);
 
-  // QR bill needs IBAN + structured club address; otherwise the bank details are printed as text.
   let qr = "";
-  if (iban && creditor) {
-    try {
-      qr = new SwissQRBill({
-        currency: "CHF",
-        amount,
-        reference,
-        message: `Sponsoring ${inv.year}, Rechnung ${inv.number}`,
-        creditor: { account: iban, name: t.name.slice(0, 70), ...creditor, country: "CH" },
-        ...(s.zip && s.city ? { debtor: { name: s.name.slice(0, 70), address: s.street ?? "", zip: s.zip, city: s.city, country: "CH" } } : {}),
-      }, { language: "DE" }).toString();
-    } catch (e) {
-      console.error("QR-Rechnung:", e);
-    }
+  try {
+    qr = new SwissQRBill({
+      currency: "CHF",
+      amount,
+      reference,
+      message: sample ? "MUSTER - NICHT EINZAHLEN" : `Sponsoring ${inv.year}, Rechnung ${inv.number}`,
+      ...(sample ? { additionalInformation: "Fiktiver Test-QR-Code ohne gueltiges Konto" } : {}),
+      creditor: { account: iban, name: (sample ? `MUSTER ${t.name}` : t.name).slice(0, 70), ...creditor, country: "CH" },
+      ...(s.zip && s.city ? { debtor: { name: s.name.slice(0, 70), address: s.street ?? "", zip: s.zip, city: s.city, country: "CH" } } : {}),
+    }, { language: "DE" }).toString();
+  } catch (e) {
+    console.error("QR-Rechnung:", e);
   }
   const de = (d: Date) => d.toLocaleDateString("de-CH", { timeZone: "Europe/Zurich" });
   const contact = s.contacts.find((x) => x.isPrimary) ?? s.contacts[0];
@@ -90,16 +96,28 @@ export default async function SponsorInvoicePage({ params }: { params: Promise<{
             </tr>
           </tbody>
         </table>
-        {!inv.paidAt && !qr && iban && (
+        {!inv.paidAt && !qr && !sample && (
           <div className="mt-6 grid grid-cols-[120px_1fr] gap-y-1.5 rounded-[16px] bg-bg p-4 text-[14.5px] print:border print:bg-white">
             <span className="text-ink-2">IBAN</span><b>{formatIban(iban)}</b>
             <span className="text-ink-2">Zugunsten von</span><span>{t.name}</span>
             <span className="text-ink-2">Referenz</span><b>{reference}</b>
           </div>
         )}
+        {!inv.paidAt && qr && sample && (
+          <p role="note" className="mt-8 rounded-[14px] border-2 border-bad bg-bad-bg p-3 text-[14px] font-semibold text-bad print:bg-white">
+            MUSTER – fiktiver QR-Zahlteil zum Testen, nicht einzahlen. Der echte Zahlteil erscheint, sobald der Club IBAN und Adresse (Strasse Nr, PLZ Ort) in den Einstellungen hinterlegt.
+          </p>
+        )}
         {!inv.paidAt && qr && (
-          // SVG from swissqrbill; sponsor and club texts are escaped by the library
-          <div className="mt-10 overflow-x-auto print:mt-[20mm] [&>svg]:h-auto [&>svg]:w-full [&>svg]:max-w-[210mm]" dangerouslySetInnerHTML={{ __html: qr }} />
+          <div className="relative mt-6 print:mt-[20mm]">
+            {/* SVG from swissqrbill; sponsor and club texts are escaped by the library */}
+            <div className="overflow-x-auto [&>svg]:h-auto [&>svg]:w-full [&>svg]:max-w-[210mm]" dangerouslySetInnerHTML={{ __html: qr }} />
+            {sample && (
+              <div aria-hidden className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden">
+                <span className="-rotate-[18deg] select-none rounded-[10px] border-4 border-bad/70 px-6 text-[clamp(40px,11vw,96px)] font-black tracking-[.08em] text-bad/45">MUSTER</span>
+              </div>
+            )}
+          </div>
         )}
       </div>
       <div className="mx-auto mt-4 max-w-[360px] print:hidden"><PrintButton /></div>

@@ -1,6 +1,7 @@
 import { requireTenantAdmin } from "@/lib/tenant";
 import { prisma } from "@/lib/prisma";
 import { currentSponsorYear } from "@/lib/sponsor-server";
+import { parseAddress } from "@/lib/sponsoring";
 import { SponsorNav } from "@/components/app/admin-sponsoring";
 import { SponsorInvoices } from "@/components/app/sponsor-invoices";
 
@@ -24,6 +25,7 @@ export default async function SponsorInvoicesPage({ params, searchParams }: { pa
       <SponsorInvoices
         slug={tenant.slug}
         year={year}
+        sample={!tenant.settingsJson?.invoiceIban || !parseAddress(tenant.address)}
         invoices={invoices.map((i) => ({
           id: i.id, number: i.number, sponsorId: i.sponsor.id, sponsor: i.sponsor.name, token: i.sponsor.token, amount: Number(i.amount),
           issuedAt: i.issuedAt.toISOString(), dueAt: i.dueAt.toISOString(), paidAt: i.paidAt?.toISOString() ?? "", dunningLevel: i.dunningLevel, overdue: !i.paidAt && i.dueAt < now,

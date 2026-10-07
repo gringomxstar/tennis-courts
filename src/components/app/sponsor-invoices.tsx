@@ -12,7 +12,7 @@ import { markInvoicePaidAction } from "@/app/actions/sponsoring";
 type Inv = { id: string; number: number; sponsorId: string; sponsor: string; token: string; amount: number; issuedAt: string; dueAt: string; paidAt: string; dunningLevel: number; overdue: boolean };
 const de = (iso: string) => new Date(iso).toLocaleDateString("de-CH");
 
-export function SponsorInvoices({ slug, year, invoices }: { slug: string; year: number; invoices: Inv[] }) {
+export function SponsorInvoices({ slug, year, invoices, sample }: { slug: string; year: number; invoices: Inv[]; sample: boolean }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [filter, setFilter] = useState<"all" | "open" | "overdue" | "paid">("all");
@@ -27,6 +27,11 @@ export function SponsorInvoices({ slug, year, invoices }: { slug: string; year: 
         ))}
         <a href={`/c/${slug}/admin/sponsoring/rechnungen/export?jahr=${year}`} className={cn(pill, "ml-auto bg-card text-ink shadow-card")}>Export Buchhaltung (CSV)</a>
       </div>
+      {sample && (
+        <p role="note" className="mt-3 rounded-[14px] bg-bad-bg p-3 text-[14px] text-bad">
+          <b>Muster-QR:</b> IBAN oder Clubadresse fehlen in den Einstellungen. Die Rechnungen zeigen darum einen fiktiven, als MUSTER markierten QR-Zahlteil. Vor dem ersten echten Versand IBAN und Adresse (Strasse Nr, PLZ Ort) erfassen.
+        </p>
+      )}
       <p className="mt-2 text-[13px] text-ink-3">Zahlbar in 30 Tagen. Automatische Zahlungserinnerung 10 Tage nach Fälligkeit, 2. Mahnung 14 Tage später, danach eine Aufgabe für die zuständige Person.</p>
       <ul className="card mt-3 divide-y divide-line">
         {list.map((i) => {
