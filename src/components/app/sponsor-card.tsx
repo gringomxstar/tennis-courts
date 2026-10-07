@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -311,7 +312,7 @@ function ContractSheet({ open, onClose, slug, sponsorId, year, items, running }:
             </li>
           );
         })}
-        {!items.length && <li className="py-3 text-[14px] text-ink-3">Zuerst den Katalog erfassen.</li>}
+        {!items.length && <li className="py-3 text-[14px] text-ink-3">Noch keine Angebote im Katalog. <Link href={`/c/${slug}/admin/sponsoring/katalog`} className="font-semibold text-clay-text underline">Angebot anlegen ›</Link></li>}
       </ul>
       <button type="button" disabled={!lines.length || pending} className="btn btn-pri mt-4 h-[52px] w-full" onClick={() => start(async () => {
         const r = await createContractAction(slug, sponsorId, startYear, years, lines);
@@ -320,7 +321,7 @@ function ContractSheet({ open, onClose, slug, sponsorId, year, items, running }:
         setQty({});
         onClose();
         router.refresh();
-      })}>{pending ? "…" : `Erfassen · ${chf(total)} / Jahr`}</button>
+      })}>{pending ? "…" : `Erfassen und Rechnung senden · ${chf(total)} / Jahr`}</button>
     </Sheet>
   );
 }

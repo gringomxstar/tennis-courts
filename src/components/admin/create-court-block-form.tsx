@@ -35,7 +35,7 @@ export function CreateCourtBlockForm({ clubSlug, courts, edit, group, onDone }: 
   const from = edit ? new Date(edit.startsAt) : null;
   const to = edit ? new Date(edit.endsAt) : null;
   // "ganze Tage": one block per court from the first midnight to the last, e.g. a winter closure
-  const [whole, setWhole] = useState(Boolean(from && to && hm(from) === "00:00" && hm(to) === "00:00"));
+  const [whole, setWhole] = useState(edit ? Boolean(from && to && hm(from) === "00:00" && hm(to) === "00:00") : true);
   const lastDay = (d: Date) => new Date(d.getTime() - 12 * 3_600_000).toLocaleDateString("sv-SE");
   const [courtIds, setCourtIds] = useState<string[]>(edit ? [edit.courtId] : []);
   const [dateStr, setDateStr] = useState(from ? from.toLocaleDateString("sv-SE") : todayStr);

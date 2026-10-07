@@ -56,10 +56,10 @@ export function MembershipPlansManager({ clubSlug, initialPlans }: MembershipPla
   // Form states
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [price, setPrice] = useState<number>(300);
+  const [price, setPrice] = useState<number | string>(300);
   const [currency, setCurrency] = useState("CHF");
-  const [bookingWindowDays, setBookingWindowDays] = useState<number>(7);
-  const [simultaneousBookingLimit, setSimultaneousBookingLimit] = useState<number>(3);
+  const [bookingWindowDays, setBookingWindowDays] = useState<number | string>(7);
+  const [simultaneousBookingLimit, setSimultaneousBookingLimit] = useState<number | string>(3);
   const [dailyBookingLimit, setDailyBookingLimit] = useState<number>(1);
   const [guestsPerWeek, setGuestsPerWeek] = useState("");
   const [allow60, setAllow60] = useState(true);
@@ -72,8 +72,8 @@ export function MembershipPlansManager({ clubSlug, initialPlans }: MembershipPla
   const [proofRequired, setProofRequired] = useState(false);
   const [windowOn, setWindowOn] = useState(false);
   const [windowDays, setWindowDays] = useState<number[]>([1, 2, 3, 4, 5]);
-  const [fromHour, setFromHour] = useState(8);
-  const [toHour, setToHour] = useState(16);
+  const [fromHour, setFromHour] = useState<number | string>(8);
+  const [toHour, setToHour] = useState<number | string>(16);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [sportFilter, setSportFilter] = useState<SportFilter>("ALL");
   const formRef = useRef<HTMLFormElement>(null);
@@ -285,7 +285,7 @@ export function MembershipPlansManager({ clubSlug, initialPlans }: MembershipPla
                     min={0}
                     step={1}
                     value={price}
-                    onChange={(e) => setPrice(Number(e.target.value))}
+                    onChange={(e) => setPrice(e.target.value)}
                     required
                     className={input}
                   />
@@ -320,7 +320,7 @@ export function MembershipPlansManager({ clubSlug, initialPlans }: MembershipPla
                   min={1}
                   max={30}
                   value={bookingWindowDays}
-                  onChange={(e) => setBookingWindowDays(Number(e.target.value))}
+                  onChange={(e) => setBookingWindowDays(e.target.value)}
                   className={input}
                 />
               </label>
@@ -332,7 +332,7 @@ export function MembershipPlansManager({ clubSlug, initialPlans }: MembershipPla
                   min={1}
                   max={10}
                   value={simultaneousBookingLimit}
-                  onChange={(e) => setSimultaneousBookingLimit(Number(e.target.value))}
+                  onChange={(e) => setSimultaneousBookingLimit(e.target.value)}
                   className={input}
                 />
               </label>
@@ -465,13 +465,13 @@ export function MembershipPlansManager({ clubSlug, initialPlans }: MembershipPla
                         min={0}
                         max={23}
                         value={fromHour}
-                        onChange={(e) => setFromHour(Number(e.target.value))}
+                        onChange={(e) => setFromHour(e.target.value)}
                         className={input}
                       />
                     </label>
                     <label className="block">
                       <span className={label}>Bis Uhr</span>
-                      <input type="number" min={1} max={24} value={toHour} onChange={(e) => setToHour(Number(e.target.value))} className={input} />
+                      <input type="number" min={1} max={24} value={toHour} onChange={(e) => setToHour(e.target.value)} className={input} />
                     </label>
                   </div>
                 </div>

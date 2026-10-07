@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Avatar, Dot } from "@/components/app/avatar";
 import { SwitchKnob } from "@/components/app/switch";
+import { ConfirmButton } from "@/components/app/confirm-button";
 import { cn } from "@/lib/utils";
 import { useNow } from "@/components/app/use-now";
 import { cancelBookingAction, createCourtBlockAction, deleteCourtBlockAction, markBookingPaidOfflineAction } from "@/app/actions/booking";
@@ -133,7 +134,7 @@ export function AdminToday({
     startTransition(async () => {
       hide(id);
       const res = await markBookingPaidOfflineAction(slug, id, waive);
-      toast(res.success ? (waive ? "Erlassen (im Verlauf des Mitglieds vermerkt)" : "Als bezahlt markiert") : (res.error ?? "Fehlgeschlagen"));
+      toast(res.success ? (waive ? "Nicht verrechnet (im Verlauf des Mitglieds vermerkt)" : "Als bezahlt markiert") : (res.error ?? "Fehlgeschlagen"));
       router.refresh();
     });
   }
@@ -154,7 +155,7 @@ export function AdminToday({
           <h1 className="text-[28px] font-bold tracking-[-.03em]">Heute</h1>
           <div className="mt-0.5 text-[15px] text-muted-foreground">{day ? longDate(day) : " "}</div>
         </div>
-        <Link href={`/c/${slug}/admin/blocks`} className="btn hidden @min-[640px]:inline-flex">Sperre planen</Link>
+        <Link href={`/c/${slug}/admin/blocks`} className="btn">Sperre planen</Link>
       </div>
 
       <div className="flex flex-col gap-3.5 px-5 pt-4 pb-6 @min-[640px]:gap-4 @min-[640px]:px-0">
@@ -216,9 +217,9 @@ export function AdminToday({
                     </div>
                     <div className="truncate text-[13px] text-ink-3">{b.bookingType === "COACH" ? `Training · ${b.notes && !b.notes.startsWith("Training") ? b.notes : playersOf(b)}` : playersOf(b)}</div>
                   </div>
-                  <button type="button" onClick={() => cancel(b)} aria-label={`Buchung von ${name} stornieren`} className="btn btn-ghost !h-9 text-bad">
+                  <ConfirmButton onConfirm={() => cancel(b)} confirm="Wirklich?" aria-label={`Buchung von ${name} stornieren`} className="btn btn-ghost text-bad">
                     Stornieren
-                  </button>
+                  </ConfirmButton>
                 </div>
               );
             })}
@@ -239,10 +240,10 @@ export function AdminToday({
                       {now ? `${longDate(new Date(p.startsAt))}, ${hhmm(new Date(p.startsAt))}` : ""} · CHF {Number(p.amount).toFixed(2)} · {p.method}
                     </div>
                   </div>
-                  <button type="button" onClick={() => markPaid(p.id, true)} aria-label={`Zahlung von ${p.name} erlassen`} className="btn btn-ghost !h-9">
-                    Erlassen
-                  </button>
-                  <button type="button" onClick={() => markPaid(p.id)} aria-label={`Zahlung von ${p.name} als bezahlt markieren`} className="btn btn-pri !h-9">
+                  <ConfirmButton onConfirm={() => markPaid(p.id, true)} confirm="Gratis lassen?" aria-label={`Zahlung von ${p.name} nicht verrechnen`} className="h-[42px] rounded-full px-3 text-[14px] font-semibold text-ink-3 underline underline-offset-2">
+                    Nicht verrechnen
+                  </ConfirmButton>
+                  <button type="button" onClick={() => markPaid(p.id)} aria-label={`Zahlung von ${p.name} als bezahlt markieren`} className="btn btn-pri">
                     Bezahlt
                   </button>
                 </div>

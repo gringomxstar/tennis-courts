@@ -19,6 +19,7 @@ import { passwordLink } from "@/lib/booking-link";
 import { sendPasswordLink, sendRenewalReminder } from "@/lib/mail";
 import { grantMembership, isPartnerRow, seasonEnd } from "@/lib/membership";
 import { isValidIban } from "@/lib/iban";
+import { parseAddress } from "@/lib/sponsoring";
 import { logMoney } from "@/lib/audit";
 import { randomUUID } from "node:crypto";
 import { parseDate } from "@/lib/member-import";
@@ -95,7 +96,8 @@ async function verifyClubAdmin(clubSlug: string) {
 
 export async function updateClubSettingsAction(
   clubSlug: string,
-  settings: Partial<TenantSettings>
+  settings: Partial<TenantSettings>,
+  address?: string
 ) {
   const authCheck = await verifyClubAdmin(clubSlug);
   if (!authCheck.authorized || !authCheck.tenant) {
@@ -172,6 +174,9 @@ export async function updateClubSettingsAction(
 
   const invoiceIban = (settings.invoiceIban ?? "").replace(/\s+/g, "").toUpperCase();
   if (invoiceIban && !isValidIban(invoiceIban)) return { success: false, error: "Die IBAN ist ungültig (Prüfziffer stimmt nicht)." };
+  const addr = address?.trim().slice(0, 200);
+  if (addr && !parseAddress(addr)) return { success: false, error: "Clubadresse bitte so erfassen: «Strasse Nr, PLZ Ort»." };
+  if (address !== undefined) await prisma.tenant.update({ where: { id: authCheck.tenant.id }, data: { address: addr || null } });
 
   const updated = await updateTenantSettings(clubSlug, {
     demoMode,

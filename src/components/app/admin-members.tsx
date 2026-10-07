@@ -541,8 +541,8 @@ function MemberSheet({ slug, plans, member, onClose }: { slug: string; plans: Pl
     setArmed(false);
     setF(
       member === "new"
-        ? { firstName: "", lastName: "", email: "", phone: "", birthDate: "", gender: "", role: "MEMBER", planId: "", paid: true, invite: true }
-        : { id: member.id, firstName: member.firstName, lastName: member.lastName, email: member.email, phone: member.phone, birthDate: member.birthDate, gender: member.gender as MemberInput["gender"], role: member.role, planId: "", paid: true }
+        ? { firstName: "", lastName: "", email: "", phone: "", birthDate: "", gender: "", role: "MEMBER", planId: "", paid: false, invite: true }
+        : { id: member.id, firstName: member.firstName, lastName: member.lastName, email: member.email, phone: member.phone, birthDate: member.birthDate, gender: member.gender as MemberInput["gender"], role: member.role, planId: "", paid: false }
     );
   }
   if (!member && shown) setShown(null);

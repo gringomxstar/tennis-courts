@@ -40,7 +40,7 @@ export default async function ClubSettingsPage({ params }: ClubSettingsPageProps
       <div className="flex flex-col gap-4 px-5 pb-8 pt-4 @min-[640px]:px-0">
         <div className="grid grid-cols-1 gap-4 @min-[1100px]:grid-cols-2 @min-[1100px]:items-start">
           <div id="regeln" className="scroll-mt-4">
-            <ClubSettingsForm clubSlug={tenant.slug} initialSettings={tenant.settingsJson} />
+            <ClubSettingsForm clubSlug={tenant.slug} initialSettings={tenant.settingsJson} initialAddress={tenant.address} />
           </div>
           <div className="flex flex-col gap-4">
             <div id="plaetze" className="scroll-mt-4">
