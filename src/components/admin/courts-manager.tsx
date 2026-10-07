@@ -6,6 +6,8 @@ import { toast } from "sonner";
 import { Sheet } from "@/components/app/sheet";
 import { Spinner } from "@/components/app/avatar";
 import { SwitchKnob } from "@/components/app/switch";
+import { Segmented } from "@/components/app/segmented";
+import { ConfirmButton } from "@/components/app/confirm-button";
 import { deleteCourtAction, saveCourtAction, type CourtInput } from "@/app/actions/club-settings";
 import type { Court } from "@/types";
 import { cn } from "@/lib/utils";
@@ -14,17 +16,23 @@ const label = "block text-[13px] font-bold uppercase tracking-[.06em] text-muted
 const input =
   "mt-1.5 h-[50px] w-full min-w-0 rounded-[15px] border border-border bg-inset px-4 text-[16px] text-foreground outline-none focus-visible:border-clay";
 const pill = "shrink-0 rounded-full px-3 py-1 text-[13px] font-bold";
-const SURFACE: [CourtInput["surface"], string][] = [
+const SURFACE: readonly (readonly [CourtInput["surface"], string])[] = [
   ["CLAY", "Sand"],
   ["HARD", "Hartplatz / Allwetter"],
   ["ARTIFICIAL_GRASS", "Kunstrasen"],
   ["CARPET", "Teppich / Granulat"],
 ];
-const STATUS: [CourtInput["status"], string][] = [
+const STATUS: readonly (readonly [CourtInput["status"], string])[] = [
   ["ACTIVE", "Bespielbar"],
   ["MAINTENANCE", "Wartung"],
   ["INACTIVE", "Ausser Betrieb"],
 ];
+
+const STATUS_HELP: Record<CourtInput["status"], string> = {
+  ACTIVE: "Mitglieder können den Platz buchen.",
+  MAINTENANCE: "Vorübergehend weg aus dem Kalender. Für einzelne Tage besser eine Sperre planen.",
+  INACTIVE: "Dauerhaft weg aus dem Kalender, z. B. abgebaut.",
+};
 
 const blank = (sortOrder: number): CourtInput => ({
   name: "",
@@ -41,17 +49,25 @@ export function CourtsManager({ clubSlug, courts }: { clubSlug: string; courts: 
   const router = useRouter();
   const [edit, setEdit] = useState<CourtInput | null>(null);
   const [busy, setBusy] = useState(false);
-  const [armed, setArmed] = useState(false);
   const set = (patch: Partial<CourtInput>) => setEdit((e) => (e ? { ...e, ...patch } : e));
 
-  const open = (c?: Court) => {
-    setArmed(false);
-    setEdit(
-      c
-        ? { id: c.id, name: c.name, sportType: c.sportType, surface: c.surface as CourtInput["surface"], hourlyRate: c.hourlyRate, isIndoor: c.isIndoor, hasLighting: c.hasLighting, status: c.status as CourtInput["status"], sortOrder: c.sortOrder }
-        : blank(Math.max(0, ...courts.map((x) => x.sortOrder)) + 1)
+  const toInput = (c: Court): CourtInput => ({ id: c.id, name: c.name, sportType: c.sportType, surface: c.surface as CourtInput["surface"], hourlyRate: c.hourlyRate, isIndoor: c.isIndoor, hasLighting: c.hasLighting, status: c.status as CourtInput["status"], sortOrder: c.sortOrder });
+  const open = (c?: Court) => setEdit(c ? toInput(c) : blank(Math.max(0, ...courts.map((x) => x.sortOrder)) + 1));
+
+  /** Platz eine Position nach oben/unten: Reihenfolge neu durchnummerieren und geänderte speichern. */
+  async function move(i: number, dir: -1 | 1) {
+    const j = i + dir;
+    if (busy || j < 0 || j >= courts.length) return;
+    const order = [...courts];
+    [order[i], order[j]] = [order[j], order[i]];
+    setBusy(true);
+    const results = await Promise.all(
+      order.map((c, k) => (c.sortOrder === k + 1 ? null : saveCourtAction(clubSlug, { ...toInput(c), sortOrder: k + 1 }).catch(() => null))).filter(Boolean)
     );
-  };
+    setBusy(false);
+    if (results.some((r) => !r?.success)) toast.error("Reihenfolge konnte nicht gespeichert werden.");
+    router.refresh();
+  }
 
   async function save() {
     if (!edit || busy) return;
@@ -66,7 +82,6 @@ export function CourtsManager({ clubSlug, courts }: { clubSlug: string; courts: 
 
   async function remove() {
     if (!edit?.id || busy) return;
-    if (!armed) return setArmed(true);
     setBusy(true);
     const res = await deleteCourtAction(clubSlug, edit.id).catch(() => null);
     setBusy(false);
@@ -81,19 +96,19 @@ export function CourtsManager({ clubSlug, courts }: { clubSlug: string; courts: 
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 className="text-[22px] font-bold tracking-[-.02em]">Plätze ({courts.length})</h2>
-          <p className="mt-1 text-[15px] leading-[1.4] text-muted-foreground">Antippen zum Bearbeiten.</p>
+          <p className="mt-1 text-[15px] leading-[1.4] text-muted-foreground">Antippen zum Bearbeiten, Pfeile für die Reihenfolge im Kalender.</p>
         </div>
-        <button type="button" onClick={() => open()} className="btn btn-pri !h-9 shrink-0">
+        <button type="button" onClick={() => open()} className="btn btn-pri shrink-0">
           + Platz
         </button>
       </div>
       <div className="mt-5 overflow-hidden">
-        {courts.map((court) => (
+        {courts.map((court, i) => (
+          <div key={court.id} className="flex items-center gap-1 border-t border-border first:border-t-0">
           <button
-            key={court.id}
             type="button"
             onClick={() => open(court)}
-            className="flex w-full items-center gap-3 border-t border-border px-4 py-3.5 text-left first:border-t-0"
+            className="flex min-w-0 flex-1 items-center gap-3 py-3.5 pr-2 text-left"
           >
             <div className="min-w-0 flex-1">
               <div className="text-[16px] font-bold">
@@ -118,47 +133,50 @@ export function CourtsManager({ clubSlug, courts }: { clubSlug: string; courts: 
               {STATUS.find(([s]) => s === court.status)?.[1]}
             </span>
           </button>
+          {([[-1, "▲", "nach oben"], [1, "▼", "nach unten"]] as const).map(([dir, icon, l]) => (
+            <button key={dir} type="button" aria-label={`${court.name} ${l}`} disabled={busy || i + dir < 0 || i + dir >= courts.length} onClick={() => move(i, dir)} className="grid h-10 w-9 shrink-0 place-items-center rounded-full text-[13px] text-muted-foreground disabled:opacity-25">
+              {icon}
+            </button>
+          ))}
+          </div>
         ))}
       </div>
 
-      <Sheet open={Boolean(edit)} onOpenChange={(o) => !o && setEdit(null)} title={edit?.id ? "Platz bearbeiten" : "Neuer Platz"}>
+      <Sheet open={Boolean(edit)} onOpenChange={(o) => !o && setEdit(null)} title={edit?.id ? edit.name || "Platz bearbeiten" : "Neuer Platz"}>
         {edit && (
-          <div className="flex flex-col gap-3.5">
-            <div className="text-[28px] font-bold tracking-[-.03em]">{edit.id ? "Platz bearbeiten" : "Neuer Platz"}</div>
+          <div className="flex flex-col gap-4">
             <label className="block">
-              <span className={label}>Name</span>
-              <input value={edit.name} onChange={(e) => set({ name: e.target.value })} placeholder="z.B. Platz 8" className={input} />
+              <span className={label}>Name <span className="text-bad">*</span></span>
+              <input value={edit.name} onChange={(e) => set({ name: e.target.value })} placeholder="z.B. Platz 8" required className={input} />
             </label>
-            <div className="grid grid-cols-2 gap-2.5">
-              <label className="block">
-                <span className={label}>Sportart</span>
-                <select value={edit.sportType} onChange={(e) => set({ sportType: e.target.value as CourtInput["sportType"] })} className={input}>
-                  <option value="TENNIS">Tennis</option>
-                  <option value="PADEL">Padel</option>
-                </select>
-              </label>
-              <label className="block">
-                <span className={label}>Belag</span>
-                <select value={edit.surface} onChange={(e) => set({ surface: e.target.value as CourtInput["surface"] })} className={input}>
-                  {SURFACE.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                </select>
-              </label>
-              <label className="block">
-                <span className={label}>CHF pro Stunde</span>
-                <input type="number" min={0} step={1} value={edit.hourlyRate} onChange={(e) => set({ hourlyRate: Number(e.target.value) })} className={input} />
-              </label>
-              <label className="block">
-                <span className={label}>Reihenfolge</span>
-                <input type="number" min={0} value={edit.sortOrder} onChange={(e) => set({ sortOrder: Number(e.target.value) })} className={input} />
-              </label>
+            <div>
+              <span className={label}>Sportart</span>
+              <Segmented className="mt-1.5" label="Sportart" options={[["TENNIS", "Tennis"], ["PADEL", "Padel"]] as const} value={edit.sportType} onChange={(v) => set({ sportType: v })} />
+            </div>
+            <div>
+              <span className={label}>Belag</span>
+              <div className="mt-1.5 flex flex-wrap gap-2">
+                {SURFACE.map(([v, l]) => (
+                  <button key={v} type="button" aria-pressed={edit.surface === v} onClick={() => set({ surface: v })} className="chip">
+                    {l}
+                  </button>
+                ))}
+              </div>
             </div>
             <label className="block">
-              <span className={label}>Status</span>
-              <select value={edit.status} onChange={(e) => set({ status: e.target.value as CourtInput["status"] })} className={input}>
-                {STATUS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-              </select>
+              <span className={label}>Preis pro Stunde</span>
+              <span className="flex items-center gap-2.5">
+                <input type="number" min={0} step={1} inputMode="decimal" value={Number.isNaN(edit.hourlyRate) ? "" : edit.hourlyRate} onChange={(e) => set({ hourlyRate: e.target.value === "" ? NaN : Number(e.target.value) })} className={`${input} max-w-[120px]`} />
+                <span className="mt-1.5 text-[15px] text-muted-foreground">CHF</span>
+              </span>
+              <span className="mt-1.5 block text-[13px] text-muted-foreground">Grundpreis für diesen Platz. Preisregeln (z. B. Rabatt am Vormittag) werden darauf angewendet.</span>
             </label>
-            {([["isIndoor", "Halle (überdacht)"], ["hasLighting", "Flutlicht"]] as const).map(([k, l]) => (
+            <div>
+              <span className={label}>Zustand</span>
+              <Segmented className="mt-1.5" label="Zustand" options={STATUS} value={edit.status} onChange={(v) => set({ status: v })} />
+              <span className="mt-1.5 block text-[13px] text-muted-foreground">{STATUS_HELP[edit.status]}</span>
+            </div>
+            {([["isIndoor", "Halle", "Überdacht, auch bei Regen bespielbar"], ["hasLighting", "Flutlicht", "Abends buchbar"]] as const).map(([k, l, sub]) => (
               <button
                 key={k}
                 type="button"
@@ -166,23 +184,31 @@ export function CourtsManager({ clubSlug, courts }: { clubSlug: string; courts: 
                 onClick={() => set({ [k]: !edit[k] })}
                 className="flex items-center gap-3 rounded-[18px] border border-border bg-card px-4 py-3 text-left"
               >
-                <span className="flex-1 text-[16px] font-bold">{l}</span>
+                <span className="flex-1">
+                  <b className="block text-[16px]">{l}</b>
+                  <small className="block text-[13px] text-muted-foreground">{sub}</small>
+                </span>
                 <SwitchKnob on={edit[k]} />
               </button>
             ))}
-            <button
-              type="button"
-              onClick={save}
-              disabled={busy}
-              className="mt-1 btn btn-pri !h-[50px] w-full active:scale-[.97] disabled:opacity-60"
-            >
-              {busy && <Spinner />}
-              {edit.id ? "Speichern" : "Platz anlegen"}
-            </button>
-            {edit.id && (
-              <button type="button" onClick={remove} onBlur={() => setArmed(false)} disabled={busy} className="h-[50px] rounded-[17px] bg-inset text-[16px] font-bold text-clay-text">
-                {armed ? "Wirklich löschen?" : "Platz löschen"}
+            <div className="sticky bottom-0 -mx-1 bg-card px-1 pb-1 pt-2">
+              <button
+                type="button"
+                onClick={save}
+                disabled={busy || !edit.name.trim() || Number.isNaN(edit.hourlyRate)}
+                className="btn btn-pri !h-[50px] w-full active:scale-[.97] disabled:opacity-60"
+              >
+                {busy && <Spinner />}
+                {edit.id ? "Speichern" : "Platz anlegen"}
               </button>
+            </div>
+            {edit.id && (
+              <div>
+                <ConfirmButton onConfirm={remove} confirm="Wirklich entfernen?" disabled={busy} className="h-[50px] w-full rounded-[17px] bg-inset text-[16px] font-bold text-clay-text">
+                  Platz entfernen
+                </ConfirmButton>
+                <p className="mt-1.5 text-[13px] text-muted-foreground">Hat der Platz schon Buchungen, wird er nur auf «Ausser Betrieb» gesetzt. Die Buchungen bleiben bestehen.</p>
+              </div>
             )}
           </div>
         )}
