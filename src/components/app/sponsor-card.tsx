@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import { DISCOUNT, chf, yearlyAmount } from "@/lib/sponsoring";
 import { Sheet } from "@/components/app/sheet";
 import { ConfirmButton } from "@/components/app/confirm-button";
-import { STATUS, field, fieldLabel, pill, type SponsorStatus } from "@/components/app/admin-sponsoring";
+import { STATUS, SampleWarning, field, fieldLabel, pill, type SponsorStatus } from "@/components/app/admin-sponsoring";
 import {
   addDeliverableAction, billYearAction, completeTaskAction, createContractAction, deleteSponsorAction, endContractAction,
   markInvoicePaidAction, renewPortalLinkAction, resendInvoiceAction, saveSponsorAction, setRequestStatusAction, toggleDeliverableAction,
@@ -20,7 +20,7 @@ type Invoice = { id: string; number: number; year: number; amount: number; dueAt
 const de = (iso: string) => new Date(iso).toLocaleDateString("de-CH");
 
 export function SponsorCard(p: {
-  slug: string; year: number; status: SponsorStatus;
+  slug: string; year: number; status: SponsorStatus; sample: boolean;
   sponsor: { id: string; name: string; street: string; zip: string; city: string; website: string; notes: string; ownerId: string; portal: string; token: string; logo: { type: string; confirmed: string } | null; contacts: Contact[] };
   board: { id: string; name: string }[]; items: { id: string; name: string; price: number; free: number | null }[];
   contracts: Contract[]; years: { year: number; status: string }[]; invoices: Invoice[];
@@ -34,10 +34,11 @@ export function SponsorCard(p: {
   const running = p.contracts.find((c) => !c.cancelled && c.startYear <= p.year && p.year < c.startYear + c.years) ?? null;
   const contact = s.contacts.find((c) => c.isPrimary) ?? s.contacts[0];
   const open = p.invoices.filter((i) => !i.paidAt && (i.overdue || i.year === p.year));
-  const run = (fn: () => Promise<{ success: boolean; error?: string }>, ok?: string) => start(async () => {
-    const r = await fn().catch(() => ({ success: false, error: "Verbindung fehlgeschlagen." }));
+  const run = (fn: () => Promise<{ success: boolean; error?: string; warning?: string }>, ok?: string) => start(async () => {
+    const r: { success: boolean; error?: string; warning?: string } = await fn().catch(() => ({ success: false, error: "Verbindung fehlgeschlagen." }));
     if (!r.success) return void toast.error(r.error ?? "Fehler");
-    if (ok) toast.success(ok);
+    if (r.warning) toast.warning(r.warning);
+    else if (ok) toast.success(ok);
     router.refresh();
   });
 
@@ -200,7 +201,7 @@ export function SponsorCard(p: {
         </section>
       </div>
 
-      <ContractSheet open={contractOpen} onClose={() => setContractOpen(false)} slug={p.slug} sponsorId={s.id} year={p.year} items={p.items} running={p.status === "CONFIRMED" ? running : null} />
+      <ContractSheet sample={p.sample} open={contractOpen} onClose={() => setContractOpen(false)} slug={p.slug} sponsorId={s.id} year={p.year} items={p.items} running={p.status === "CONFIRMED" ? running : null} />
     </div>
   );
 }
@@ -291,8 +292,8 @@ function Deliverables({ slug, sponsorId, year, items, pending, run }: {
   );
 }
 
-function ContractSheet({ open, onClose, slug, sponsorId, year, items, running }: {
-  open: boolean; onClose: () => void; slug: string; sponsorId: string; year: number; items: { id: string; name: string; price: number; free: number | null }[];
+function ContractSheet({ sample, open, onClose, slug, sponsorId, year, items, running }: {
+  sample: boolean; open: boolean; onClose: () => void; slug: string; sponsorId: string; year: number; items: { id: string; name: string; price: number; free: number | null }[];
   running: Contract | null;
 }) {
   const router = useRouter();
@@ -309,6 +310,7 @@ function ContractSheet({ open, onClose, slug, sponsorId, year, items, running }:
           ? `Läuft bis ${running.startYear + running.years - 1} wie der bestehende Vertrag${running.discountPct ? `, mit −${running.discountPct} %` : ""}. Voller Jahrespreis, die Zusatzrechnung geht sofort per E-Mail raus.`
           : "Z.B. nach einer Zusage am Telefon. Die Rechnung für das erste Jahr geht sofort per E-Mail raus."}
       </p>
+      {sample && <SampleWarning slug={slug} />}
       {!running && <div className="mt-3 grid grid-cols-2 gap-3">
         <label className={fieldLabel}>Ab Jahr<input type="number" value={startYear} onChange={(e) => setStartYear(Number(e.target.value))} className={field} /></label>
         <label className={fieldLabel}>Laufzeit
@@ -337,7 +339,8 @@ function ContractSheet({ open, onClose, slug, sponsorId, year, items, running }:
       <button type="button" disabled={!lines.length || pending} className="btn btn-pri mt-4 h-[52px] w-full" onClick={() => start(async () => {
         const r = await createContractAction(slug, sponsorId, startYear, years, lines);
         if (!r.success) return void toast.error(r.error);
-        toast.success("Vertrag erfasst, Rechnung verschickt");
+        if (r.notSent) toast.warning(`Vertrag erfasst. Rechnung NICHT verschickt: ${r.notSent}.`);
+        else toast.success("Vertrag erfasst, Rechnung verschickt");
         setQty({});
         onClose();
         router.refresh();

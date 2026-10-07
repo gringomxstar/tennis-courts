@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireTenantAdmin } from "@/lib/tenant";
+import { parseAddress } from "@/lib/sponsoring";
 import { prisma } from "@/lib/prisma";
 import { contractAmount, freePlaces, hasYear } from "@/lib/sponsoring";
 import { currentSponsorYear, portalUrl, takenByItem } from "@/lib/sponsor-server";
@@ -37,6 +38,7 @@ export default async function SponsorCardPage({ params }: { params: Promise<{ cl
         <h1 className="text-[30px] font-bold leading-tight tracking-[-.035em]">{s.name}</h1>
       </div>
       <SponsorCard
+        sample={!tenant.settingsJson?.invoiceIban || !parseAddress(tenant.address)}
         slug={tenant.slug}
         year={year}
         status={status(year) as "NONE"}
