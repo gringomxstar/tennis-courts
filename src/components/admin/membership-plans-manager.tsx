@@ -1,11 +1,13 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { MembershipPlan, SportType } from "@/types";
 import { createMembershipPlanAction, deleteMembershipPlanAction, updateMembershipPlanAction } from "@/app/actions/club-settings";
 import { playWindowLabel } from "@/lib/booking-rules";
 import { SwitchKnob } from "@/components/app/switch";
 import { Spinner } from "@/components/app/avatar";
+import { Sheet } from "@/components/app/sheet";
+import { Segmented } from "@/components/app/segmented";
 
 const label = "block truncate text-[13px] font-bold uppercase tracking-[.06em] text-muted-foreground";
 const input =
@@ -13,6 +15,7 @@ const input =
 const secondary = "shrink-0 rounded-[12px] bg-inset px-3.5 py-2 text-[14px] font-bold text-clay-text disabled:opacity-60";
 const tag = "rounded-full bg-inset px-2.5 py-0.5 text-[12px] font-bold text-muted-foreground";
 const chip = (on: boolean) => `h-9 flex-1 rounded-[10px] text-[13px] font-bold ${on ? "bg-clay text-white" : "bg-card"}`;
+const group = "mb-1 text-[12px] font-bold uppercase tracking-[.06em] text-ink-3";
 const toggleRow = "flex items-center gap-3 rounded-[18px] border border-border bg-card px-4 py-3 text-left";
 
 const WD = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
@@ -76,7 +79,13 @@ export function MembershipPlansManager({ clubSlug, initialPlans }: MembershipPla
   const [toHour, setToHour] = useState<number | string>(16);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [sportFilter, setSportFilter] = useState<SportFilter>("ALL");
-  const formRef = useRef<HTMLFormElement>(null);
+  const [otherCat, setOtherCat] = useState(false);
+  const ageWrong = ageMin !== "" && ageMax !== "" && Number(ageMin) > Number(ageMax);
+  const summary = [
+    `${name.trim() || "Ohne Namen"}${ageMin || ageMax ? `, ${ageMin && ageMax ? `${ageMin}–${ageMax}` : ageMin ? `ab ${ageMin}` : `bis ${ageMax}`} Jahre` : ""}${couple ? ", für 2 Personen" : ""}: ${currency} ${price || "?"} pro Saison.`,
+    proofRequired ? "Ausweis nötig." : "",
+    `Bucht bis ${bookingWindowDays || "?"} Tage im Voraus, höchstens ${simultaneousBookingLimit || "?"} offene Buchungen, ${[allow60 && "60", allow90 && "90"].filter(Boolean).join(" oder ")} Min., ${guestsPerWeek === "" ? "beliebig viele Gäste" : `${guestsPerWeek} ${guestsPerWeek === "1" ? "Gast" : "Gäste"} pro Woche`}, ${windowOn ? `nur ${windowDays.length ? [1, 2, 3, 4, 5, 6, 0].filter((d) => windowDays.includes(d)).map((d) => WD[d]).join(", ") : "an keinem Tag"} ${fromHour}–${toHour} Uhr` : "jederzeit"}.`,
+  ].filter(Boolean).join(" ");
 
   // Opens the form empty (new plan) or prefilled from an existing plan.
   const openForm = (plan?: MembershipPlan) => {
@@ -93,6 +102,7 @@ export function MembershipPlansManager({ clubSlug, initialPlans }: MembershipPla
     setAllow90(plan ? plan.allowedDurations.includes(90) : true);
     setSports(plan ? sportsOf(plan) : ["TENNIS"]);
     setCategory(plan?.category ?? "");
+    setOtherCat(Boolean(plan?.category && !CATEGORIES.includes(plan.category)));
     setCouple(plan?.persons === 2);
     setAgeMin(plan?.ageMin != null ? String(plan.ageMin) : "");
     setAgeMax(plan?.ageMax != null ? String(plan.ageMax) : "");
@@ -103,8 +113,6 @@ export function MembershipPlansManager({ clubSlug, initialPlans }: MembershipPla
     setToHour(plan?.playWindow?.toHour ?? 16);
     setFeedback(null);
     setShowAddForm(true);
-    // the list can be long; bring the form into view when editing from further down
-    requestAnimationFrame(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
   };
 
   const visiblePlans = useMemo(
@@ -182,12 +190,12 @@ export function MembershipPlansManager({ clubSlug, initialPlans }: MembershipPla
         setEditingId(null);
         setFeedback({
           type: "success",
-          message: editingId ? `Tarif "${saved.name}" gespeichert.` : `Tarif "${saved.name}" erfolgreich hinzugefügt!`,
+          message: editingId ? `Abo "${saved.name}" gespeichert.` : `Abo "${saved.name}" hinzugefügt.`,
         });
       } else {
         setFeedback({
           type: "error",
-          message: res.error || "Fehler beim Erstellen des Tarifs.",
+          message: res.error || "Abo konnte nicht gespeichert werden.",
         });
       }
     } catch {
@@ -218,12 +226,12 @@ export function MembershipPlansManager({ clubSlug, initialPlans }: MembershipPla
         setPlans(plans.filter((p) => p.id !== planId));
         setFeedback({
           type: "success",
-          message: `Tarif "${planName}" erfolgreich archiviert.`,
+          message: `Abo "${planName}" archiviert, für neue Mitglieder nicht mehr wählbar.`,
         });
       } else {
         setFeedback({
           type: "error",
-          message: res.error || "Fehler beim Löschen des Tarifs.",
+          message: res.error || "Abo konnte nicht entfernt werden.",
         });
       }
     } catch {
@@ -240,11 +248,11 @@ export function MembershipPlansManager({ clubSlug, initialPlans }: MembershipPla
     <section className="card p-5">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-[22px] font-bold tracking-[-.02em]">Tarife ({plans.length})</h2>
-          <p className="mt-1 text-[15px] leading-[1.4] text-muted-foreground">Saisongebühren, Buchungsfenster und Quoten.</p>
+          <h2 className="text-[22px] font-bold tracking-[-.02em]">Abos ({plans.length})</h2>
+          <p className="mt-1 text-[15px] leading-[1.4] text-muted-foreground">Antippen «Bearbeiten», um Preis und Regeln zu ändern.</p>
         </div>
-        <button type="button" aria-expanded={showAddForm} onClick={() => (showAddForm ? setShowAddForm(false) : openForm())} className={secondary}>
-          {showAddForm ? "Abbrechen" : "Neuer Tarif"}
+        <button type="button" aria-expanded={showAddForm} onClick={() => openForm()} className={secondary}>
+          + Abo
         </button>
       </div>
 
@@ -260,238 +268,9 @@ export function MembershipPlansManager({ clubSlug, initialPlans }: MembershipPla
           </div>
         )}
 
-        {showAddForm && (
-          <form ref={formRef} onSubmit={handleCreatePlan} className="flex flex-col gap-4 rounded-[20px] bg-inset p-4">
-            <h3 className="text-[17px] font-bold tracking-[-.01em]">{editingId ? "Tarif bearbeiten" : "Neuer Tarif"}</h3>
-
-            <div className="grid grid-cols-1 gap-4 @min-[640px]:grid-cols-[1fr_auto]">
-              <label className="block">
-                <span className={label}>Tarifname *</span>
-                <input
-                  id="planName"
-                  placeholder="z. B. Student / Senioren"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  required
-                  className={input}
-                />
-              </label>
-              <div className="grid grid-cols-2 gap-3 @min-[640px]:w-[240px]">
-                <label className="block">
-                  <span className={label}>Preis *</span>
-                  <input
-                    id="price"
-                    type="number"
-                    min={0}
-                    step={1}
-                    value={price}
-                    onChange={(e) => setPrice(e.target.value)}
-                    required
-                    className={input}
-                  />
-                </label>
-                <label className="block">
-                  <span className={label}>Währung</span>
-                  <select id="currency" value={currency} onChange={(e) => setCurrency(e.target.value)} className={input}>
-                    <option value="CHF">CHF</option>
-                    <option value="EUR">EUR</option>
-                  </select>
-                </label>
-              </div>
-            </div>
-
-            <label className="block">
-              <span className={label}>Beschreibung</span>
-              <input
-                id="planDesc"
-                placeholder="z. B. Ermässigter Spielbeitrag für Studenten mit Ausweis"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className={input}
-              />
-            </label>
-
-            <div className="grid grid-cols-2 gap-3 @min-[640px]:grid-cols-4">
-              <label className="block">
-                <span className={label}>Vorlauf</span>
-                <input
-                  id="bookingWindowDays"
-                  type="number"
-                  min={1}
-                  max={30}
-                  value={bookingWindowDays}
-                  onChange={(e) => setBookingWindowDays(e.target.value)}
-                  className={input}
-                />
-              </label>
-              <label className="block">
-                <span className={label}>Max. aktiv</span>
-                <input
-                  id="simultaneousBookingLimit"
-                  type="number"
-                  min={1}
-                  max={10}
-                  value={simultaneousBookingLimit}
-                  onChange={(e) => setSimultaneousBookingLimit(e.target.value)}
-                  className={input}
-                />
-              </label>
-              <label className="block">
-                <span className={label}>Gäste/Woche</span>
-                <input
-                  id="guestsPerWeek"
-                  type="number"
-                  min={0}
-                  max={20}
-                  placeholder="∞"
-                  value={guestsPerWeek}
-                  onChange={(e) => setGuestsPerWeek(e.target.value)}
-                  className={input}
-                />
-              </label>
-            </div>
-
-            <div>
-              <div className={label}>Erlaubte Spieldauern</div>
-              <div className="mt-1.5 grid grid-cols-2 gap-2">
-                {(
-                  [
-                    ["60 Min.", allow60, setAllow60],
-                    ["90 Min.", allow90, setAllow90],
-                  ] as const
-                ).map(([text, on, set]) => (
-                  <button
-                    key={text}
-                    type="button"
-                    aria-pressed={on}
-                    onClick={() => set(!on)}
-                    className="flex items-center gap-3 rounded-[18px] border border-border bg-card px-4 py-3 text-left"
-                  >
-                    <span className="flex-1 text-[16px] font-semibold">{text}</span>
-                    <SwitchKnob on={on} />
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <div className={label}>Sportart</div>
-              <div className="mt-1.5 flex gap-1">
-                {(["TENNIS", "PADEL"] as const).map((s) => {
-                  const on = sports.includes(s);
-                  return (
-                    <button
-                      key={s}
-                      type="button"
-                      aria-pressed={on}
-                      // at least one sport stays selected
-                      onClick={() => setSports(on ? (sports.length > 1 ? sports.filter((x) => x !== s) : sports) : [...sports, s])}
-                      className={chip(on)}
-                    >
-                      {SPORT_LABEL[s]}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 @min-[640px]:grid-cols-[1fr_120px_120px]">
-              <label className="col-span-2 block @min-[640px]:col-span-1">
-                <span className={label}>Kategorie</span>
-                <input
-                  list="planCategories"
-                  maxLength={40}
-                  placeholder="z. B. Junioren"
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  className={input}
-                />
-                <datalist id="planCategories">
-                  {CATEGORIES.map((c) => (
-                    <option key={c} value={c} />
-                  ))}
-                </datalist>
-              </label>
-              <label className="block">
-                <span className={label}>Alter ab</span>
-                <input type="number" min={0} max={120} placeholder="–" value={ageMin} onChange={(e) => setAgeMin(e.target.value)} className={input} />
-              </label>
-              <label className="block">
-                <span className={label}>Alter bis</span>
-                <input type="number" min={0} max={120} placeholder="–" value={ageMax} onChange={(e) => setAgeMax(e.target.value)} className={input} />
-              </label>
-            </div>
-
-            <div className="grid grid-cols-1 gap-2 @min-[640px]:grid-cols-2">
-              <button type="button" aria-pressed={couple} onClick={() => setCouple(!couple)} className={toggleRow}>
-                <span className="flex-1 text-[16px] font-semibold">Paar-Abo (2 Personen)</span>
-                <SwitchKnob on={couple} />
-              </button>
-              <button type="button" aria-pressed={proofRequired} onClick={() => setProofRequired(!proofRequired)} className={toggleRow}>
-                <span className="flex-1 text-[16px] font-semibold">Nachweis nötig (z. B. Ausweis)</span>
-                <SwitchKnob on={proofRequired} />
-              </button>
-            </div>
-
-            <div>
-              <div className={label}>Spielzeiten</div>
-              <button type="button" aria-pressed={windowOn} onClick={() => setWindowOn(!windowOn)} className={`${toggleRow} mt-1.5 w-full`}>
-                <span className="flex-1 text-[16px] font-semibold">Nur zu bestimmten Zeiten</span>
-                <SwitchKnob on={windowOn} />
-              </button>
-              {windowOn && (
-                <div className="mt-2 rounded-[18px] border border-border bg-card p-3">
-                  <div className="flex gap-1">
-                    {[1, 2, 3, 4, 5, 6, 0].map((d) => {
-                      const on = windowDays.includes(d);
-                      return (
-                        <button
-                          key={d}
-                          type="button"
-                          aria-pressed={on}
-                          onClick={() => setWindowDays(on ? windowDays.filter((x) => x !== d) : [...windowDays, d])}
-                          className={`h-9 flex-1 rounded-[10px] text-[13px] font-bold ${on ? "bg-clay text-white" : "bg-inset"}`}
-                        >
-                          {WD[d]}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <div className="mt-2 grid grid-cols-2 gap-2">
-                    <label className="block">
-                      <span className={label}>Von Uhr</span>
-                      <input
-                        type="number"
-                        min={0}
-                        max={23}
-                        value={fromHour}
-                        onChange={(e) => setFromHour(e.target.value)}
-                        className={input}
-                      />
-                    </label>
-                    <label className="block">
-                      <span className={label}>Bis Uhr</span>
-                      <input type="number" min={1} max={24} value={toHour} onChange={(e) => setToHour(e.target.value)} className={input} />
-                    </label>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="btn btn-pri !h-[50px] w-full active:scale-[.97] disabled:opacity-70"
-            >
-              {loading && <Spinner />}
-              Tarif speichern
-            </button>
-          </form>
-        )}
-
         {plans.length === 0 ? (
           <p className="rounded-[20px] bg-inset px-4 py-5 text-center text-[15px] text-muted-foreground">
-            Keine Tarife angelegt. Tippe auf &quot;Neuer Tarif&quot;, um einen Tarif zu definieren.
+            Noch keine Abos. Tippe auf «+ Abo».
           </p>
         ) : (
           <>
@@ -510,7 +289,7 @@ export function MembershipPlansManager({ clubSlug, initialPlans }: MembershipPla
               ))}
             </div>
             {visiblePlans.length === 0 && (
-              <p className="rounded-[20px] bg-inset px-4 py-5 text-center text-[15px] text-muted-foreground">Keine Tarife für diesen Filter.</p>
+              <p className="rounded-[20px] bg-inset px-4 py-5 text-center text-[15px] text-muted-foreground">Keine Abos für diesen Filter.</p>
             )}
             {groups.map(([cat, group]) => (
               <div key={cat ?? ""}>
@@ -547,14 +326,14 @@ export function MembershipPlansManager({ clubSlug, initialPlans }: MembershipPla
                           </p>
                         </div>
                         <div className="flex shrink-0 flex-col items-stretch gap-1.5">
-                          <button type="button" onClick={() => openForm(plan)} aria-label={`Tarif ${plan.name} bearbeiten`} className={secondary}>
+                          <button type="button" onClick={() => openForm(plan)} aria-label={`Abo ${plan.name} bearbeiten`} className={secondary}>
                             Bearbeiten
                           </button>
                           <button
                             type="button"
                             disabled={deletingId === plan.id}
                             onClick={() => handleDeletePlan(plan.id, plan.name)}
-                            aria-label={`Tarif ${plan.name} entfernen`}
+                            aria-label={`Abo ${plan.name} entfernen`}
                             className={secondary}
                           >
                             {deletingId === plan.id ? "…" : armedId === plan.id ? "Wirklich entfernen?" : "Entfernen"}
@@ -569,6 +348,156 @@ export function MembershipPlansManager({ clubSlug, initialPlans }: MembershipPla
           </>
         )}
       </div>
+      <Sheet open={showAddForm} onOpenChange={(o) => !o && setShowAddForm(false)} title={editingId ? "Abo bearbeiten" : "Neues Abo"}>
+        <form onSubmit={handleCreatePlan} className="flex flex-col gap-5">
+          <div role="status" className="rounded-[18px] bg-brand-tint px-4 py-3 text-[14px] leading-[1.4] text-brand-deep">
+            <b className="block text-[12px] uppercase tracking-[.06em]">So sieht es das Mitglied</b>
+            {summary}
+          </div>
+
+          <fieldset className="flex flex-col gap-3">
+            <legend className={group}>Grunddaten</legend>
+            <label className="block">
+              <span className={label}>Name <span className="text-bad">*</span></span>
+              <input id="planName" placeholder="z. B. Studierende" value={name} onChange={(e) => setName(e.target.value)} required className={input} />
+            </label>
+            <label className="block">
+              <span className={label}>Preis pro Saison <span className="text-bad">*</span></span>
+              <span className="flex items-center gap-2.5">
+                <input id="price" type="number" min={0} step={1} inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} required className={`${input} max-w-[120px]`} />
+                <select id="currency" aria-label="Währung" value={currency} onChange={(e) => setCurrency(e.target.value)} className={`${input} max-w-[96px]`}>
+                  <option value="CHF">CHF</option>
+                  <option value="EUR">EUR</option>
+                </select>
+              </span>
+            </label>
+            <label className="block">
+              <span className={label}>Beschreibung</span>
+              <input id="planDesc" placeholder="z. B. Mit gültigem Studentenausweis" value={description} onChange={(e) => setDescription(e.target.value)} className={input} />
+            </label>
+          </fieldset>
+
+          <fieldset className="flex flex-col gap-3">
+            <legend className={group}>Für wen</legend>
+            <div>
+              <span className={label}>Kategorie</span>
+              <div className="mt-1.5 flex flex-wrap gap-2">
+                {CATEGORIES.map((c) => (
+                  <button key={c} type="button" aria-pressed={category === c} onClick={() => { setOtherCat(false); setCategory(category === c ? "" : c); }} className="chip">
+                    {c}
+                  </button>
+                ))}
+                <button type="button" aria-pressed={otherCat} onClick={() => { setOtherCat(true); setCategory(""); }} className="chip">
+                  Andere…
+                </button>
+              </div>
+              {otherCat && <input aria-label="Andere Kategorie" maxLength={40} placeholder="Name der Kategorie" value={category} onChange={(e) => setCategory(e.target.value)} className={input} />}
+            </div>
+            <div>
+              <span className={label}>Alter</span>
+              <span className="mt-1.5 flex items-center gap-2.5 text-[15px] text-muted-foreground">
+                <input type="number" min={0} max={120} aria-label="Alter von" placeholder="–" value={ageMin} onChange={(e) => setAgeMin(e.target.value)} className={`${input} mt-0 max-w-[90px]`} />
+                bis
+                <input type="number" min={0} max={120} aria-label="Alter bis" placeholder="–" value={ageMax} onChange={(e) => setAgeMax(e.target.value)} className={`${input} mt-0 max-w-[90px]`} />
+                Jahre
+              </span>
+              {ageWrong && <span className="mt-1.5 block text-[13px] font-semibold text-bad">«Von» muss kleiner sein als «bis».</span>}
+              <span className="mt-1.5 block text-[13px] text-muted-foreground">Leer lassen = jedes Alter.</span>
+            </div>
+            <button type="button" aria-pressed={proofRequired} onClick={() => setProofRequired(!proofRequired)} className={toggleRow}>
+              <span className="flex-1"><b className="block text-[16px]">Ausweis nötig</b><small className="block text-[13px] text-muted-foreground">Mitglied muss einen Nachweis zeigen</small></span>
+              <SwitchKnob on={proofRequired} />
+            </button>
+            <button type="button" aria-pressed={couple} onClick={() => setCouple(!couple)} className={toggleRow}>
+              <span className="flex-1"><b className="block text-[16px]">Für 2 Personen</b><small className="block text-[13px] text-muted-foreground">Paar-Abo</small></span>
+              <SwitchKnob on={couple} />
+            </button>
+          </fieldset>
+
+          <fieldset className="flex flex-col gap-3">
+            <legend className={group}>Buchen</legend>
+            <div>
+              <span className={label}>Sportart</span>
+              <div className="mt-1.5 flex gap-2">
+                {(["TENNIS", "PADEL"] as const).map((sp) => {
+                  const on = sports.includes(sp);
+                  return (
+                    // at least one sport stays selected
+                    <button key={sp} type="button" aria-pressed={on} onClick={() => setSports(on ? (sports.length > 1 ? sports.filter((x) => x !== sp) : sports) : [...sports, sp])} className="chip">
+                      {SPORT_LABEL[sp]}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            {(
+              [
+                ["bookingWindowDays", "Wie weit im Voraus buchbar", bookingWindowDays, setBookingWindowDays, "Tage", 1, 30, ""],
+                ["simultaneousBookingLimit", "Offene Buchungen gleichzeitig", simultaneousBookingLimit, setSimultaneousBookingLimit, "Buchungen", 1, 10, "Eine neue Buchung geht erst, wenn eine gespielt oder storniert ist."],
+                ["guestsPerWeek", "Gäste pro Woche", guestsPerWeek, setGuestsPerWeek, "Gäste", 0, 20, "Leer lassen = beliebig viele."],
+              ] as const
+            ).map(([id, text, value, set, u, min, max, help]) => (
+              <label key={id} className="block">
+                <span className={label}>{text}</span>
+                <span className="flex items-center gap-2.5">
+                  <input id={id} type="number" inputMode="numeric" min={min} max={max} placeholder={id === "guestsPerWeek" ? "∞" : undefined} value={value} onChange={(e) => set(e.target.value)} className={`${input} max-w-[90px]`} />
+                  <span className="mt-1.5 text-[15px] text-muted-foreground">{u}</span>
+                </span>
+                {help && <span className="mt-1.5 block text-[13px] text-muted-foreground">{help}</span>}
+              </label>
+            ))}
+            <div>
+              <span className={label}>Spieldauer</span>
+              <div className="mt-1.5 flex gap-2">
+                {(
+                  [
+                    ["60 Min.", allow60, setAllow60, allow90],
+                    ["90 Min.", allow90, setAllow90, allow60],
+                  ] as const
+                ).map(([text, on, set, other]) => (
+                  // one duration always stays on
+                  <button key={text} type="button" aria-pressed={on} onClick={() => (on && !other ? null : set(!on))} className="chip">
+                    {text}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </fieldset>
+
+          <fieldset className="flex flex-col gap-3">
+            <legend className={group}>Wann spielbar</legend>
+            <Segmented label="Wann spielbar" options={[["always", "Immer"], ["window", "Nur bestimmte Zeiten"]] as const} value={windowOn ? "window" : "always"} onChange={(v) => setWindowOn(v === "window")} />
+            {windowOn && (
+              <div className="flex flex-col gap-2">
+                <div className="flex gap-1">
+                  {[1, 2, 3, 4, 5, 6, 0].map((d) => {
+                    const on = windowDays.includes(d);
+                    return (
+                      <button key={d} type="button" aria-pressed={on} onClick={() => setWindowDays(on ? windowDays.filter((x) => x !== d) : [...windowDays, d])} className={`h-10 flex-1 rounded-[10px] text-[13px] font-bold ${on ? "bg-clay text-white" : "bg-inset"}`}>
+                        {WD[d]}
+                      </button>
+                    );
+                  })}
+                </div>
+                <span className="flex items-center gap-2.5 text-[15px] text-muted-foreground">
+                  von
+                  <input type="number" min={0} max={23} aria-label="Von Uhr" value={fromHour} onChange={(e) => setFromHour(e.target.value)} className={`${input} mt-0 max-w-[80px]`} />
+                  bis
+                  <input type="number" min={1} max={24} aria-label="Bis Uhr" value={toHour} onChange={(e) => setToHour(e.target.value)} className={`${input} mt-0 max-w-[80px]`} />
+                  Uhr
+                </span>
+              </div>
+            )}
+          </fieldset>
+
+          <div className="sticky bottom-0 -mx-1 bg-card px-1 pb-1 pt-2">
+            <button type="submit" disabled={loading || ageWrong} className="btn btn-pri !h-[50px] w-full active:scale-[.97] disabled:opacity-70">
+              {loading && <Spinner />}
+              Speichern
+            </button>
+          </div>
+        </form>
+      </Sheet>
     </section>
   );
 }
