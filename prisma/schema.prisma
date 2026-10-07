@@ -19,36 +19,38 @@ enum UserStatus {
 }
 
 model User {
-  id            String      @id @default(cuid())
-  email         String      @unique
-  passwordHash  String?
-  firstName     String
-  lastName      String
-  phone         String?
-  birthDate     DateTime?   @db.Date
-  gender        String?     // "M" | "F" | "X", from the member import
-  locale        String      @default("de")
-  timezone      String      @default("Europe/Zurich")
-  status        UserStatus  @default(ACTIVE)
-  image         String?
-  stripeCustomerId String?  @unique
-  emailVerified DateTime?
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-  deletedAt     DateTime?
+  id               String     @id @default(cuid())
+  email            String     @unique
+  passwordHash     String?
+  firstName        String
+  lastName         String
+  phone            String?
+  birthDate        DateTime?  @db.Date
+  gender           String? // "M" | "F" | "X", from the member import
+  locale           String     @default("de")
+  timezone         String     @default("Europe/Zurich")
+  status           UserStatus @default(ACTIVE)
+  image            String?
+  stripeCustomerId String?    @unique
+  emailVerified    DateTime?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+  deletedAt        DateTime?
 
   // Relations
-  tenantUsers          TenantUser[]
-  organizedBookings    Booking[]            @relation("BookingOrganizer")
-  participantBookings  BookingParticipant[]
-  memberships          Membership[]
-  auditLogs            AuditLog[]           @relation("ActorAuditLogs")
-  courtBlocksCreated   CourtBlock[]         @relation("BlockCreatedBy")
+  tenantUsers         TenantUser[]
+  organizedBookings   Booking[]            @relation("BookingOrganizer")
+  participantBookings BookingParticipant[]
+  memberships         Membership[]
+  auditLogs           AuditLog[]           @relation("ActorAuditLogs")
+  courtBlocksCreated  CourtBlock[]         @relation("BlockCreatedBy")
 
   // NextAuth
   accounts      Account[]
   sessions      Session[]
   wallets       UserWallet[]
+  sponsorsOwned Sponsor[]     @relation("SponsorOwner")
+  sponsorTasks  SponsorTask[]
 
   @@map("users")
 }
@@ -126,28 +128,31 @@ model Tenant {
   updatedAt    DateTime     @updatedAt
 
   // Relations
-  tenantUsers     TenantUser[]
-  locations       Location[]
-  courts          Court[]
-  membershipPlans MembershipPlan[]
-  memberships     Membership[]
-  bookings        Booking[]
-  courtBlocks     CourtBlock[]
-  auditLogs       AuditLog[]
-  wallets         UserWallet[]
+  tenantUsers      TenantUser[]
+  locations        Location[]
+  courts           Court[]
+  membershipPlans  MembershipPlan[]
+  memberships      Membership[]
+  bookings         Booking[]
+  courtBlocks      CourtBlock[]
+  auditLogs        AuditLog[]
+  wallets          UserWallet[]
+  sponsors         Sponsor[]
+  sponsorItems     SponsorItem[]
+  sponsorCampaigns SponsorCampaign[]
 
   @@map("tenants")
 }
 
 model TenantUser {
-  id        String     @id @default(cuid())
-  tenantId  String
-  userId    String
-  role      TenantRole @default(MEMBER)
-  status    String     @default("ACTIVE")
-  favoriteUserIds String[] @default([])
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
+  id              String     @id @default(cuid())
+  tenantId        String
+  userId          String
+  role            TenantRole @default(MEMBER)
+  status          String     @default("ACTIVE")
+  favoriteUserIds String[]   @default([])
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -184,10 +189,10 @@ enum SportType {
 }
 
 enum CourtSurface {
-  CLAY             // Sand
-  HARD             // Hartplatz
+  CLAY // Sand
+  HARD // Hartplatz
   ARTIFICIAL_GRASS // Kunstrasen
-  CARPET           // Teppich/Granulat
+  CARPET // Teppich/Granulat
 }
 
 enum CourtStatus {
@@ -225,22 +230,22 @@ model Court {
 // ==========================================
 
 model MembershipPlan {
-  id                        String   @id @default(cuid())
-  tenantId                  String
-  name                      String
-  description               String?
-  price                     Decimal  @default(0.0) @db.Decimal(10, 2)
-  currency                  String   @default("CHF")
-  bookingWindowDays         Int      @default(7)
-  simultaneousBookingLimit  Int      @default(4)
-  dailyBookingLimit         Int      @default(1)
-  weeklyBookingLimit        Int      @default(4)
-  monthlyBookingLimit       Int      @default(16)
-  allowedDurations          Int[]    @default([60, 90])
-  rulesJson                 Json?
-  status                    String   @default("ACTIVE")
-  createdAt                 DateTime @default(now())
-  updatedAt                 DateTime @updatedAt
+  id                       String   @id @default(cuid())
+  tenantId                 String
+  name                     String
+  description              String?
+  price                    Decimal  @default(0.0) @db.Decimal(10, 2)
+  currency                 String   @default("CHF")
+  bookingWindowDays        Int      @default(7)
+  simultaneousBookingLimit Int      @default(4)
+  dailyBookingLimit        Int      @default(1)
+  weeklyBookingLimit       Int      @default(4)
+  monthlyBookingLimit      Int      @default(16)
+  allowedDurations         Int[]    @default([60, 90])
+  rulesJson                Json?
+  status                   String   @default("ACTIVE")
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
 
   tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   memberships Membership[]
@@ -256,18 +261,18 @@ enum MembershipStatus {
 }
 
 model Membership {
-  id               String           @id @default(cuid())
-  tenantId         String
-  userId           String
-  membershipPlanId String
-  startsAt         DateTime
-  endsAt           DateTime?
-  status           MembershipStatus @default(ACTIVE)
-  stripeSubscriptionId String?      @unique
-  pricePaid        Decimal?         @db.Decimal(10, 2) // snapshot at activation; plan.price can change later
-  paidAt           DateTime?
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime         @updatedAt
+  id                   String           @id @default(cuid())
+  tenantId             String
+  userId               String
+  membershipPlanId     String
+  startsAt             DateTime
+  endsAt               DateTime?
+  status               MembershipStatus @default(ACTIVE)
+  stripeSubscriptionId String?          @unique
+  pricePaid            Decimal?         @db.Decimal(10, 2) // snapshot at activation; plan.price can change later
+  paidAt               DateTime?
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
 
   tenant Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   user   User           @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -302,30 +307,30 @@ enum BookingType {
 }
 
 model Booking {
-  id             String        @id @default(cuid())
-  tenantId       String
-  courtId        String
-  organizerId    String
-  startsAt       DateTime
-  endsAt         DateTime
-  status         BookingStatus @default(CONFIRMED)
-  bookingType    BookingType   @default(MEMBER)
-  paymentStatus  PaymentStatus @default(UNPAID)
-  paymentMethod  PaymentMethod?
-  stripeSessionId String?      @unique
-  price          Decimal       @default(0.0) @db.Decimal(10, 2)
-  totalCost      Decimal       @default(0.0) @db.Decimal(10, 2)
-  hasBallMachine Boolean       @default(false)
-  hasLighting    Boolean       @default(false)
-  currency       String        @default("CHF")
-  notes          String?
-  idempotencyKey String?       @unique
-  cancelledAt    DateTime?
-  refundedAt     DateTime? // Stripe refund went through (accounting export: negative row)
-  cancelledById  String?
-  createdById    String
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  id              String         @id @default(cuid())
+  tenantId        String
+  courtId         String
+  organizerId     String
+  startsAt        DateTime
+  endsAt          DateTime
+  status          BookingStatus  @default(CONFIRMED)
+  bookingType     BookingType    @default(MEMBER)
+  paymentStatus   PaymentStatus  @default(UNPAID)
+  paymentMethod   PaymentMethod?
+  stripeSessionId String?        @unique
+  price           Decimal        @default(0.0) @db.Decimal(10, 2)
+  totalCost       Decimal        @default(0.0) @db.Decimal(10, 2)
+  hasBallMachine  Boolean        @default(false)
+  hasLighting     Boolean        @default(false)
+  currency        String         @default("CHF")
+  notes           String?
+  idempotencyKey  String?        @unique
+  cancelledAt     DateTime?
+  refundedAt      DateTime? // Stripe refund went through (accounting export: negative row)
+  cancelledById   String?
+  createdById     String
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
 
   tenant       Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   court        Court                @relation(fields: [courtId], references: [id], onDelete: Cascade)
@@ -468,17 +473,216 @@ enum WalletTransactionType {
 }
 
 model WalletTransaction {
-  id          String                @id @default(cuid())
-  walletId    String
-  amount      Decimal               @db.Decimal(10, 2)
-  type        WalletTransactionType
-  description String
-  bookingId   String?
+  id              String                @id @default(cuid())
+  walletId        String
+  amount          Decimal               @db.Decimal(10, 2)
+  type            WalletTransactionType
+  description     String
+  bookingId       String?
   stripeSessionId String? // wallet top-up; crediting is idempotent via an advisory lock in src/lib/wallet.ts
-  createdAt   DateTime              @default(now())
+  createdAt       DateTime              @default(now())
 
   wallet UserWallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
 
   @@map("wallet_transactions")
 }
 
+// ==========================================
+// 9. Sponsoring
+// ==========================================
+
+model Sponsor {
+  id              String    @id @default(cuid())
+  tenantId        String
+  name            String
+  street          String?
+  zip             String?
+  city            String?
+  website         String?
+  notes           String?
+  ownerId         String? // responsible board member
+  token           String    @unique // personal portal link /sponsor/<token>, no login
+  logo            Bytes?
+  logoType        String?
+  logoConfirmedAt DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  tenant       Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  owner        User?                @relation("SponsorOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  contacts     SponsorContact[]
+  contracts    SponsorContract[]
+  requests     SponsorRequest[]
+  invoices     SponsorInvoice[]
+  deliverables SponsorDeliverable[]
+  tasks        SponsorTask[]
+
+  @@index([tenantId])
+  @@map("sponsors")
+}
+
+model SponsorContact {
+  id        String  @id @default(cuid())
+  sponsorId String
+  name      String
+  email     String?
+  phone     String?
+  role      String?
+  isPrimary Boolean @default(false) // gets the campaign mails and invoices
+
+  sponsor Sponsor @relation(fields: [sponsorId], references: [id], onDelete: Cascade)
+
+  @@map("sponsor_contacts")
+}
+
+/// Catalog entry: banner, table set, main sponsor, or an exclusive object (capacity 1).
+model SponsorItem {
+  id           String   @id @default(cuid())
+  tenantId     String
+  name         String
+  description  String?
+  price        Decimal  @db.Decimal(10, 2) // per year
+  capacity     Int? // null = unlimited
+  badge        String? // e.g. "Bestseller"
+  deliverables String[] @default([]) // what the club owes per year, copied to the sponsor's checklist
+  image        Bytes?
+  imageType    String?
+  sortOrder    Int      @default(0)
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  tenant Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  lines  SponsorContractLine[]
+
+  @@index([tenantId])
+  @@map("sponsor_items")
+}
+
+/// Covers seasons startYear .. startYear+years-1; each year is billed separately without a new request.
+model SponsorContract {
+  id          String    @id @default(cuid())
+  sponsorId   String
+  startYear   Int
+  years       Int // 1, 2 or 3
+  discountPct Int // 0 / 10 / 15, fixed at signing
+  source      String    @default("admin") // portal | admin | import
+  cancelledAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  sponsor  Sponsor               @relation(fields: [sponsorId], references: [id], onDelete: Cascade)
+  lines    SponsorContractLine[]
+  invoices SponsorInvoice[]
+
+  @@index([sponsorId])
+  @@map("sponsor_contracts")
+}
+
+model SponsorContractLine {
+  id              String    @id @default(cuid())
+  contractId      String
+  itemId          String
+  quantity        Int       @default(1)
+  unitPrice       Decimal   @db.Decimal(10, 2) // catalog price at signing
+  fromYear        Int? // bought later (add-on): billed from this year until the contract ends; null = from startYear
+  pendingUntil    DateTime? // Stripe checkout running: place reserved until then, not yet confirmed or billed
+  stripeSessionId String?
+
+  contract SponsorContract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  item     SponsorItem     @relation(fields: [itemId], references: [id], onDelete: Restrict)
+
+  @@map("sponsor_contract_lines")
+}
+
+model SponsorCampaign {
+  id           String   @id @default(cuid())
+  tenantId     String
+  year         Int
+  startedAt    DateTime @default(now())
+  reminderDays Int      @default(14) // after the first mail, again after each reminder (max 2)
+  taskDays     Int      @default(35) // no answer by then → task for the board member
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, year])
+  @@map("sponsor_campaigns")
+}
+
+enum SponsorRequestStatus {
+  REQUESTED
+  REMINDED
+  CONFIRMED
+  DECLINED
+}
+
+model SponsorRequest {
+  id          String               @id @default(cuid())
+  sponsorId   String
+  year        Int
+  status      SponsorRequestStatus @default(REQUESTED)
+  sentAt      DateTime? // null = queued, the cron mails it
+  remindedAt  DateTime?
+  reminders   Int                  @default(0)
+  respondedAt DateTime?
+  createdAt   DateTime             @default(now())
+
+  sponsor Sponsor @relation(fields: [sponsorId], references: [id], onDelete: Cascade)
+
+  @@unique([sponsorId, year])
+  @@map("sponsor_requests")
+}
+
+model SponsorInvoice {
+  id              String    @id @default(cuid())
+  tenantId        String
+  number          Int // per club, ascending
+  sponsorId       String
+  contractId      String
+  year            Int
+  amount          Decimal   @db.Decimal(10, 2)
+  issuedAt        DateTime  @default(now())
+  dueAt           DateTime
+  paidAt          DateTime?
+  dunningLevel    Int       @default(0)
+  lines           Json? // snapshot [{lineId, name, quantity, unitPrice}] of what this invoice bills
+  discountPct     Int?
+  paidVia         String? // stripe | manual
+  stripeSessionId String?   @unique
+  dunnedAt        DateTime?
+  sentAt          DateTime?
+
+  sponsor  Sponsor         @relation(fields: [sponsorId], references: [id], onDelete: Cascade)
+  contract SponsorContract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, number])
+  @@index([contractId, year]) // several per year: the yearly invoice plus add-on purchases
+  @@map("sponsor_invoices")
+}
+
+/// What the club owes the sponsor in a year (banner, logo on table set, website, apéro invitation).
+model SponsorDeliverable {
+  id        String    @id @default(cuid())
+  sponsorId String
+  year      Int
+  label     String
+  doneAt    DateTime?
+
+  sponsor Sponsor @relation(fields: [sponsorId], references: [id], onDelete: Cascade)
+
+  @@unique([sponsorId, year, label])
+  @@map("sponsor_deliverables")
+}
+
+model SponsorTask {
+  id         String    @id @default(cuid())
+  sponsorId  String
+  assigneeId String?
+  title      String
+  createdAt  DateTime  @default(now())
+  doneAt     DateTime?
+
+  sponsor  Sponsor @relation(fields: [sponsorId], references: [id], onDelete: Cascade)
+  assignee User?   @relation(fields: [assigneeId], references: [id], onDelete: SetNull)
+
+  @@index([sponsorId])
+  @@map("sponsor_tasks")
+}

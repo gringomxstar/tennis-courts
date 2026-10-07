@@ -82,7 +82,7 @@ export function parseGender(v: string): "M" | "F" | "X" | undefined {
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /** Splits one line on `sep`, honouring "double quoted" fields with "" escapes. */
-function splitLine(line: string, sep: string): string[] {
+export function splitLine(line: string, sep: string): string[] {
   const out: string[] = [];
   let cur = "";
   let quoted = false;

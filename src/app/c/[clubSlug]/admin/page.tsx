@@ -8,6 +8,7 @@ const I = {
   blocks: "M4.9 4.9l14.2 14.2M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z",
   members: "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8",
   stats: "M4 20V10M10 20V4M16 20v-7M22 20H2",
+  sponsoring: "M12 15a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM8.2 13.9 7 23l5-3 5 3-1.2-9.1",
   settings: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1",
 };
 
@@ -16,19 +17,21 @@ export default async function AdminHubPage({ params }: { params: Promise<{ clubS
   const { tenant } = await requireTenantAdmin(clubSlug);
   // four cheap counts; "today" is the server's day, close enough for a summary line
   const day = new Date().setHours(0, 0, 0, 0);
-  const [members, todays, blocks, unpaid, courts] = process.env.DATABASE_URL
+  const [members, todays, blocks, unpaid, courts, sponsors] = process.env.DATABASE_URL
     ? await Promise.all([
         prisma.tenantUser.count({ where: { tenantId: tenant.id } }),
         prisma.booking.count({ where: { tenantId: tenant.id, status: { in: ["CONFIRMED", "COMPLETED"] }, startsAt: { gte: new Date(day), lt: new Date(day + 86_400_000) } } }),
         prisma.courtBlock.count({ where: { tenantId: tenant.id, endsAt: { gt: new Date() } } }),
         prisma.booking.count({ where: { tenantId: tenant.id, paymentMethod: { in: ["ON_SITE", "INVOICE"] }, paymentStatus: "UNPAID", status: { in: ["CONFIRMED", "COMPLETED"] } } }),
         prisma.court.count({ where: { tenantId: tenant.id, status: "ACTIVE" } }),
+        prisma.sponsor.count({ where: { tenantId: tenant.id } }),
       ])
-    : [0, 0, 0, 0, 0];
+    : [0, 0, 0, 0, 0, 0];
   const tiles: [keyof typeof I, string, string | number, string, boolean?][] = [
     ["today", "Heute", todays, todays === 1 ? "Buchung heute" : "Buchungen heute", true],
     ["blocks", "Sperren", blocks, "aktiv oder geplant"],
     ["members", "Mitglieder", members, unpaid ? `${unpaid} Zahlungen offen` : "alle bezahlt"],
+    ["sponsoring", "Sponsoring", sponsors, "Kampagne, Verträge, Rechnungen"],
     ["stats", "Statistik", new Date().getFullYear(), "Kasse, Auslastung, Export"],
     ["settings", "Einstellungen", courts, "Plätze, Regeln, Tarife, Branding"],
   ];

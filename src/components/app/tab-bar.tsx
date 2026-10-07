@@ -62,7 +62,7 @@ export function TabBar({
       ];
   const inAdmin = canAdmin && !anon && (path === `${base}/admin` || path.startsWith(`${base}/admin/`));
   const pills: [string, string][] = inAdmin
-    ? [["today", "Heute"], ["members", "Mitglieder"], ["blocks", "Sperren"], ["stats", "Statistik"], ["settings", "Einstellungen"]].map(([k, l]) => [`${base}/admin/${k}`, l])
+    ? [["today", "Heute"], ["members", "Mitglieder"], ["blocks", "Sperren"], ["sponsoring", "Sponsoring"], ["stats", "Statistik"], ["settings", "Einstellungen"]].map(([k, l]) => [`${base}/admin/${k}`, l])
     : tabs.filter(([href]) => href !== `${base}/admin`).map(([href, l]) => [href, l]);
   // prefix match: /admin/* lights Verwaltung
   const activeOf = (hrefs: string[]) =>
