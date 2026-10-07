@@ -224,7 +224,7 @@ function NewSponsorSheet({ open, onClose, slug, board, meId }: { open: boolean; 
         <label className={fieldLabel}>Firma<input name="name" required maxLength={120} className={field} /></label>
         <label className={fieldLabel}>Kontaktperson<input name="contact" maxLength={120} className={field} /></label>
         <label className={fieldLabel}>E-Mail<input name="email" type="email" maxLength={200} className={field} /></label>
-        <label className={fieldLabel}>Verantwortlich im Vorstand
+        <label className={fieldLabel}>Zuständig bei uns
           <select name="ownerId" defaultValue={board.some((b) => b.id === meId) ? meId : ""} className={field}>
             <option value="">Niemand</option>
             {board.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}

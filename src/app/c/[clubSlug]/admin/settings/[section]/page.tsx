@@ -34,7 +34,7 @@ export default async function SettingsSectionPage({ params }: { params: Promise<
   return (
     <>
       <div className="px-5 pt-3 @min-[640px]:px-0 @min-[640px]:pt-0">
-        <Link href={`/c/${tenant.slug}/admin/settings`} className="inline-flex items-center gap-1 text-[15px] font-semibold text-clay-text"><svg aria-hidden width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>Einstellungen</Link>
+        <Link href={`/c/${tenant.slug}/admin/settings`} className="inline-flex items-center gap-1 text-[15px] font-semibold text-clay-text @min-[1024px]:hidden"><svg aria-hidden width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>Einstellungen</Link>
         <h1 className="text-[28px] font-bold tracking-[-.03em]">{meta[0]}</h1>
         <div className="mt-0.5 text-[15px] text-muted-foreground">{meta[1]}</div>
       </div>

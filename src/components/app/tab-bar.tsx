@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
 import { Avatar } from "@/components/app/avatar";
 import { cn } from "@/lib/utils";
@@ -14,6 +15,18 @@ const P = {
   ticket: "M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2zM13 5v2M13 17v2M13 11v2",
   gear: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z",
   search: "M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM20 20l-3.5-3.5",
+};
+
+const onFold = (cb: () => void) => {
+  window.addEventListener("nav-mini", cb);
+  return () => window.removeEventListener("nav-mini", cb);
+};
+const readMini = () => {
+  try {
+    return localStorage.getItem("nav-mini") === "1";
+  } catch {
+    return false;
+  }
 };
 
 const Icon = ({ d, size = 20 }: { d: string; size?: number }) => (
@@ -58,7 +71,7 @@ export function TabBar({
         [`${base}/calendar`, "Kalender", P.cal],
         [`${base}/bookings`, "Buchungen", P.book],
         [`${base}/profile`, "Profil", P.user],
-        ...(canAdmin ? [[`${base}/admin`, "Verwaltung", P.shield] as [string, string, string]] : []),
+        ...(canAdmin ? [[`${base}/admin`, "Verwaltung", P.gear] as [string, string, string]] : []),
       ];
   const inAdmin = canAdmin && !anon && (path === `${base}/admin` || path.startsWith(`${base}/admin/`));
   const pills: [string, string][] = inAdmin
@@ -71,6 +84,15 @@ export function TabBar({
   const activePill = activeOf(pills.map(([h]) => h));
   const main = tabs.filter(([href]) => href !== `${base}/admin`);
   const admin = tabs.find(([href]) => href === `${base}/admin`);
+  // from 1100 the rail shows text (and the admin sections); the user can fold it back to icons, remembered per browser
+  const mini = useSyncExternalStore(onFold, readMini, () => false);
+  const fold = () => {
+    try {
+      localStorage.setItem("nav-mini", mini ? "0" : "1");
+    } catch {}
+    window.dispatchEvent(new Event("nav-mini"));
+  };
+  const wide = mini ? "hidden" : "hidden @min-[1100px]:inline";
   const railLink = ([href, label, d]: [string, string, string]) => (
     <Link
       key={href}
@@ -79,30 +101,48 @@ export function TabBar({
       aria-label={label}
       aria-current={href === active ? "page" : undefined}
       className={cn(
-        "flex h-11 w-11 items-center justify-center rounded-full text-ink-2",
+        "flex h-11 w-11 shrink-0 items-center justify-center gap-3 rounded-full text-ink-2",
+        !mini && "@min-[1100px]:w-full @min-[1100px]:justify-start @min-[1100px]:rounded-[14px] @min-[1100px]:px-3.5 @min-[1100px]:font-semibold",
         href === active && "bg-brand-deep text-white shadow-[0_8px_18px_-8px_rgba(15,92,79,.6)]"
       )}
     >
       <Icon d={d} />
+      <span className={wide}>{label}</span>
     </Link>
   );
 
   return (
-    <div className="@min-[640px]:grid @min-[640px]:grid-cols-[72px_minmax(0,1fr)] @min-[640px]:gap-4 @min-[640px]:p-4">
-      <nav aria-label="Navigation" className="card sticky top-4 hidden h-[calc(100dvh-32px)] flex-col items-center gap-2.5 self-start py-3.5 @min-[640px]:flex">
-        <Link href={base} aria-label={clubName} className="mb-3.5 flex h-11 w-11 items-center justify-center overflow-hidden rounded-[14px] bg-brand-deep text-[13px] font-extrabold tracking-[-.04em] text-white">
-          {/* eslint-disable-next-line @next/next/no-img-element -- data URL */}
-          {logoUrl ? <img src={logoUrl} alt="" className="h-full w-full bg-white object-contain" /> : clubName.replace(/[^A-Z]/g, "").slice(0, 2) || "TC"}
+    <div className={cn("@min-[640px]:grid @min-[640px]:grid-cols-[72px_minmax(0,1fr)] @min-[640px]:gap-4 @min-[640px]:p-4", !mini && "@min-[1100px]:grid-cols-[232px_minmax(0,1fr)]")}>
+      <nav aria-label="Navigation" className={cn("card sticky top-4 hidden h-[calc(100dvh-32px)] flex-col items-center gap-1.5 self-start overflow-y-auto py-3.5 @min-[640px]:flex", !mini && "@min-[1100px]:items-stretch @min-[1100px]:px-3")}>
+        <Link href={base} aria-label={clubName} className="mb-3.5 flex shrink-0 items-center gap-3">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-[14px] bg-brand-deep text-[13px] font-extrabold tracking-[-.04em] text-white">
+            {/* eslint-disable-next-line @next/next/no-img-element -- data URL */}
+            {logoUrl ? <img src={logoUrl} alt="" className="h-full w-full bg-white object-contain" /> : clubName.replace(/[^A-Z]/g, "").slice(0, 2) || "TC"}
+          </span>
+          <b className={cn(wide, "truncate text-[15px]")}>{clubName}</b>
         </Link>
         {main.map(railLink)}
         {admin && (
           <>
-            <div className="my-1.5 h-px w-7 bg-line" />
+            <div className="my-1.5 h-px w-7 shrink-0 self-center bg-line" />
             {railLink(admin)}
+            {inAdmin &&
+              pills.slice(1).map(([href, label]) => (
+                <Link
+                  key={href}
+                  href={href}
+                  aria-current={href === activePill ? "page" : undefined}
+                  className={cn(wide, "shrink-0 rounded-[12px] py-2 pl-12 pr-3 text-[14px] font-medium text-ink-2 hover:bg-inset", href === activePill && "bg-brand-tint font-bold text-brand-deep")}
+                >
+                  {label}
+                </Link>
+              ))}
           </>
         )}
-        <div className="mt-auto flex flex-col items-center gap-2.5">
-          {admin && railLink([`${base}/admin/settings`, "Einstellungen", P.gear])}
+        <div className={cn("mt-auto flex flex-col items-center gap-2.5 pt-2", !mini && "@min-[1100px]:items-stretch")}>
+          <button type="button" onClick={fold} title={mini ? "Menü aufklappen" : "Menü einklappen"} className="hidden h-10 shrink-0 items-center justify-center gap-2 rounded-[14px] bg-inset px-3 text-[14px] font-semibold text-ink-2 @min-[1100px]:flex">
+            {mini ? "»" : "« Einklappen"}
+          </button>
           {ini && (
             <Link href={`${base}/profile`} aria-label="Profil">
               <Avatar ini={ini} className="h-9 w-9 text-[12px]" />
@@ -113,7 +153,7 @@ export function TabBar({
 
       <div className="min-w-0">
         <header className="hidden items-center gap-2.5 pb-4 @min-[640px]:flex">
-          <nav aria-label={inAdmin ? "Verwaltung" : "Bereiche"} className="no-scrollbar inline-flex min-w-0 gap-1 overflow-x-auto rounded-full bg-card p-1 shadow-card">
+          <nav aria-label={inAdmin ? "Verwaltung" : "Bereiche"} className={cn("no-scrollbar inline-flex min-w-0 gap-1 overflow-x-auto rounded-full bg-card p-1 shadow-card", !mini && "@min-[1100px]:hidden")}>
             {pills.map(([href, label]) => (
               <Link
                 key={href}

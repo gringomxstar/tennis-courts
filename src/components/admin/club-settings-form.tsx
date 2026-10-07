@@ -143,6 +143,7 @@ export function ClubSettingsForm({
   );
 
   const [loading, setLoading] = useState(false);
+  const [state, setState] = useState<"clean" | "dirty" | "saved">("clean");
   const [feedback, setFeedback] = useState<{
     type: "success" | "error";
     message: string;
@@ -186,6 +187,7 @@ export function ClubSettingsForm({
 
       toast(res.success ? "Einstellungen gespeichert" : res.error || "Speichern fehlgeschlagen.");
       if (res.success) {
+        setState("saved");
         setFeedback({
           type: "success",
           message: "Club-Einstellungen und Buchungsregeln erfolgreich gespeichert!",
@@ -208,7 +210,13 @@ export function ClubSettingsForm({
 
   return (
     <section className="card p-5">
-      <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+      <form
+        onSubmit={handleSubmit}
+        // any edit (inputs, or the toggle/chip buttons) marks the form as unsaved
+        onChange={() => setState("dirty")}
+        onClickCapture={(e) => (e.target as HTMLElement).closest("button[type=button]") && setState("dirty")}
+        className="flex flex-col gap-5"
+      >
         {feedback && (
           <div
             role="status"
@@ -551,7 +559,12 @@ export function ClubSettingsForm({
         )}
 
         {/* stays in view above the floating tab bar while scrolling through the long form */}
-        <div className="sticky bottom-[calc(max(10px,env(safe-area-inset-bottom))+84px)] z-10 @min-[640px]:bottom-4">
+        <div className="sticky bottom-[calc(max(10px,env(safe-area-inset-bottom))+84px)] z-10 flex flex-col gap-1.5 @min-[640px]:bottom-4">
+          {state !== "clean" && (
+            <span role="status" className={`self-center rounded-full bg-card px-3 py-1 text-[13px] font-semibold shadow-card ${state === "dirty" ? "text-warn" : "text-ok"}`}>
+              {state === "dirty" ? "Nicht gespeicherte Änderungen" : "Gespeichert ✓"}
+            </span>
+          )}
           <button
             type="submit"
             disabled={loading}
