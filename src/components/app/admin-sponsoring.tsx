@@ -47,7 +47,7 @@ export function SponsorNav({ slug, active, year }: { slug: string; active: "" | 
 }
 
 export function AdminSponsoring(p: {
-  slug: string; year: number; meId: string; rows: SponsorRow[];
+  slug: string; year: number; meId: string; sample: boolean; rows: SponsorRow[];
   totals: { committed: number; billed: number; paid: number; renewal: number | null; prevCount: number };
   campaign: { startedAt: string; reminderDays: number; taskDays: number } | null;
   board: { id: string; name: string }[]; tasks: Task[];
@@ -192,7 +192,7 @@ export function AdminSponsoring(p: {
 
       <NewSponsorSheet open={sheet === "new"} onClose={() => setSheet("")} slug={p.slug} board={p.board} meId={p.meId} />
       <ImportSheet open={sheet === "import"} onClose={() => setSheet("")} slug={p.slug} year={p.year - 1} />
-      <CampaignSheet open={sheet === "campaign"} onClose={() => setSheet("")} slug={p.slug} year={p.year} campaign={p.campaign} rows={p.rows} />
+      <CampaignSheet sample={p.sample} open={sheet === "campaign"} onClose={() => setSheet("")} slug={p.slug} year={p.year} campaign={p.campaign} rows={p.rows} />
     </>
   );
 }
@@ -290,8 +290,8 @@ function ImportSheet({ open, onClose, slug, year }: { open: boolean; onClose: ()
   );
 }
 
-function CampaignSheet({ open, onClose, slug, year, campaign, rows }: {
-  open: boolean; onClose: () => void; slug: string; year: number;
+function CampaignSheet({ sample, open, onClose, slug, year, campaign, rows }: {
+  sample: boolean; open: boolean; onClose: () => void; slug: string; year: number;
   campaign: { reminderDays: number; taskDays: number } | null; rows: SponsorRow[];
 }) {
   const router = useRouter();
@@ -307,6 +307,7 @@ function CampaignSheet({ open, onClose, slug, year, campaign, rows }: {
         <li><b>{running}</b> haben schon zugesagt oder einen laufenden Vertrag: keine Anfrage, die Rechnung geht automatisch raus.</li>
         <li>Wer nicht antwortet, wird automatisch erinnert. Danach bekommt die zuständige Person eine Aufgabe.</li>
       </ul>
+      {sample && <SampleWarning slug={slug} />}
       {ask - noMail > 0 && (
         <div role="alert" className="mt-4 rounded-[14px] bg-warn-bg p-3 text-[14px] text-warn">
           <b>Achtung:</b> Beim Starten gehen sofort <b>{ask - noMail} E-Mails</b> an die Sponsoren raus, danach automatisch die Erinnerungen. Das lässt sich nicht rückgängig machen. Bitte vorher Katalog, Preise und Kontakte prüfen.
@@ -325,5 +326,14 @@ function CampaignSheet({ open, onClose, slug, year, campaign, rows }: {
         <button disabled={pending} className="btn btn-pri col-span-2 h-[52px] w-full">{pending ? "Mails werden verschickt …" : campaign ? "Anfragen" : "Starten und Mails verschicken"}</button>
       </form>
     </Sheet>
+  );
+}
+
+export function SampleWarning({ slug }: { slug: string }) {
+  return (
+    <p role="alert" className="mt-3 rounded-[14px] bg-bad-bg p-3 text-[14px] text-bad">
+      <b>IBAN oder Clubadresse fehlt.</b> Rechnungen werden erst verschickt, wenn beides erfasst ist.{" "}
+      <Link href={`/c/${slug}/admin/settings/zahlungen#rechnungsdaten`} className="font-bold underline">Jetzt ergänzen ›</Link>
+    </p>
   );
 }
