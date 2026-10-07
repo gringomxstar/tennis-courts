@@ -1,4 +1,5 @@
 import { requireTenantAdmin } from "@/lib/tenant";
+import { parseAddress } from "@/lib/sponsoring";
 import { prisma } from "@/lib/prisma";
 import { contractAmount, hasYear, renewalRate } from "@/lib/sponsoring";
 import { currentSponsorYear } from "@/lib/sponsor-server";
@@ -59,6 +60,7 @@ export default async function AdminSponsoringPage({ params, searchParams }: { pa
         </div>
       </div>
       <AdminSponsoring
+        sample={!tenant.settingsJson?.invoiceIban || !parseAddress(tenant.address)}
         slug={tenant.slug}
         year={year}
         meId={user?.id ?? ""}
