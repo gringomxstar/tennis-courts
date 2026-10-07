@@ -29,7 +29,7 @@ export function SponsorInvoices({ slug, year, invoices, sample }: { slug: string
       </div>
       {sample && (
         <p role="note" className="mt-3 rounded-[14px] bg-bad-bg p-3 text-[14px] text-bad">
-          <b>Muster-QR:</b> IBAN oder Clubadresse fehlen in den Einstellungen. Die Rechnungen zeigen darum einen fiktiven, als MUSTER markierten QR-Zahlteil. Vor dem ersten echten Versand IBAN und Adresse (Strasse Nr, PLZ Ort) erfassen: <Link href={`/c/${slug}/admin/settings#rechnungsdaten`} className="font-bold underline">Jetzt ergänzen ›</Link>
+          <b>Muster-QR:</b> IBAN oder Clubadresse fehlen in den Einstellungen. Die Rechnungen zeigen darum einen fiktiven, als MUSTER markierten QR-Zahlteil. Vor dem ersten echten Versand IBAN und Adresse (Strasse Nr, PLZ Ort) erfassen: <Link href={`/c/${slug}/admin/settings/zahlungen#rechnungsdaten`} className="font-bold underline">Jetzt ergänzen ›</Link>
         </p>
       )}
       <p className="mt-2 text-[13px] text-ink-3">Zahlbar in 30 Tagen. Automatische Zahlungserinnerung 10 Tage nach Fälligkeit, 2. Mahnung 14 Tage später, danach eine Aufgabe für die zuständige Person.</p>

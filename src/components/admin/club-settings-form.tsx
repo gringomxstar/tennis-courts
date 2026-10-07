@@ -10,7 +10,7 @@ import { purgeDemoDataAction, updateClubSettingsAction } from "@/app/actions/clu
 import { SwitchKnob } from "@/components/app/switch";
 import { Spinner } from "@/components/app/avatar";
 
-const label = "block truncate text-[13px] font-bold uppercase tracking-[.06em] text-muted-foreground";
+const label = "block text-[13px] font-bold uppercase tracking-[.06em] text-muted-foreground";
 const input =
   "mt-1.5 h-[50px] w-full min-w-0 rounded-[15px] border border-border bg-inset px-4 text-[16px] text-foreground outline-none placeholder:text-muted-foreground focus-visible:border-clay";
 const well = "rounded-[20px] bg-inset p-4";
@@ -65,13 +65,19 @@ interface ClubSettingsFormProps {
   clubSlug: string;
   initialSettings?: TenantSettings | null;
   initialAddress?: string | null;
+  /** nur diesen Abschnitt zeigen; die übrigen Werte gehen unverändert mit */
+  section?: SettingsSection;
 }
+
+export type SettingsSection = "oeffnung" | "regeln" | "preise" | "zahlungen" | "gaeste";
 
 export function ClubSettingsForm({
   clubSlug,
   initialSettings,
   initialAddress,
+  section,
 }: ClubSettingsFormProps) {
+  const show = (s: SettingsSection) => !section || section === s;
   const [address, setAddress] = useState(initialAddress ?? "");
   const [openingHour, setOpeningHour] = useState<number>(
     initialSettings?.openingHour ?? 7
@@ -202,12 +208,7 @@ export function ClubSettingsForm({
 
   return (
     <section className="card p-5">
-      <h2 className="text-[22px] font-bold tracking-[-.02em]">Buchungsregeln &amp; Preise</h2>
-      <p className="mt-1 text-[15px] leading-[1.4] text-muted-foreground">
-        Öffnungszeiten, Storno-Frist, Fairplay-Regeln, Doppel und Gebühren.
-      </p>
-
-      <form onSubmit={handleSubmit} className="mt-5 flex flex-col gap-5">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-5">
         {feedback && (
           <div
             role="status"
@@ -219,6 +220,7 @@ export function ClubSettingsForm({
           </div>
         )}
 
+        {show("oeffnung") && (
         <div className="grid grid-cols-2 gap-4">
           <label className="block">
             <span className={label}>Öffnung</span>
@@ -240,8 +242,13 @@ export function ClubSettingsForm({
               ))}
             </select>
           </label>
-          <label className="col-span-2 block @min-[640px]:col-span-1">
-            <span className={label}>Storno-Frist</span>
+        </div>
+        )}
+
+        {show("regeln") && (
+        <>
+          <label className="block">
+            <span className={label}>Gratis stornieren bis</span>
             <span className="flex items-center gap-2.5">
               <input
                 id="cancellationDeadline"
@@ -261,29 +268,29 @@ export function ClubSettingsForm({
                 <option value="min">Min.</option>
                 <option value="h">Std.</option>
               </select>
+              <span className="mt-1.5 shrink-0 text-[15px] text-muted-foreground">vor Beginn</span>
             </span>
           </label>
-        </div>
 
         <div className={well}>
-          <h3 className="text-[17px] font-bold tracking-[-.01em]">Fairplay &amp; Rolling Release</h3>
+          <h3 className="text-[17px] font-bold tracking-[-.01em]">Fairplay</h3>
           <div className="mt-3 flex flex-col gap-2">
             <Toggle
               on={marlyRuleEnabled}
               set={setMarlyRuleEnabled}
-              title="Marly-Regel"
-              sub="Keine Doppel-Stunden im Einzel, Rolling Release nach Spielende."
+              title="Einzel: keine Doppelstunde"
+              sub="Wer Einzel spielt, kann erst nach Spielende wieder buchen."
             />
             <Toggle
               on={allowConsecutiveSlotsForDoubles}
               set={setAllowConsecutiveSlotsForDoubles}
-              title="2h Doppel erlauben"
+              title="Doppel: 2 Stunden am Stück"
               sub="2 Stunden am Stück, wenn 4 Spieler im Doppel antreten."
             />
           </div>
-          <div className="mt-4 grid grid-cols-2 gap-4">
+          <div className="mt-4 grid grid-cols-1 gap-4 @min-[640px]:grid-cols-2">
             <label className="block">
-              <span className={label}>Nach Beginn buchbar</span>
+              <span className={label}>Noch buchbar nach Beginn</span>
               <span className="flex items-center gap-2.5">
                 <input
                   id="lateBooking"
@@ -299,16 +306,19 @@ export function ClubSettingsForm({
               </span>
             </label>
             <label className="block">
-              <span className={label}>Cooldown Min.</span>
-              <input
-                id="cooldown"
-                type="number"
-                min={0}
-                step={15}
-                value={marlyCooldownMinutes}
-                onChange={(e) => setMarlyCooldownMinutes(e.target.value)}
-                className={wellInput}
-              />
+              <span className={label}>Wartezeit bis nächste Buchung</span>
+              <span className="flex items-center gap-2.5">
+                <input
+                  id="cooldown"
+                  type="number"
+                  min={0}
+                  step={15}
+                  value={marlyCooldownMinutes}
+                  onChange={(e) => setMarlyCooldownMinutes(e.target.value)}
+                  className={wellInput}
+                />
+                <span className={`${unit} mt-1.5`}>Min.</span>
+              </span>
             </label>
           </div>
         </div>
@@ -343,7 +353,10 @@ export function ClubSettingsForm({
             ))}
           </div>
         </div>
+        </>
+        )}
 
+        {show("zahlungen") && (
         <div className={well}>
           <h3 className="text-[17px] font-bold tracking-[-.01em]">Zahlarten</h3>
           <p className="mt-1 text-[13px] leading-[1.35] text-muted-foreground">
@@ -351,10 +364,10 @@ export function ClubSettingsForm({
           </p>
           <div className="mt-3 flex flex-col gap-2">
             <Toggle on={payOnSite} set={setPayOnSite} title="Vor Ort bezahlen" sub="Bar oder Karte im Club. Du markierst die Zahlung unter Heute." />
-            <Toggle on={payByInvoice} set={setPayByInvoice} title="Auf Rechnung" sub="Nur für angemeldete Spieler." />
+            <Toggle on={payByInvoice} set={setPayByInvoice} title="Auf Rechnung" sub="Spieler mit Konto dürfen auf Rechnung bezahlen." />
             <div id="rechnungsdaten" className="mt-1 flex scroll-mt-24 flex-col gap-2">
               <p className="text-[13px] leading-[1.35] text-muted-foreground">Für den QR-Einzahlungsschein auf Rechnungen an Mitglieder und Sponsoren.</p>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 gap-2 @min-[640px]:grid-cols-2">
                 <label className="block">
                   <span className={label}>IBAN</span>
                   <input value={invoiceIban} onChange={(e) => setInvoiceIban(e.target.value)} placeholder="CH.." autoComplete="off" className={wellInput} />
@@ -372,10 +385,14 @@ export function ClubSettingsForm({
           </div>
         </div>
 
+        )}
+
+        {show("preise") && (
+        <>
         <div className={well}>
           <h3 className="text-[17px] font-bold tracking-[-.01em]">Preisregeln</h3>
           <p className="mt-1 text-[13px] leading-[1.35] text-muted-foreground">
-            Auf- oder Abschlag auf den Platzpreis, z. B. -20 % am Vormittag oder +10 % Last Minute.
+            Rabatt oder Zuschlag auf den Platzpreis, z. B. 20 % Rabatt am Vormittag. Leere Felder und keine Wochentage gewählt = gilt immer.
           </p>
           <div className="mt-3 flex flex-col gap-3">
             {priceRules.map((r, i) => (
@@ -383,9 +400,19 @@ export function ClubSettingsForm({
                 <div className="flex gap-2">
                   <input aria-label="Name der Regel" placeholder="Name, z. B. Vormittag" value={r.label} onChange={(e) => setRule(i, { label: e.target.value })} className={`${input} mt-0 flex-[2]`} />
                   <span className="flex flex-1 items-center gap-1.5">
-                    <input aria-label="Prozent" type="number" min={-100} max={200} value={r.percent} onChange={(e) => setRule(i, { percent: Number(e.target.value) })} className={`${input} mt-0`} />
+                    <input aria-label="Prozent" type="number" min={0} max={200} value={Math.abs(r.percent)} onChange={(e) => setRule(i, { percent: (r.percent < 0 ? -1 : 1) * Number(e.target.value) })} className={`${input} mt-0`} />
                     <span className={unit}>%</span>
                   </span>
+                </div>
+                <div className="mt-2 flex gap-1 rounded-full bg-inset p-1">
+                  {([["Rabatt", -1], ["Zuschlag", 1]] as const).map(([l, sign]) => {
+                    const on = (r.percent < 0 ? -1 : 1) === sign;
+                    return (
+                      <button key={l} type="button" aria-pressed={on} onClick={() => setRule(i, { percent: sign * Math.abs(r.percent) })} className={`h-9 flex-1 rounded-full text-[14px] font-bold ${on ? "bg-card shadow-card" : "text-muted-foreground"}`}>
+                        {l}
+                      </button>
+                    );
+                  })}
                 </div>
                 <div className="mt-2 flex gap-1">
                   {[1, 2, 3, 4, 5, 6, 0].map((d) => {
@@ -408,8 +435,8 @@ export function ClubSettingsForm({
                     [
                       ["fromHour", "Ab Uhr"],
                       ["toHour", "Bis Uhr"],
-                      ["minLeadHours", "Mind. Std. vorher"],
-                      ["maxLeadHours", "Max. Std. vorher"],
+                      ["minLeadHours", "Mind. Std. im Voraus gebucht"],
+                      ["maxLeadHours", "Höchstens Std. im Voraus (Last Minute)"],
                     ] as const
                   ).map(([k, l]) => (
                     <label key={k} className="block">
@@ -460,6 +487,11 @@ export function ClubSettingsForm({
           </div>
         </div>
 
+        </>
+        )}
+
+        {show("gaeste") && (
+        <>
         <div className={well}>
           <Toggle
             on={diner.enabled}
@@ -515,6 +547,8 @@ export function ClubSettingsForm({
           title="Demo-Modus"
           sub="Rollen-Umschalter für Tests. Vor dem Livegang ausschalten."
         />
+        </>
+        )}
 
         {/* stays in view above the floating tab bar while scrolling through the long form */}
         <div className="sticky bottom-[calc(max(10px,env(safe-area-inset-bottom))+84px)] z-10 @min-[640px]:bottom-4">
@@ -524,16 +558,16 @@ export function ClubSettingsForm({
             className="btn !h-[50px] w-full !bg-ink text-white shadow-lift disabled:opacity-70"
           >
             {loading && <Spinner />}
-            {loading ? "Wird gespeichert…" : "Einstellungen speichern"}
+            {loading ? "Wird gespeichert…" : "Speichern"}
           </button>
         </div>
       </form>
 
       {/* destructive, so apart from Save */}
-      <div className="mt-8 border-t border-border pt-5">
+      {show("gaeste") && <div className="mt-8 border-t border-border pt-5">
         <div className="pb-2 text-[13px] font-bold uppercase tracking-[.06em] text-muted-foreground">Demo</div>
         <PurgeDemo clubSlug={clubSlug} />
-      </div>
+      </div>}
     </section>
   );
 }
