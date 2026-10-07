@@ -307,7 +307,13 @@ function CampaignSheet({ open, onClose, slug, year, campaign, rows }: {
         <li><b>{running}</b> haben schon zugesagt oder einen laufenden Vertrag: keine Anfrage, die Rechnung geht automatisch raus.</li>
         <li>Wer nicht antwortet, wird automatisch erinnert. Danach bekommt die zuständige Person eine Aufgabe.</li>
       </ul>
+      {ask - noMail > 0 && (
+        <div role="alert" className="mt-4 rounded-[14px] bg-warn-bg p-3 text-[14px] text-warn">
+          <b>Achtung:</b> Beim Starten gehen sofort <b>{ask - noMail} E-Mails</b> an die Sponsoren raus, danach automatisch die Erinnerungen. Das lässt sich nicht rückgängig machen. Bitte vorher Katalog, Preise und Kontakte prüfen.
+        </div>
+      )}
       <form action={(fd) => start(async () => {
+        if (ask - noMail > 0 && !window.confirm(`Jetzt ${ask - noMail} E-Mails an Sponsoren verschicken?`)) return;
         const r = await startCampaignAction(slug, year, Number(fd.get("reminderDays")), Number(fd.get("taskDays")));
         if (!r.success) return void toast.error(r.error);
         toast.success(r.summary);
