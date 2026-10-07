@@ -17,7 +17,7 @@ export default async function SponsorInvoicesPage({ params, searchParams }: { pa
   });
   return (
     <>
-      <div className="px-5 pt-[66px] lg:pt-12">
+      <div className="px-5 pt-3 @min-[640px]:pt-0">
         <h1 className="text-[34px] font-bold tracking-[-.035em]">Rechnungen</h1>
         <div className="mt-0.5 text-[15px] text-muted-foreground">QR-Rechnungen, Zahlungsstatus, Mahnungen</div>
       </div>

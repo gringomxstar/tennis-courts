@@ -32,7 +32,7 @@ export default async function SponsorCardPage({ params }: { params: Promise<{ cl
 
   return (
     <>
-      <div className="px-5 pt-[66px] lg:pt-12">
+      <div className="px-5 pt-3 @min-[640px]:pt-0">
         <Link href={`/c/${tenant.slug}/admin/sponsoring`} className="inline-flex items-center gap-1 text-[15px] font-semibold text-clay-text"><svg aria-hidden width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>Sponsoring</Link>
         <h1 className="text-[30px] font-bold leading-tight tracking-[-.035em]">{s.name}</h1>
       </div>
