@@ -54,6 +54,16 @@ export function CourtsManager({ clubSlug, courts }: { clubSlug: string; courts: 
   const toInput = (c: Court): CourtInput => ({ id: c.id, name: c.name, sportType: c.sportType, surface: c.surface as CourtInput["surface"], hourlyRate: c.hourlyRate, isIndoor: c.isIndoor, hasLighting: c.hasLighting, status: c.status as CourtInput["status"], sortOrder: c.sortOrder });
   const open = (c?: Court) => setEdit(c ? toInput(c) : blank(Math.max(0, ...courts.map((x) => x.sortOrder)) + 1));
 
+  async function setStatus(c: Court, status: CourtInput["status"]) {
+    if (busy || c.status === status) return;
+    setBusy(true);
+    const res = await saveCourtAction(clubSlug, { ...toInput(c), status }).catch(() => null);
+    setBusy(false);
+    if (!res?.success) return void toast.error(res?.error ?? "Speichern fehlgeschlagen.");
+    toast(`${c.name}: ${STATUS.find(([v]) => v === status)?.[1]}`);
+    router.refresh();
+  }
+
   /** Platz eine Position nach oben/unten: Reihenfolge neu durchnummerieren und geänderte speichern. */
   async function move(i: number, dir: -1 | 1) {
     const j = i + dir;
@@ -127,13 +137,23 @@ export function CourtsManager({ clubSlug, courts }: { clubSlug: string; courts: 
             <span
               className={cn(
                 pill,
+                court.status !== "INACTIVE" && "@min-[1024px]:hidden",
                 court.status === "ACTIVE" ? "bg-paid-bg text-paid-fg" : court.status === "MAINTENANCE" ? "bg-clay text-white" : "bg-inset text-muted-foreground"
               )}
             >
               {STATUS.find(([s]) => s === court.status)?.[1]}
             </span>
           </button>
-          {([[-1, "▲", "nach oben"], [1, "▼", "nach unten"]] as const).map(([dir, icon, l]) => (
+          {court.status !== "INACTIVE" && (
+            <Segmented
+              className="hidden w-[220px] shrink-0 @min-[1024px]:flex"
+              label={`Zustand ${court.name}`}
+              options={STATUS.slice(0, 2)}
+              value={court.status as CourtInput["status"]}
+              onChange={(v) => setStatus(court, v)}
+            />
+          )}
+          {([[-1, "↑", "nach oben"], [1, "↓", "nach unten"]] as const).map(([dir, icon, l]) => (
             <button key={dir} type="button" aria-label={`${court.name} ${l}`} disabled={busy || i + dir < 0 || i + dir >= courts.length} onClick={() => move(i, dir)} className="grid h-10 w-9 shrink-0 place-items-center rounded-full text-[13px] text-muted-foreground disabled:opacity-25">
               {icon}
             </button>

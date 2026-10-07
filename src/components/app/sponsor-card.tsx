@@ -152,10 +152,10 @@ export function SponsorCard(p: {
                     {i.paidAt ? `bezahlt ${de(i.paidAt)}` : overdue ? `überfällig${i.dunningLevel ? ` · ${Math.min(i.dunningLevel, 2)}. Mahnung` : ""}` : `offen bis ${de(i.dueAt)}`}
                   </span>
                   {!i.sent && <span className="text-[12.5px] text-ink-3">nicht verschickt</span>}
-                  <span className="ml-auto flex gap-2">
+                  {open.some((o) => o.id === i.id) ? <span className="ml-auto text-[12.5px] text-ink-3">oben erledigen</span> : <span className="ml-auto flex gap-2">
                     {!i.paidAt && <button type="button" disabled={pending} onClick={() => run(() => resendInvoiceAction(p.slug, i.id), "Rechnung verschickt")} className={cn(pill, "bg-bg text-ink")}>Senden</button>}
                     <button type="button" disabled={pending} onClick={() => run(() => markInvoicePaidAction(p.slug, i.id, !i.paidAt))} className={cn(pill, i.paidAt ? "bg-bg text-ink" : "bg-brand-deep text-white")}>{i.paidAt ? "Doch offen" : "Bezahlt"}</button>
-                  </span>
+                  </span>}
                 </li>
               );
             })}
@@ -169,7 +169,7 @@ export function SponsorCard(p: {
         <Details slug={p.slug} sponsor={s} board={p.board} />
         <section className="card p-5">
           <div className="flex items-center justify-between gap-2">
-            <h2 className="text-[17px] font-bold">Logo</h2>
+            <h2 className="text-[17px] font-bold">Logo-Datei vom Sponsor</h2>
             {s.logo && <span className={cn("rounded-full px-2.5 py-0.5 text-[12px] font-bold", s.logo.confirmed ? "bg-ok-bg text-ok" : "bg-warn-bg text-warn")}>{s.logo.confirmed ? `bestätigt ${de(s.logo.confirmed)}` : "nicht bestätigt"}</span>}
           </div>
           {s.logo ? (
@@ -227,7 +227,7 @@ function Details({ slug, sponsor: s, board }: { slug: string; sponsor: Parameter
         <label className={fieldLabel}>Ort<input name="city" defaultValue={s.city} className={field} /></label>
       </div>
       <label className={fieldLabel}>Website<input name="website" defaultValue={s.website} className={field} /></label>
-      <label className={fieldLabel}>Verantwortlich im Vorstand
+      <label className={fieldLabel}>Zuständig bei uns
         <select name="ownerId" defaultValue={s.ownerId} className={field}>
           <option value="">Niemand</option>
           {board.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
