@@ -62,11 +62,11 @@ export function TabBar({
       ];
   const inAdmin = canAdmin && !anon && (path === `${base}/admin` || path.startsWith(`${base}/admin/`));
   const pills: [string, string][] = inAdmin
-    ? [["today", "Heute"], ["members", "Mitglieder"], ["blocks", "Sperren"], ["sponsoring", "Sponsoring"], ["stats", "Statistik"], ["settings", "Einstellungen"]].map(([k, l]) => [`${base}/admin/${k}`, l])
+    ? [["", "Übersicht"], ["/today", "Heute"], ["/members", "Mitglieder"], ["/blocks", "Sperren"], ["/sponsoring", "Sponsoring"], ["/stats", "Statistik"], ["/settings", "Einstellungen"]].map(([k, l]) => [`${base}/admin${k}`, l])
     : tabs.filter(([href]) => href !== `${base}/admin`).map(([href, l]) => [href, l]);
   // prefix match: /admin/* lights Verwaltung
   const activeOf = (hrefs: string[]) =>
-    hrefs.filter((href) => path === href || (href !== base && path.startsWith(href + "/"))).sort((a, b) => b.length - a.length)[0];
+    hrefs.filter((href) => path === href || (href !== base && href !== `${base}/admin` && path.startsWith(href + "/"))).sort((a, b) => b.length - a.length)[0];
   const active = activeOf(tabs.map(([h]) => h));
   const activePill = activeOf(pills.map(([h]) => h));
   const main = tabs.filter(([href]) => href !== `${base}/admin`);
@@ -143,6 +143,22 @@ export function TabBar({
             <Link href={`${base}/profile`} className="btn btn-pri">Anmelden</Link>
           )}
         </header>
+        {inAdmin && (
+          // phone: admin sections one tap apart (the header pills above are desktop only)
+          <nav aria-label="Verwaltung" className="no-scrollbar sticky top-0 z-30 flex gap-2 overflow-x-auto bg-bg px-5 pb-2 pt-[max(12px,env(safe-area-inset-top))] @min-[640px]:hidden">
+            {pills.map(([href, label]) => (
+              <Link
+                key={href}
+                href={href}
+                aria-current={href === activePill ? "page" : undefined}
+                ref={href === activePill ? (el) => el?.scrollIntoView({ inline: "center", block: "nearest" }) : undefined}
+                className={cn("chip", href === activePill && "!bg-ink !text-card")}
+              >
+                {label}
+              </Link>
+            ))}
+          </nav>
+        )}
         <main className="pb-[calc(max(10px,env(safe-area-inset-bottom))+88px)] @min-[640px]:pb-0">{children}</main>
       </div>
 

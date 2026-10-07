@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { requireTenantAdmin } from "@/lib/tenant";
 import { getMembershipPlansByTenantId, getTenantMembers } from "@/lib/data";
 import { prisma } from "@/lib/prisma";
@@ -136,9 +135,8 @@ export default async function AdminMembersPage({ params }: { params: Promise<{ c
 
   return (
     <>
-      <div className="flex items-end justify-between gap-3 px-5 pt-[66px] lg:pt-12">
+      <div className="flex items-end justify-between gap-3 px-5 pt-3 @min-[640px]:pt-0">
         <div>
-          <Link href={`/c/${tenant.slug}/admin`} className="lg:hidden inline-flex items-center gap-1 text-[15px] font-semibold text-clay-text"><svg aria-hidden width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>Verwaltung</Link>
           <h1 className="text-[34px] font-bold tracking-[-.035em]">Mitglieder</h1>
           <div className="mt-0.5 text-[15px] text-muted-foreground">Abos & Zahlungen</div>
         </div>

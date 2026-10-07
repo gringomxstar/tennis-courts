@@ -17,7 +17,8 @@ export default async function AdminHubPage({ params }: { params: Promise<{ clubS
   const { tenant } = await requireTenantAdmin(clubSlug);
   // four cheap counts; "today" is the server's day, close enough for a summary line
   const day = new Date().setHours(0, 0, 0, 0);
-  const [members, todays, blocks, unpaid, courts, sponsors] = process.env.DATABASE_URL
+  const year = new Date().getFullYear();
+  const [members, todays, blocks, unpaid, courts, sponsors, yearBookings] = process.env.DATABASE_URL
     ? await Promise.all([
         prisma.tenantUser.count({ where: { tenantId: tenant.id } }),
         prisma.booking.count({ where: { tenantId: tenant.id, status: { in: ["CONFIRMED", "COMPLETED"] }, startsAt: { gte: new Date(day), lt: new Date(day + 86_400_000) } } }),
@@ -25,23 +26,29 @@ export default async function AdminHubPage({ params }: { params: Promise<{ clubS
         prisma.booking.count({ where: { tenantId: tenant.id, paymentMethod: { in: ["ON_SITE", "INVOICE"] }, paymentStatus: "UNPAID", status: { in: ["CONFIRMED", "COMPLETED"] } } }),
         prisma.court.count({ where: { tenantId: tenant.id, status: "ACTIVE" } }),
         prisma.sponsor.count({ where: { tenantId: tenant.id } }),
+        prisma.booking.count({ where: { tenantId: tenant.id, status: { in: ["CONFIRMED", "COMPLETED"] }, startsAt: { gte: new Date(year, 0, 1), lt: new Date(year + 1, 0, 1) } } }),
       ])
-    : [0, 0, 0, 0, 0, 0];
+    : [0, 0, 0, 0, 0, 0, 0];
   const tiles: [keyof typeof I, string, string | number, string, boolean?][] = [
     ["today", "Heute", todays, todays === 1 ? "Buchung heute" : "Buchungen heute", true],
     ["blocks", "Sperren", blocks, "aktiv oder geplant"],
-    ["members", "Mitglieder", members, unpaid ? `${unpaid} Zahlungen offen` : "alle bezahlt"],
+    ["members", "Mitglieder", members, "Abos, Zahlungen, Import"],
     ["sponsoring", "Sponsoring", sponsors, "Kampagne, Verträge, Rechnungen"],
-    ["stats", "Statistik", new Date().getFullYear(), "Kasse, Auslastung, Export"],
-    ["settings", "Einstellungen", courts, "Plätze, Regeln, Tarife, Branding"],
+    ["stats", "Statistik", yearBookings, `Buchungen ${year} · Kasse, Export`],
+    ["settings", "Einstellungen", courts, "Plätze, Abos, Regeln, Preise"],
   ];
   return (
     <>
-      <div className="px-5 pt-[66px] @min-[640px]:px-0 @min-[640px]:pt-0">
+      <div className="px-5 pt-3 @min-[640px]:px-0 @min-[640px]:pt-0">
         <h1 className="text-[28px] font-bold tracking-[-.03em]">Verwaltung</h1>
         <div className="mt-0.5 text-[15px] text-muted-foreground">{tenant.name}</div>
       </div>
-      <nav aria-label="Verwaltung" className="grid grid-cols-1 gap-3 px-5 pt-4 @min-[640px]:grid-cols-2 @min-[640px]:gap-4 @min-[640px]:px-0 @min-[1024px]:grid-cols-3">
+      <div className="flex flex-wrap gap-2 px-5 pt-4 @min-[640px]:px-0">
+        <Link href={`/c/${tenant.slug}/admin/today`} className="btn">Regen: Plätze sperren ›</Link>
+        <Link href={`/c/${tenant.slug}/admin/members?new=1`} className="btn">+ Mitglied</Link>
+        {unpaid > 0 && <Link href={`/c/${tenant.slug}/admin/today#zahlungen`} className="btn !bg-warn-bg !text-warn">{unpaid} {unpaid === 1 ? "Zahlung" : "Zahlungen"} offen ›</Link>}
+      </div>
+      <nav aria-label="Bereiche" className="grid grid-cols-1 gap-3 px-5 pt-4 @min-[640px]:grid-cols-2 @min-[640px]:gap-4 @min-[640px]:px-0 @min-[1024px]:grid-cols-3">
         {tiles.map(([key, title, num, sub, hero]) => (
           <Link
             key={key}
@@ -53,7 +60,7 @@ export default async function AdminHubPage({ params }: { params: Promise<{ clubS
             </span>
             <b className="text-[34px] font-bold leading-none tracking-[-.04em] tabular-nums">{num}</b>
             <span className="text-[16px] font-bold">{title}</span>
-            <small className={cn("text-[13px]", hero ? "text-white/85" : key === "members" && unpaid ? "text-warn" : "text-ink-3")}>{sub}</small>
+            <small className={cn("text-[13px]", hero ? "text-white/85" : "text-ink-3")}>{sub}</small>
           </Link>
         ))}
       </nav>

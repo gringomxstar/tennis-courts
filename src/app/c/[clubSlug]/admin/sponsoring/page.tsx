@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { requireTenantAdmin } from "@/lib/tenant";
 import { prisma } from "@/lib/prisma";
 import { contractAmount, hasYear, renewalRate } from "@/lib/sponsoring";
@@ -53,9 +52,8 @@ export default async function AdminSponsoringPage({ params, searchParams }: { pa
 
   return (
     <>
-      <div className="flex flex-wrap items-end justify-between gap-3 px-5 pt-[66px] lg:pt-12">
+      <div className="flex flex-wrap items-end justify-between gap-3 px-5 pt-3 @min-[640px]:pt-0">
         <div>
-          <Link href={`/c/${tenant.slug}/admin`} className="lg:hidden inline-flex items-center gap-1 text-[15px] font-semibold text-clay-text"><svg aria-hidden width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>Verwaltung</Link>
           <h1 className="text-[34px] font-bold tracking-[-.035em]">Sponsoring</h1>
           <div className="mt-0.5 text-[15px] text-muted-foreground">{sponsors.length} Sponsoren · Saison {year}</div>
         </div>
