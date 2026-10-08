@@ -64,12 +64,15 @@ function Toggle({ on, set, title, sub }: { on: boolean; set: (v: boolean) => voi
 interface ClubSettingsFormProps {
   clubSlug: string;
   initialSettings?: TenantSettings | null;
+  initialAddress?: string | null;
 }
 
 export function ClubSettingsForm({
   clubSlug,
   initialSettings,
+  initialAddress,
 }: ClubSettingsFormProps) {
+  const [address, setAddress] = useState(initialAddress ?? "");
   const [openingHour, setOpeningHour] = useState<number>(
     initialSettings?.openingHour ?? 7
   );
@@ -78,7 +81,7 @@ export function ClubSettingsForm({
   );
   const initialDeadline = cancelDeadlineMinutes(initialSettings);
   const [deadlineUnit, setDeadlineUnit] = useState<"min" | "h">(initialDeadline % 60 === 0 && initialDeadline > 0 ? "h" : "min");
-  const [deadlineValue, setDeadlineValue] = useState<number>(initialDeadline % 60 === 0 && initialDeadline > 0 ? initialDeadline / 60 : initialDeadline);
+  const [deadlineValue, setDeadlineValue] = useState<number | string>(initialDeadline % 60 === 0 && initialDeadline > 0 ? initialDeadline / 60 : initialDeadline);
   const [allowGuestBookings, setAllowGuestBookings] = useState<boolean>(
     initialSettings?.allowGuestBookings ?? true
   );
@@ -90,7 +93,7 @@ export function ClubSettingsForm({
   const [marlyRuleEnabled, setMarlyRuleEnabled] = useState<boolean>(
     initialSettings?.marlyRuleEnabled ?? true
   );
-  const [marlyCooldownMinutes, setMarlyCooldownMinutes] = useState<number>(
+  const [marlyCooldownMinutes, setMarlyCooldownMinutes] = useState<number | string>(
     initialSettings?.marlyCooldownMinutes ?? 60
   );
   const maxActiveSlotsPerPlayer = initialSettings?.maxActiveSlotsPerPlayer ?? 2;
@@ -106,7 +109,7 @@ export function ClubSettingsForm({
       ) as Record<SportType, string>;
     return { MEMBER: row("MEMBER"), COACH: row("COACH"), GUEST: row("GUEST") };
   });
-  const [lateBookingMinutes, setLateBookingMinutes] = useState<number>(initialSettings?.lateBookingMinutes ?? 15);
+  const [lateBookingMinutes, setLateBookingMinutes] = useState<number | string>(initialSettings?.lateBookingMinutes ?? 15);
   const [payOnSite, setPayOnSite] = useState<boolean>(initialSettings?.payOnSite ?? false);
   const [payByInvoice, setPayByInvoice] = useState<boolean>(initialSettings?.payByInvoice ?? false);
   const [invoiceIban, setInvoiceIban] = useState(initialSettings?.invoiceIban ?? "");
@@ -117,19 +120,19 @@ export function ClubSettingsForm({
     setPriceRules(priceRules.map((r, j) => (j === i ? { ...r, ...patch } : r)));
   const [diner, setDiner] = useState(initialSettings?.dinerTennis ?? DINER_DEFAULT);
   const optNum = (v: string) => (v === "" ? undefined : Number(v));
-  const [ballMachineFee, setBallMachineFee] = useState<number>(
+  const [ballMachineFee, setBallMachineFee] = useState<number | string>(
     initialSettings?.ballMachineFee ?? 10
   );
-  const [floodlightFee, setFloodlightFee] = useState<number>(
+  const [floodlightFee, setFloodlightFee] = useState<number | string>(
     initialSettings?.floodlightFee ?? 0
   );
-  const [defaultHourlyRateTennis, setDefaultHourlyRateTennis] = useState<number>(
+  const [defaultHourlyRateTennis, setDefaultHourlyRateTennis] = useState<number | string>(
     initialSettings?.defaultHourlyRateTennis ?? 30
   );
-  const [defaultHourlyRateHalle, setDefaultHourlyRateHalle] = useState<number>(
+  const [defaultHourlyRateHalle, setDefaultHourlyRateHalle] = useState<number | string>(
     initialSettings?.defaultHourlyRateHalle ?? 45
   );
-  const [defaultHourlyRatePadel, setDefaultHourlyRatePadel] = useState<number>(
+  const [defaultHourlyRatePadel, setDefaultHourlyRatePadel] = useState<number | string>(
     initialSettings?.defaultHourlyRatePadel ?? 40
   );
 
@@ -173,7 +176,7 @@ export function ClubSettingsForm({
         defaultHourlyRateTennis: Number(defaultHourlyRateTennis),
         defaultHourlyRateHalle: Number(defaultHourlyRateHalle),
         defaultHourlyRatePadel: Number(defaultHourlyRatePadel),
-      });
+      }, address);
 
       toast(res.success ? "Einstellungen gespeichert" : res.error || "Speichern fehlgeschlagen.");
       if (res.success) {
@@ -246,7 +249,7 @@ export function ClubSettingsForm({
                 min={0}
                 max={deadlineUnit === "h" ? 336 : 20160}
                 value={deadlineValue}
-                onChange={(e) => setDeadlineValue(Number(e.target.value))}
+                onChange={(e) => setDeadlineValue(e.target.value)}
                 className={`${input} flex-1`}
               />
               <select
@@ -289,7 +292,7 @@ export function ClubSettingsForm({
                   max={120}
                   step={5}
                   value={lateBookingMinutes}
-                  onChange={(e) => setLateBookingMinutes(Number(e.target.value))}
+                  onChange={(e) => setLateBookingMinutes(e.target.value)}
                   className={wellInput}
                 />
                 <span className={`${unit} mt-1.5`}>Min.</span>
@@ -303,7 +306,7 @@ export function ClubSettingsForm({
                 min={0}
                 step={15}
                 value={marlyCooldownMinutes}
-                onChange={(e) => setMarlyCooldownMinutes(Number(e.target.value))}
+                onChange={(e) => setMarlyCooldownMinutes(e.target.value)}
                 className={wellInput}
               />
             </label>
@@ -349,10 +352,11 @@ export function ClubSettingsForm({
           <div className="mt-3 flex flex-col gap-2">
             <Toggle on={payOnSite} set={setPayOnSite} title="Vor Ort bezahlen" sub="Bar oder Karte im Club. Du markierst die Zahlung unter Heute." />
             <Toggle on={payByInvoice} set={setPayByInvoice} title="Auf Rechnung" sub="Nur für angemeldete Spieler." />
-            {payByInvoice && (
+            <div id="rechnungsdaten" className="mt-1 flex scroll-mt-24 flex-col gap-2">
+              <p className="text-[13px] leading-[1.35] text-muted-foreground">Für den QR-Einzahlungsschein auf Rechnungen an Mitglieder und Sponsoren.</p>
               <div className="grid grid-cols-2 gap-2">
                 <label className="block">
-                  <span className={label}>IBAN für Rechnungen</span>
+                  <span className={label}>IBAN</span>
                   <input value={invoiceIban} onChange={(e) => setInvoiceIban(e.target.value)} placeholder="CH.." autoComplete="off" className={wellInput} />
                 </label>
                 <label className="block">
@@ -360,7 +364,11 @@ export function ClubSettingsForm({
                   <input value={invoiceBank} onChange={(e) => setInvoiceBank(e.target.value)} autoComplete="off" className={wellInput} />
                 </label>
               </div>
-            )}
+              <label className="block">
+                <span className={label}>Clubadresse</span>
+                <input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Strasse Nr, PLZ Ort" autoComplete="street-address" className={wellInput} />
+              </label>
+            </div>
           </div>
         </div>
 
@@ -444,7 +452,7 @@ export function ClubSettingsForm({
                   type="number"
                   min={0}
                   value={value}
-                  onChange={(e) => set(Number(e.target.value))}
+                  onChange={(e) => set(e.target.value)}
                   className={wellInput}
                 />
               </label>
