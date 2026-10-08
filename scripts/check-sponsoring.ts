@@ -2,7 +2,7 @@
 // covers every year of its term without a new request; portal hints "Nur noch 3 Plätze" / "Bereits vergeben".
 import assert from "node:assert/strict";
 import { isQRReferenceValid, isSCORReferenceValid } from "swissqrbill/utils";
-import { DAY, DISCOUNT, campaignStep, confirmedLines, contractAmount, coversYear, dunningStep, hasYear, holdsPlace, itemHint, parseAddress, paymentReference, renewalRate, unbilledLines, yearlyAmount } from "../src/lib/sponsoring";
+import { DAY, DISCOUNT, MAIL_TEMPLATES, STAGES, contractEnd, fillPlaceholders, followUpDue, renewalReminderDue, campaignStep, confirmedLines, contractAmount, coversYear, dunningStep, hasYear, holdsPlace, itemHint, parseAddress, paymentReference, renewalRate, unbilledLines, yearlyAmount } from "../src/lib/sponsoring";
 import { parseAmount, parseSponsors } from "../src/lib/sponsor-import";
 
 // discounts and yearly amount
@@ -104,5 +104,30 @@ assert.equal(parseSponsors("foo;bar\nx;y").errors[0].reason, "Kopfzeile mit Spal
   assert.deepEqual(unbilledLines(c, 2028, []).map((l) => l.id), ["main", "addon", "late"]);
   assert.deepEqual(unbilledLines(c, 2027, [{ lines: null }]), []); // old invoice without snapshot covers everything
 }
+
+// CRM: contract 2026 for 2 years ends 31.12.2027; renewal reminder from 60 days before; cancelled never
+{
+  const k = { startYear: 2026, years: 2 };
+  assert.equal(contractEnd(k)?.toISOString().slice(0, 10), "2027-12-31");
+  assert.equal(contractEnd({ ...k, cancelledAt: new Date() }), null);
+  assert.equal(renewalReminderDue(k, new Date("2027-11-01T10:00:00+01:00")), true);
+  assert.equal(renewalReminderDue(k, new Date("2027-10-01T10:00:00+02:00")), false);
+  assert.equal(renewalReminderDue({ ...k, cancelledAt: new Date() }, new Date("2027-12-01T10:00:00+01:00")), false);
+}
+
+// CRM: follow-up due today (Zurich), not tomorrow, never when done
+{
+  const now = new Date("2026-10-08T15:00:00+02:00");
+  assert.equal(followUpDue({ followUpAt: new Date("2026-10-08T00:00:00+02:00"), followUpDoneAt: null }, now), true);
+  assert.equal(followUpDue({ followUpAt: new Date("2026-10-09T00:00:00+02:00"), followUpDoneAt: null }, now), false);
+  assert.equal(followUpDue({ followUpAt: new Date("2026-10-08T00:00:00+02:00"), followUpDoneAt: now }, now), false);
+  assert.equal(followUpDue({ followUpAt: null, followUpDoneAt: null }, now), false);
+}
+
+// CRM: placeholders; without first name the placeholder and its leading space disappear
+assert.equal(fillPlaceholders("Guten Tag {Vorname}, {Firma} dankt.", { firma: "Muster AG", vorname: "Anna" }), "Guten Tag Anna, Muster AG dankt.");
+assert.equal(fillPlaceholders("Guten Tag {Vorname}, {Firma} dankt.", { firma: "Muster AG" }), "Guten Tag, Muster AG dankt.");
+assert.deepEqual(STAGES.map((x) => x.label), ["Interessiert", "Angebot", "Verhandlung", "Zugesagt", "Abgesagt"]);
+assert.equal(MAIL_TEMPLATES.length, 4);
 
 console.log("sponsoring ok");

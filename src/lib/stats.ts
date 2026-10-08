@@ -65,7 +65,7 @@ export async function loadStats(tenantId: string, year: number, openHour: number
   const from = new Date(Math.min(Date.UTC(year - 1, 0, 1) - 2 * 3_600_000, now.getTime() - 400 * DAY));
   const to = new Date(Math.max(Date.UTC(year + 1, 0, 1), now.getTime() + 31 * DAY));
 
-  const [bookings, memberships, tenantUsers, courts, blocks, wallets, txs] = await Promise.all([
+  const [bookings, memberships, tenantUsers, courts, blocks, wallets, txs, sponsorPaid] = await Promise.all([
     prisma.booking.findMany({
       where: { tenantId, startsAt: { gte: from, lt: to } },
       select: {
@@ -97,6 +97,7 @@ export async function loadStats(tenantId: string, year: number, openHour: number
       select: { amount: true, type: true, createdAt: true, description: true, wallet: { select: { user: { select: { firstName: true, lastName: true, email: true } } } } },
       orderBy: { createdAt: "asc" },
     }),
+    prisma.sponsorInvoice.findMany({ where: { tenantId, paidAt: { gte: yStart, lt: to } }, select: { amount: true, paidAt: true } }),
   ]);
 
   const inYear = (d: Date, y = year) => local(d).y === y;
@@ -117,6 +118,7 @@ export async function loadStats(tenantId: string, year: number, openHour: number
     m: i + 1,
     byMethod: Object.fromEntries(METHODS.map((k) => [k, 0])) as Record<(typeof METHODS)[number], number>,
     abos: 0,
+    sponsoring: 0,
     topUps: 0,
   }));
   const byType: Record<string, number> = {};
@@ -136,6 +138,7 @@ export async function loadStats(tenantId: string, year: number, openHour: number
   const aboAmount = (m: (typeof memberships)[number]) => Number(m.pricePaid ?? m.plan.price);
   const aboDate = (m: (typeof memberships)[number]) => m.paidAt ?? m.createdAt;
   for (const m of paidMemberships) if (inYear(aboDate(m))) months[local(aboDate(m)).m - 1].abos += aboAmount(m);
+  for (const i of sponsorPaid) if (inYear(i.paidAt!)) months[local(i.paidAt!).m - 1].sponsoring += Number(i.amount);
   const wallet = { topUps: 0, used: 0, refunds: 0, grants: 0, liability: r2(wallets.reduce((s, w) => s + Number(w.balance), 0)) };
   for (const t of txs) {
     if (!inYear(t.createdAt)) continue;
@@ -152,6 +155,7 @@ export async function loadStats(tenantId: string, year: number, openHour: number
       ...x,
       byMethod: Object.fromEntries(METHODS.map((k) => [k, r2(x.byMethod[k])])) as Record<(typeof METHODS)[number], number>,
       abos: r2(x.abos),
+      sponsoring: r2(x.sponsoring),
       topUps: r2(x.topUps),
     })),
     byType: Object.entries(byType).map(([k, v]) => [TYPE_LABEL[k] ?? k, r2(v)] as const).sort((a, b) => b[1] - a[1]),
@@ -362,10 +366,10 @@ export function exportRows(s: Stats, type: ExportType): unknown[][] {
   }
   if (type === "kasse") {
     return [
-      ["Monat", ...METHODS.map((m) => METHOD_LABEL[m]), "Abos", "Guthaben-Aufladungen (Verbindlichkeit, nicht im Total)", "Total Einnahmen"],
+      ["Monat", ...METHODS.map((m) => METHOD_LABEL[m]), "Abos", "Sponsoring", "Guthaben-Aufladungen (Verbindlichkeit, nicht im Total)", "Total Einnahmen"],
       ...s.kasse.months.map((m) => [
-        `${String(m.m).padStart(2, "0")}.${s.year}`, ...METHODS.map((k) => m.byMethod[k].toFixed(2)), m.abos.toFixed(2), m.topUps.toFixed(2),
-        (m.byMethod.WALLET + m.byMethod.ONLINE + m.byMethod.ON_SITE + m.byMethod.INVOICE + m.abos).toFixed(2),
+        `${String(m.m).padStart(2, "0")}.${s.year}`, ...METHODS.map((k) => m.byMethod[k].toFixed(2)), m.abos.toFixed(2), m.sponsoring.toFixed(2), m.topUps.toFixed(2),
+        (m.byMethod.WALLET + m.byMethod.ONLINE + m.byMethod.ON_SITE + m.byMethod.INVOICE + m.abos + m.sponsoring).toFixed(2),
       ]),
       [],
       ["Offene Posten", s.kasse.open.toFixed(2)],

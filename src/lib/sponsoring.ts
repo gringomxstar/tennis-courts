@@ -111,3 +111,50 @@ export function renewalRate(prev: Set<string>, cur: Set<string>) {
 }
 
 export const chf = (n: number) => `CHF ${n.toLocaleString("de-CH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+// ---------- CRM ----------
+
+export const STAGES = [
+  { value: "INTERESTED", label: "Interessiert" },
+  { value: "OFFER", label: "Angebot" },
+  { value: "NEGOTIATION", label: "Verhandlung" },
+  { value: "WON", label: "Zugesagt" },
+  { value: "LOST", label: "Abgesagt" },
+] as const;
+export type Stage = (typeof STAGES)[number]["value"];
+
+/** Calendar day in Europe/Zurich as UTC midnight, so day differences are DST-proof. */
+const zurichDay = (d: Date) => Date.parse(d.toLocaleDateString("sv-SE", { timeZone: "Europe/Zurich" }));
+
+/** Follow-up is due once its day (Europe/Zurich) is today or past, unless done. */
+export const followUpDue = (n: { followUpAt: Date | null; followUpDoneAt: Date | null }, now: Date) =>
+  Boolean(n.followUpAt) && !n.followUpDoneAt && zurichDay(n.followUpAt!) <= zurichDay(now);
+
+/** 31 December of the contract's last year; null if cancelled. */
+export const contractEnd = (c: ContractLike) => (c.cancelledAt ? null : new Date(Date.UTC(c.startYear + c.years - 1, 11, 31)));
+
+/** From `days` days before the contract ends (never for cancelled contracts). */
+export function renewalReminderDue(c: ContractLike, now: Date, days = 60) {
+  const end = contractEnd(c);
+  return end != null && end.getTime() - zurichDay(now) <= days * DAY;
+}
+
+/** Replaces {Firma} and {Vorname}; without first name the placeholder and one space before it go. */
+export const fillPlaceholders = (text: string, v: { firma: string; vorname?: string | null }) =>
+  text.replace(/ ?\{Vorname\}/g, (m) => (v.vorname ? (m.startsWith(" ") ? " " : "") + v.vorname : "")).replaceAll("{Firma}", v.firma);
+
+export const MAIL_TEMPLATES = [
+  { id: "leer", label: "Leer", subject: "", body: "" },
+  {
+    id: "verlaengerung", label: "Verlängerung", subject: "Ihr Sponsoring: Verlängerung",
+    body: "Guten Tag {Vorname}\n\nIhr Sponsoring-Vertrag für {Firma} läuft demnächst aus. Wir würden uns freuen, wenn Sie uns weiterhin unterstützen. Gerne besprechen wir mit Ihnen die Verlängerung.\n\nFreundliche Grüsse",
+  },
+  {
+    id: "dank", label: "Dank", subject: "Herzlichen Dank für Ihre Unterstützung",
+    body: "Guten Tag {Vorname}\n\nHerzlichen Dank, dass {Firma} unseren Club unterstützt. Ihr Engagement ist für uns sehr wertvoll.\n\nFreundliche Grüsse",
+  },
+  {
+    id: "apero", label: "Einladung Apéro", subject: "Einladung zum Sponsoren-Apéro",
+    body: "Guten Tag {Vorname}\n\nWir laden Sie und {Firma} herzlich zu unserem Sponsoren-Apéro ein. Datum und Ort: [bitte ergänzen]. Bitte melden Sie sich kurz an.\n\nFreundliche Grüsse",
+  },
+] as const;

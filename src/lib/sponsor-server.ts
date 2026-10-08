@@ -3,7 +3,7 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { sendMail } from "@/lib/mail";
 import { getStripe } from "@/lib/stripe";
-import { DISCOUNT, PAYMENT_DAYS, DAY, campaignStep, chf, confirmedLines, dunningStep, hasYear, holdsPlace, lineInYear, parseAddress, unbilledLines, yearlyAmount } from "@/lib/sponsoring";
+import { DISCOUNT, contractEnd, coversYear, renewalReminderDue, PAYMENT_DAYS, DAY, campaignStep, chf, confirmedLines, dunningStep, hasYear, holdsPlace, lineInYear, parseAddress, unbilledLines, yearlyAmount } from "@/lib/sponsoring";
 import type { TenantSettings } from "@/types";
 
 const appUrl = () => process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
@@ -104,6 +104,7 @@ export async function confirmPurchase(o: {
     create: { sponsorId: o.sponsorId, year: o.year, status: "CONFIRMED", respondedAt: new Date() },
     update: { status: "CONFIRMED", respondedAt: new Date() },
   });
+  await prisma.sponsor.update({ where: { id: o.sponsorId }, data: { stage: "WON" } });
   // the sponsor answered: the "no answer" task is obsolete
   await prisma.sponsorTask.updateMany({ where: { sponsorId: o.sponsorId, doneAt: null, title: NO_ANSWER(o.year) }, data: { doneAt: new Date() } });
   const c = await prisma.sponsorContract.findUniqueOrThrow({ where: { id: o.contractId }, include: { lines: { where: { id: { in: o.lineIds } }, include: { item: true } } } });
@@ -371,6 +372,17 @@ export async function runSponsoring(now = new Date(), tenantId?: string) {
     budget--;
     await billYear(c.id, thisYear);
     stats.billed++;
+  }
+
+  // contract ends soon and nothing follows: one task per contract end
+  const ending = await prisma.sponsorContract.findMany({
+    where: { cancelledAt: null, startYear: { lte: thisYear, gt: thisYear - 4 }, ...(tenantId ? { sponsor: { tenantId } } : {}) },
+    include: { sponsor: { include: { contracts: { where: { cancelledAt: null } } } } },
+  });
+  for (const c of ending) {
+    const end = contractEnd(c)!;
+    if (!renewalReminderDue(c, now) || end.getUTCFullYear() < thisYear || c.sponsor.contracts.some((x) => coversYear(x, end.getUTCFullYear() + 1))) continue;
+    await createTask(c.sponsorId, `Vertrag endet am ${end.toLocaleDateString("de-CH", { timeZone: "UTC" })}: Verlängerung ansprechen`);
   }
 
   const open = await prisma.sponsorInvoice.findMany({ where: { paidAt: null, ...(tenantId ? { tenantId } : {}) } });

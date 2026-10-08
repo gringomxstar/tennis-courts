@@ -50,6 +50,8 @@ model User {
   sessions      Session[]
   wallets       UserWallet[]
   sponsorsOwned Sponsor[]     @relation("SponsorOwner")
+  sponsorNotes  SponsorNote[] @relation("SponsorNoteAuthor")
+  sponsorFiles  SponsorFile[] @relation("SponsorFileUploader")
   sponsorTasks  SponsorTask[]
 
   @@map("users")
@@ -492,7 +494,7 @@ model WalletTransaction {
 // ==========================================
 
 model Sponsor {
-  id              String    @id @default(cuid())
+  id              String       @id @default(cuid())
   tenantId        String
   name            String
   street          String?
@@ -501,12 +503,13 @@ model Sponsor {
   website         String?
   notes           String?
   ownerId         String? // responsible board member
-  token           String    @unique // personal portal link /sponsor/<token>, no login
+  token           String       @unique // personal portal link /sponsor/<token>, no login
   logo            Bytes?
   logoType        String?
   logoConfirmedAt DateTime?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  stage           SponsorStage @default(INTERESTED)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
 
   tenant       Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   owner        User?                @relation("SponsorOwner", fields: [ownerId], references: [id], onDelete: SetNull)
@@ -516,9 +519,54 @@ model Sponsor {
   invoices     SponsorInvoice[]
   deliverables SponsorDeliverable[]
   tasks        SponsorTask[]
+  noteList     SponsorNote[]
+  files        SponsorFile[]
 
   @@index([tenantId])
   @@map("sponsors")
+}
+
+enum SponsorStage {
+  INTERESTED
+  OFFER
+  NEGOTIATION
+  WON
+  LOST
+}
+
+/// CRM journal entry of a sponsor, optionally with a follow-up date.
+model SponsorNote {
+  id             String    @id @default(cuid())
+  sponsorId      String
+  authorId       String?
+  text           String
+  followUpAt     DateTime?
+  followUpDoneAt DateTime?
+  createdAt      DateTime  @default(now())
+
+  sponsor Sponsor @relation(fields: [sponsorId], references: [id], onDelete: Cascade)
+  author  User?   @relation("SponsorNoteAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([sponsorId])
+  @@map("sponsor_notes")
+}
+
+/// PDF attached to a sponsor (offer, contract), max 3 MB.
+model SponsorFile {
+  id           String   @id @default(cuid())
+  sponsorId    String
+  name         String
+  type         String
+  size         Int
+  data         Bytes
+  uploadedById String?
+  createdAt    DateTime @default(now())
+
+  sponsor    Sponsor @relation(fields: [sponsorId], references: [id], onDelete: Cascade)
+  uploadedBy User?   @relation("SponsorFileUploader", fields: [uploadedById], references: [id], onDelete: SetNull)
+
+  @@index([sponsorId])
+  @@map("sponsor_files")
 }
 
 model SponsorContact {

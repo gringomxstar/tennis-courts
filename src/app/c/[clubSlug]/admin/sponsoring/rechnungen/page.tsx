@@ -28,7 +28,7 @@ export default async function SponsorInvoicesPage({ params, searchParams }: { pa
         sample={!tenant.settingsJson?.invoiceIban || !parseAddress(tenant.address)}
         invoices={invoices.map((i) => ({
           id: i.id, number: i.number, sponsorId: i.sponsor.id, sponsor: i.sponsor.name, token: i.sponsor.token, amount: Number(i.amount),
-          issuedAt: i.issuedAt.toISOString(), dueAt: i.dueAt.toISOString(), paidAt: i.paidAt?.toISOString() ?? "", dunningLevel: i.dunningLevel, overdue: !i.paidAt && i.dueAt < now,
+          issuedAt: i.issuedAt.toISOString(), dueAt: i.dueAt.toISOString(), paidAt: i.paidAt?.toISOString() ?? "", dunningLevel: i.dunningLevel, sentAt: i.sentAt?.toISOString() ?? "", overdue: !i.paidAt && i.dueAt < now,
         }))}
       />
     </>
