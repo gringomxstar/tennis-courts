@@ -3,7 +3,8 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { sendMail } from "@/lib/mail";
 import { getStripe } from "@/lib/stripe";
-import { DISCOUNT, PAYMENT_DAYS, DAY, campaignStep, chf, confirmedLines, dunningStep, hasYear, holdsPlace, lineInYear, unbilledLines, yearlyAmount } from "@/lib/sponsoring";
+import { DISCOUNT, PAYMENT_DAYS, DAY, campaignStep, chf, confirmedLines, dunningStep, hasYear, holdsPlace, lineInYear, parseAddress, unbilledLines, yearlyAmount } from "@/lib/sponsoring";
+import type { TenantSettings } from "@/types";
 
 const appUrl = () => process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 export const portalUrl = (token: string) => `${appUrl()}/sponsor/${token}`;
@@ -189,8 +190,8 @@ export async function billYear(contractId: string, year: number, paid?: { at: Da
   });
   if (!inv) return null;
   await logSponsor(c.sponsor.tenantId, c.sponsorId, null, `Rechnung Nr. ${inv.number} (${year}) über ${chf(Number(inv.amount))} ${paid ? "erstellt und online bezahlt" : "erstellt"}`);
-  await sendInvoiceMail(inv.id);
-  return inv;
+  const notSent = await sendInvoiceMailWhy(inv.id);
+  return Object.assign(inv, { notSent });
 }
 
 async function loadInvoice(invoiceId: string) {
@@ -202,9 +203,22 @@ async function loadInvoice(invoiceId: string) {
 
 /** Invoice mail (first time), receipt (paid online) or dunning mail (level 1/2). Marks sentAt on success. */
 export async function sendInvoiceMail(invoiceId: string, dunning?: 1 | 2) {
+  return !(await sendInvoiceMailWhy(invoiceId, dunning));
+}
+
+/** Sends the invoice (or reminder); null when sent, otherwise why not. Never sends a sample QR for money still owed. */
+export async function sendInvoiceMailWhy(invoiceId: string, dunning?: 1 | 2): Promise<string | null> {
   const inv = await loadInvoice(invoiceId);
-  const to = inv && mainContact(inv.sponsor)?.email;
-  if (!inv || !to) return false;
+  if (!inv) return "Rechnung nicht gefunden";
+  if (!inv.paidAt && (!(inv.sponsor.tenant.settingsJson as TenantSettings | null)?.invoiceIban || !parseAddress(inv.sponsor.tenant.address))) {
+    // stays unsent; the daily run sends it once IBAN and address are in the settings
+    return "IBAN oder Clubadresse fehlt in den Einstellungen";
+  }
+  const to = mainContact(inv.sponsor)?.email;
+  if (!to) {
+    if (!dunning && !inv.paidAt) await createTask(inv.sponsorId, `Rechnung Nr. ${inv.number} per Post senden (keine E-Mail-Adresse)`);
+    return "Sponsor hat keine E-Mail-Adresse";
+  }
   const s = inv.sponsor;
   const club = s.tenant.name;
   const due = inv.dueAt.toLocaleDateString("de-CH", { timeZone: "Europe/Zurich" });
@@ -228,8 +242,13 @@ export async function sendInvoiceMail(invoiceId: string, dunning?: 1 | 2) {
     receipt ? invoiceUrl(s.token, inv.id) : `Rechnung mit QR-Einzahlungsschein: ${invoiceUrl(s.token, inv.id)}`,
     "", `Logo, Auswahl und weitere Leistungen: ${portalUrl(s.token)}`, "", `Freundliche Grüsse`, club,
   ].join("\n"));
-  if (ok && !dunning) await prisma.sponsorInvoice.update({ where: { id: inv.id }, data: { sentAt: new Date() } });
-  return ok;
+  if (!ok) return "Mailversand fehlgeschlagen";
+  if (!dunning) {
+    // first send after a delay (e.g. IBAN entered later): the sponsor still gets the full payment term
+    const due = new Date(Date.now() + PAYMENT_DAYS * DAY);
+    await prisma.sponsorInvoice.update({ where: { id: inv.id }, data: { sentAt: new Date(), ...(!inv.sentAt && !inv.paidAt && inv.dueAt < due ? { dueAt: due } : {}) } });
+  }
+  return null;
 }
 
 async function sendRequestMail(sponsorId: string, year: number, reminder: boolean) {

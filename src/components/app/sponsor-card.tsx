@@ -7,7 +7,8 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { DISCOUNT, chf, yearlyAmount } from "@/lib/sponsoring";
 import { Sheet } from "@/components/app/sheet";
-import { STATUS, field, fieldLabel, pill, type SponsorStatus } from "@/components/app/admin-sponsoring";
+import { ConfirmButton } from "@/components/app/confirm-button";
+import { STATUS, SampleWarning, field, fieldLabel, pill, type SponsorStatus } from "@/components/app/admin-sponsoring";
 import {
   addDeliverableAction, billYearAction, completeTaskAction, createContractAction, deleteSponsorAction, endContractAction,
   markInvoicePaidAction, renewPortalLinkAction, resendInvoiceAction, saveSponsorAction, setRequestStatusAction, toggleDeliverableAction,
@@ -19,7 +20,7 @@ type Invoice = { id: string; number: number; year: number; amount: number; dueAt
 const de = (iso: string) => new Date(iso).toLocaleDateString("de-CH");
 
 export function SponsorCard(p: {
-  slug: string; year: number; status: SponsorStatus;
+  slug: string; year: number; status: SponsorStatus; sample: boolean;
   sponsor: { id: string; name: string; street: string; zip: string; city: string; website: string; notes: string; ownerId: string; portal: string; token: string; logo: { type: string; confirmed: string } | null; contacts: Contact[] };
   board: { id: string; name: string }[]; items: { id: string; name: string; price: number; free: number | null }[];
   contracts: Contract[]; years: { year: number; status: string }[]; invoices: Invoice[];
@@ -30,10 +31,14 @@ export function SponsorCard(p: {
   const [pending, start] = useTransition();
   const [contractOpen, setContractOpen] = useState(false);
   const s = p.sponsor;
-  const run = (fn: () => Promise<{ success: boolean; error?: string }>, ok?: string) => start(async () => {
-    const r = await fn().catch(() => ({ success: false, error: "Verbindung fehlgeschlagen." }));
+  const running = p.contracts.find((c) => !c.cancelled && c.startYear <= p.year && p.year < c.startYear + c.years) ?? null;
+  const contact = s.contacts.find((c) => c.isPrimary) ?? s.contacts[0];
+  const open = p.invoices.filter((i) => !i.paidAt && (i.overdue || i.year === p.year));
+  const run = (fn: () => Promise<{ success: boolean; error?: string; warning?: string }>, ok?: string) => start(async () => {
+    const r: { success: boolean; error?: string; warning?: string } = await fn().catch(() => ({ success: false, error: "Verbindung fehlgeschlagen." }));
     if (!r.success) return void toast.error(r.error ?? "Fehler");
-    if (ok) toast.success(ok);
+    if (r.warning) toast.warning(r.warning);
+    else if (ok) toast.success(ok);
     router.refresh();
   });
 
@@ -45,8 +50,28 @@ export function SponsorCard(p: {
             <h2 className="mr-auto text-[17px] font-bold">Saison {p.year}</h2>
             <span className={cn("rounded-full px-3 py-1 text-[13px] font-bold", STATUS[p.status][1])}>{STATUS[p.status][0]}</span>
           </div>
+          {running && (
+            <div className="mt-2">
+              <b className="block text-[24px] tracking-[-.02em] tabular-nums">{chf(running.amount)} / Jahr</b>
+              <span className="text-[14px] text-ink-3">
+                Vertrag {running.startYear}{running.years > 1 ? `–${running.startYear + running.years - 1}` : ""}{running.discountPct ? ` · −${running.discountPct} %` : ""}
+                {contact ? ` · ${contact.name}` : ""}
+              </span>
+            </div>
+          )}
+          {open.length > 0 && (
+            <ul className="mt-3 grid gap-2">
+              {open.map((i) => (
+                <li key={i.id} className={cn("flex flex-wrap items-center gap-2 rounded-[14px] p-3 text-[14px]", i.overdue ? "bg-bad-bg text-bad" : "bg-warn-bg text-warn")}>
+                  <span className="min-w-0 flex-1 basis-40">Rechnung {i.year} · {chf(i.amount)} · {i.overdue ? "überfällig" : `offen bis ${de(i.dueAt)}`}</span>
+                  <button type="button" disabled={pending} onClick={() => run(() => resendInvoiceAction(p.slug, i.id), "Rechnung erneut verschickt")} className={cn(pill, "bg-card text-ink")}>Nochmals senden</button>
+                  <button type="button" disabled={pending} onClick={() => run(() => markInvoicePaidAction(p.slug, i.id, true), "Als bezahlt markiert")} className={cn(pill, "bg-brand-deep text-white")}>Bezahlt</button>
+                </li>
+              ))}
+            </ul>
+          )}
           <div className="mt-3 flex flex-wrap gap-2">
-            <button type="button" onClick={() => setContractOpen(true)} className={cn(pill, "bg-brand-deep text-white")}>{p.status === "CONFIRMED" ? "+ Leistungen dazu" : "+ Vertrag erfassen"}</button>
+            <button type="button" onClick={() => setContractOpen(true)} className={cn(pill, "bg-brand-deep text-white")}>{p.status === "CONFIRMED" ? "+ Angebot dazukaufen" : "+ Vertrag erfassen"}</button>
             <button type="button" onClick={() => navigator.clipboard.writeText(s.portal).then(() => toast.success("Link kopiert"))} className={cn(pill, "bg-bg text-ink")}>Portal-Link kopieren</button>
             <a href={s.portal} target="_blank" rel="noreferrer" className={cn(pill, "bg-bg text-ink")}>Portal öffnen</a>
             {p.status !== "CONFIRMED" && p.status !== "DECLINED" && (
@@ -67,6 +92,8 @@ export function SponsorCard(p: {
             </ul>
           )}
         </section>
+
+        <Deliverables slug={p.slug} sponsorId={s.id} year={p.year} items={p.deliverables} pending={pending} run={run} />
 
         <section className="card p-5">
           <h2 className="text-[17px] font-bold">Verträge</h2>
@@ -101,10 +128,7 @@ export function SponsorCard(p: {
                         <button key={y} type="button" disabled={pending} onClick={() => run(() => billYearAction(p.slug, c.id, y), `Rechnung ${y} erstellt`)} className={cn(pill, "bg-card text-ink")}>Rechnung {y} erstellen</button>
                       ))}
                       {end >= p.year && (
-                        <button type="button" disabled={pending} onClick={() => {
-                          const from = c.startYear >= p.year ? c.startYear : p.year;
-                          if (window.confirm(from === c.startYear ? "Vertrag ganz stornieren?" : `Vertrag nach ${from - 1} beenden (ab ${from} nicht mehr)?`)) run(() => endContractAction(p.slug, c.id, from), "Vertrag angepasst");
-                        }} className={cn(pill, "bg-card text-ink")}>{c.startYear >= p.year ? "Stornieren" : `Ab ${p.year} beenden`}</button>
+                        <ConfirmButton disabled={pending} onConfirm={() => run(() => endContractAction(p.slug, c.id, c.startYear >= p.year ? c.startYear : p.year), "Vertrag angepasst")} confirm={c.startYear >= p.year ? "Ganz stornieren?" : `Nach ${p.year - 1} beenden?`} className={cn(pill, "bg-card text-ink")}>{c.startYear >= p.year ? "Stornieren" : `Ab ${p.year} beenden`}</ConfirmButton>
                       )}
                     </div>
                   )}
@@ -139,20 +163,6 @@ export function SponsorCard(p: {
           </ul>
         </section>
 
-        <Deliverables slug={p.slug} sponsorId={s.id} year={p.year} items={p.deliverables} pending={pending} run={run} />
-
-        <section className="card p-5">
-          <h2 className="text-[17px] font-bold">Verlauf</h2>
-          <ol className="mt-2 grid gap-2">
-            {p.history.map((h, i) => (
-              <li key={i} className="grid grid-cols-[86px_1fr] gap-2 text-[14px]">
-                <span className="tabular-nums text-ink-3">{de(h.at)}</span>
-                <span>{h.text}<span className="text-ink-3"> · {h.by}</span></span>
-              </li>
-            ))}
-            {!p.history.length && <li className="text-[14px] text-ink-3">Noch keine Einträge.</li>}
-          </ol>
-        </section>
       </div>
 
       <div className="grid gap-4">
@@ -169,17 +179,29 @@ export function SponsorCard(p: {
             </div>
           ) : <p className="mt-1 text-[14px] text-ink-3">Der Sponsor lädt sein Logo im Portal hoch.</p>}
         </section>
+        <section className="card p-5">
+          <h2 className="text-[17px] font-bold">Verlauf</h2>
+          <ol className="mt-2 grid gap-2">
+            {p.history.map((h, i) => (
+              <li key={i} className="grid grid-cols-[86px_1fr] gap-2 text-[14px]">
+                <span className="tabular-nums text-ink-3">{de(h.at)}</span>
+                <span>{h.text}<span className="text-ink-3"> · {h.by}</span></span>
+              </li>
+            ))}
+            {!p.history.length && <li className="text-[14px] text-ink-3">Noch keine Einträge.</li>}
+          </ol>
+        </section>
         <section className="card grid gap-2 p-5">
-          <button type="button" disabled={pending} onClick={() => window.confirm("Neuen Link erstellen? Der alte funktioniert dann nicht mehr.") && run(() => renewPortalLinkAction(p.slug, s.id), "Neuer Link erstellt")} className={cn(pill, "bg-bg text-ink")}>Neuen Portal-Link erstellen</button>
-          <button type="button" disabled={pending} onClick={() => window.confirm(`${s.name} löschen?`) && start(async () => {
+          <ConfirmButton disabled={pending} onConfirm={() => run(() => renewPortalLinkAction(p.slug, s.id), "Neuer Link erstellt")} confirm="Alter Link geht dann nicht mehr. Sicher?" className={cn(pill, "bg-bg text-ink")}>Neuen Portal-Link erstellen</ConfirmButton>
+          <ConfirmButton disabled={pending} onConfirm={() => start(async () => {
             const r = await deleteSponsorAction(p.slug, s.id);
             if (!r.success) return void toast.error(r.error);
             router.push(`/c/${p.slug}/admin/sponsoring`);
-          })} className={cn(pill, "bg-bg text-bad")}>Sponsor löschen</button>
+          })} confirm={`${s.name} wirklich löschen?`} className={cn(pill, "bg-bg text-bad")}>Sponsor löschen</ConfirmButton>
         </section>
       </div>
 
-      <ContractSheet open={contractOpen} onClose={() => setContractOpen(false)} slug={p.slug} sponsorId={s.id} year={p.year} items={p.items} running={p.contracts.find((c) => !c.cancelled && c.startYear <= p.year && p.year < c.startYear + c.years && p.status === "CONFIRMED") ?? null} />
+      <ContractSheet sample={p.sample} open={contractOpen} onClose={() => setContractOpen(false)} slug={p.slug} sponsorId={s.id} year={p.year} items={p.items} running={p.status === "CONFIRMED" ? running : null} />
     </div>
   );
 }
@@ -241,8 +263,8 @@ function Deliverables({ slug, sponsorId, year, items, pending, run }: {
   const years = [...new Set([year, ...items.map((d) => d.year)])].sort((a, b) => b - a);
   return (
     <section className="card p-5">
-      <h2 className="text-[17px] font-bold">Gegenleistungen</h2>
-      <p className="text-[13.5px] text-ink-3">Was wir dem Sponsor schulden. Kommt automatisch aus dem Katalog.</p>
+      <h2 className="text-[17px] font-bold">Was wir liefern</h2>
+      <p className="text-[13.5px] text-ink-3">Was wir dem Sponsor schulden. Kommt automatisch aus den gekauften Angeboten. Abhaken, sobald erledigt.</p>
       {years.map((y) => {
         const list = items.filter((d) => d.year === y);
         if (!list.length && y !== year) return null;
@@ -263,15 +285,15 @@ function Deliverables({ slug, sponsorId, year, items, pending, run }: {
         );
       })}
       <form className="mt-3 flex gap-2" onSubmit={(e) => { e.preventDefault(); if (label.trim()) run(() => addDeliverableAction(slug, sponsorId, year, label), "Hinzugefügt"); setLabel(""); }}>
-        <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder={`Weitere für ${year}, z.B. Einladung Apéro`} aria-label="Gegenleistung hinzufügen" className={cn(field, "mt-0 h-11")} />
+        <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder={`Weitere für ${year}, z.B. Einladung Apéro`} aria-label="Weitere Lieferung hinzufügen" className={cn(field, "mt-0 h-11")} />
         <button disabled={pending || !label.trim()} className={cn(pill, "bg-bg text-ink")}>+</button>
       </form>
     </section>
   );
 }
 
-function ContractSheet({ open, onClose, slug, sponsorId, year, items, running }: {
-  open: boolean; onClose: () => void; slug: string; sponsorId: string; year: number; items: { id: string; name: string; price: number; free: number | null }[];
+function ContractSheet({ sample, open, onClose, slug, sponsorId, year, items, running }: {
+  sample: boolean; open: boolean; onClose: () => void; slug: string; sponsorId: string; year: number; items: { id: string; name: string; price: number; free: number | null }[];
   running: Contract | null;
 }) {
   const router = useRouter();
@@ -282,13 +304,13 @@ function ContractSheet({ open, onClose, slug, sponsorId, year, items, running }:
   const lines = Object.entries(qty).filter(([, q]) => q > 0).map(([itemId, quantity]) => ({ itemId, quantity }));
   const total = yearlyAmount(lines.map((l) => ({ quantity: l.quantity, unitPrice: items.find((i) => i.id === l.itemId)?.price ?? 0 })), running ? running.discountPct : DISCOUNT[years]);
   return (
-    <Sheet open={open} onOpenChange={(o) => !o && onClose()} title={running ? "Leistungen dazu" : "Vertrag erfassen"}>
-      <div className="text-[24px] font-bold tracking-[-.03em]">{running ? "Leistungen dazukaufen" : "Vertrag erfassen"}</div>
+    <Sheet open={open} onOpenChange={(o) => !o && onClose()} title={running ? "Angebot dazukaufen" : "Vertrag erfassen"}>
       <p className="mt-1 text-[13.5px] text-ink-3">
         {running
           ? `Läuft bis ${running.startYear + running.years - 1} wie der bestehende Vertrag${running.discountPct ? `, mit −${running.discountPct} %` : ""}. Voller Jahrespreis, die Zusatzrechnung geht sofort per E-Mail raus.`
           : "Z.B. nach einer Zusage am Telefon. Die Rechnung für das erste Jahr geht sofort per E-Mail raus."}
       </p>
+      {sample && <SampleWarning slug={slug} />}
       {!running && <div className="mt-3 grid grid-cols-2 gap-3">
         <label className={fieldLabel}>Ab Jahr<input type="number" value={startYear} onChange={(e) => setStartYear(Number(e.target.value))} className={field} /></label>
         <label className={fieldLabel}>Laufzeit
@@ -317,7 +339,8 @@ function ContractSheet({ open, onClose, slug, sponsorId, year, items, running }:
       <button type="button" disabled={!lines.length || pending} className="btn btn-pri mt-4 h-[52px] w-full" onClick={() => start(async () => {
         const r = await createContractAction(slug, sponsorId, startYear, years, lines);
         if (!r.success) return void toast.error(r.error);
-        toast.success("Vertrag erfasst, Rechnung verschickt");
+        if (r.notSent) toast.warning(`Vertrag erfasst. Rechnung NICHT verschickt: ${r.notSent}.`);
+        else toast.success("Vertrag erfasst, Rechnung verschickt");
         setQty({});
         onClose();
         router.refresh();

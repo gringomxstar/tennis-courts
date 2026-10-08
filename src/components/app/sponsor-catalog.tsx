@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { chf, itemHint } from "@/lib/sponsoring";
 import { Sheet } from "@/components/app/sheet";
+import { ConfirmButton } from "@/components/app/confirm-button";
 import { field, fieldLabel, pill } from "@/components/app/admin-sponsoring";
 import { deleteItemAction, saveItemAction } from "@/app/actions/sponsoring";
 
@@ -20,7 +21,7 @@ export function SponsorCatalog({ slug, year, items }: { slug: string; year: numb
   return (
     <section className="px-5 pb-10 pt-4">
       <div className="flex justify-end">
-        <button type="button" onClick={() => setEdit("new")} className={cn(pill, "bg-brand-deep text-white")}>+ Leistung</button>
+        <button type="button" onClick={() => setEdit("new")} className={cn(pill, "bg-brand-deep text-white")}>+ Angebot</button>
       </div>
       <ul className="mt-3 grid gap-3 @min-[900px]:grid-cols-2">
         {items.map((it) => {
@@ -48,7 +49,7 @@ export function SponsorCatalog({ slug, year, items }: { slug: string; year: numb
             </li>
           );
         })}
-        {!items.length && <li className="card p-6 text-center text-[14px] text-ink-3">Noch keine Leistungen. Erfassen Sie z.B. Blache, Tischset, Hauptsponsor, Container (1 Platz), Centre Court (1 Platz).</li>}
+        {!items.length && <li className="card p-6 text-center text-[14px] text-ink-3">Noch keine Angebote. Erfassen Sie z.B. Blache, Tischset, Hauptsponsor, Container (1×), Centre Court (1×).</li>}
       </ul>
       <ItemSheet key={edit === "new" ? "new" : edit?.id ?? "none"} slug={slug} item={edit} onClose={() => setEdit(null)} />
     </section>
@@ -60,7 +61,7 @@ function ItemSheet({ slug, item, onClose }: { slug: string; item: Item | "new" |
   const [pending, start] = useTransition();
   const it = item && item !== "new" ? item : null;
   return (
-    <Sheet open={item != null} onOpenChange={(o) => !o && onClose()} title={it ? "Leistung bearbeiten" : "Neue Leistung"}>
+    <Sheet open={item != null} onOpenChange={(o) => !o && onClose()} title={it ? "Angebot bearbeiten" : "Neues Angebot"}>
       <form className="grid gap-3" action={(fd) => start(async () => {
         if (it) fd.set("id", it.id);
         const r = await saveItemAction(slug, fd);
@@ -69,15 +70,15 @@ function ItemSheet({ slug, item, onClose }: { slug: string; item: Item | "new" |
         onClose();
         router.refresh();
       })}>
-        <label className={fieldLabel}>Name<input name="name" required defaultValue={it?.name} placeholder="z.B. Blache am Platz 1" className={field} /></label>
+        <label className={fieldLabel}>Name <span className="text-bad">*</span><input name="name" required defaultValue={it?.name} placeholder="z.B. Blache am Platz 1" className={field} /></label>
         <div className="grid grid-cols-2 gap-3">
-          <label className={fieldLabel}>Preis CHF / Jahr<input name="price" required inputMode="decimal" defaultValue={it?.price} className={field} /></label>
-          <label className={fieldLabel}>Plätze<input name="capacity" type="number" min={1} defaultValue={it?.capacity ?? ""} placeholder="unbegrenzt" className={field} /></label>
+          <label className={fieldLabel}>Preis CHF pro Jahr <span className="text-bad">*</span><input name="price" required inputMode="decimal" defaultValue={it?.price} className={field} /></label>
+          <label className={fieldLabel}>Anzahl verfügbar<input name="capacity" type="number" min={1} defaultValue={it?.capacity ?? ""} placeholder="unbegrenzt" className={field} /></label>
         </div>
-        <p className="-mt-1 text-[12.5px] text-ink-3">1 Platz = exklusiv (Container, Centre Court). Leer = unbegrenzt.</p>
+        <p className="-mt-1 text-[12.5px] text-ink-3">1 = nur einmal vergeben (Container, Centre Court). Leer = beliebig oft.</p>
         <label className={fieldLabel}>Hinweis im Portal<input name="badge" defaultValue={it?.badge} placeholder="z.B. Bestseller" maxLength={30} className={field} /></label>
         <label className={fieldLabel}>Beschreibung<textarea name="description" defaultValue={it?.description} rows={2} maxLength={500} className={cn(field, "h-auto py-3")} /></label>
-        <label className={fieldLabel}>Gegenleistungen (eine pro Zeile)
+        <label className={fieldLabel}>Was wir liefern (eine Zeile pro Punkt)
           <textarea name="deliverables" defaultValue={it?.deliverables.join("\n")} rows={3} placeholder={"Blache aufhängen\nLogo auf Website\nEinladung Sponsoren-Apéro"} className={cn(field, "h-auto py-3")} />
         </label>
         <label className={fieldLabel}>Foto<input name="image" type="file" accept="image/png,image/jpeg,image/webp" className={cn(field, "pt-3")} /></label>
@@ -90,13 +91,16 @@ function ItemSheet({ slug, item, onClose }: { slug: string; item: Item | "new" |
         </div>
         <button disabled={pending} className="btn btn-pri h-[52px] w-full">{pending ? "…" : "Speichern"}</button>
         {it && (
-          <button type="button" disabled={pending} onClick={() => window.confirm(`«${it.name}» löschen?`) && start(async () => {
-            const r = await deleteItemAction(slug, it.id);
-            if (!r.success) return void toast.error(r.error);
-            toast.success(r.hidden ? "Ist in Verträgen, darum nur ausgeblendet" : "Gelöscht");
-            onClose();
-            router.refresh();
-          })} className="text-[14px] font-semibold text-bad">Löschen</button>
+          <>
+            <ConfirmButton disabled={pending} onConfirm={() => start(async () => {
+              const r = await deleteItemAction(slug, it.id);
+              if (!r.success) return void toast.error(r.error);
+              toast.success(r.hidden ? "Ist in Verträgen, darum nur ausgeblendet" : "Gelöscht");
+              onClose();
+              router.refresh();
+            })} confirm={`«${it.name}» wirklich löschen?`} className="h-10 rounded-full text-[14px] font-semibold text-bad">Löschen</ConfirmButton>
+            <p className="-mt-2 text-[13px] text-ink-3">Ist das Angebot schon in Verträgen, wird es nur ausgeblendet.</p>
+          </>
         )}
       </form>
     </Sheet>

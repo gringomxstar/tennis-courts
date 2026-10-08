@@ -8,7 +8,7 @@ import { getStripe } from "@/lib/stripe";
 import { getTenantContext } from "@/lib/tenant";
 import { coversYear, chf } from "@/lib/sponsoring";
 import { parseSponsors } from "@/lib/sponsor-import";
-import { CHECKOUT_MINUTES, NO_ANSWER, billYear, buyItems, confirmPurchase, settleOwnCheckouts, currentSponsorYear, logSponsor, newSponsorToken, sendInvoiceMail, startCampaign } from "@/lib/sponsor-server";
+import { CHECKOUT_MINUTES, NO_ANSWER, billYear, buyItems, confirmPurchase, settleOwnCheckouts, currentSponsorYear, logSponsor, newSponsorToken, sendInvoiceMailWhy, startCampaign } from "@/lib/sponsor-server";
 
 type Res<T = object> = ({ success: true } & T) | { success: false; error: string };
 const fail = (e: unknown): { success: false; error: string } => ({ success: false, error: e instanceof Error ? e.message : String(e) });
@@ -172,15 +172,15 @@ export async function deleteItemAction(slug: string, itemId: string): Promise<Re
 
 const linesSchema = z.array(z.object({ itemId: z.string(), quantity: z.number().int().min(0).max(50) })).max(30);
 
-export async function createContractAction(slug: string, sponsorId: string, startYear: number, years: number, lines: z.input<typeof linesSchema>): Promise<Res> {
+export async function createContractAction(slug: string, sponsorId: string, startYear: number, years: number, lines: z.input<typeof linesSchema>): Promise<Res<{ notSent?: string | null }>> {
   try {
     const { tenantId, actorId } = await admin(slug);
     await ownSponsor(tenantId, sponsorId);
     if (!Number.isInteger(startYear) || startYear < 2000 || startYear > 2100) throw new Error("Jahr ungültig.");
     const b = await buyItems({ tenantId, sponsorId, year: startYear, years, lines: linesSchema.parse(lines), source: "admin", actorId });
-    await confirmPurchase({ tenantId, sponsorId, contractId: b.contract.id, year: startYear, lineIds: b.lineIds, actorId, source: "admin" });
+    const inv = await confirmPurchase({ tenantId, sponsorId, contractId: b.contract.id, year: startYear, lineIds: b.lineIds, actorId, source: "admin" });
     refresh(slug);
-    return { success: true };
+    return { success: true, notSent: inv?.notSent };
   } catch (e) {
     return fail(e);
   }
@@ -242,7 +242,8 @@ export async function resendInvoiceAction(slug: string, invoiceId: string): Prom
   try {
     const { tenantId } = await admin(slug);
     if (!(await prisma.sponsorInvoice.findFirst({ where: { id: invoiceId, tenantId } }))) throw new Error("Rechnung nicht gefunden.");
-    if (!(await sendInvoiceMail(invoiceId))) throw new Error("Mail nicht verschickt (keine E-Mail beim Sponsor oder Mailversand nicht eingerichtet).");
+    const why = await sendInvoiceMailWhy(invoiceId);
+    if (why) throw new Error(`Nicht verschickt: ${why}.`);
     return { success: true };
   } catch (e) {
     return fail(e);
@@ -522,13 +523,14 @@ export async function portalConfirmLogoAction(token: string): Promise<Res> {
 }
 
 /** Admin: bill a contract year by hand (e.g. a running contract before the campaign). */
-export async function billYearAction(slug: string, contractId: string, year: number): Promise<Res> {
+export async function billYearAction(slug: string, contractId: string, year: number): Promise<Res<{ warning?: string }>> {
   try {
     const { tenantId } = await admin(slug);
     if (!(await prisma.sponsorContract.findFirst({ where: { id: contractId, sponsor: { tenantId } } }))) throw new Error("Vertrag nicht gefunden.");
-    if (!(await billYear(contractId, year))) throw new Error(`Vertrag deckt ${year} nicht ab.`);
+    const inv = await billYear(contractId, year);
+    if (!inv) throw new Error(`Vertrag deckt ${year} nicht ab.`);
     refresh(slug);
-    return { success: true };
+    return { success: true, ...(inv.notSent && { warning: `Rechnung ${year} erstellt, aber nicht verschickt: ${inv.notSent}.` }) };
   } catch (e) {
     return fail(e);
   }
