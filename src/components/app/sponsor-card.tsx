@@ -5,9 +5,11 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { DISCOUNT, chf, yearlyAmount } from "@/lib/sponsoring";
+import { DISCOUNT, STAGES, chf, yearlyAmount, type Stage } from "@/lib/sponsoring";
 import { Sheet } from "@/components/app/sheet";
 import { ConfirmButton } from "@/components/app/confirm-button";
+import { SponsorFiles, SponsorNotes, type Note, type SponsorFileRow } from "@/components/app/sponsor-notes";
+import { setStageAction } from "@/app/actions/sponsor-crm";
 import { STATUS, SampleWarning, field, fieldLabel, pill, type SponsorStatus } from "@/components/app/admin-sponsoring";
 import {
   addDeliverableAction, billYearAction, completeTaskAction, createContractAction, deleteSponsorAction, endContractAction,
@@ -15,9 +17,13 @@ import {
 } from "@/app/actions/sponsoring";
 
 type Contact = { name: string; email: string; phone: string; role: string; isPrimary: boolean };
-type Contract = { id: string; startYear: number; years: number; discountPct: number; source: string; cancelled: boolean; amount: number; lines: { name: string; quantity: number; price: number; fromYear: number | null; pending: boolean }[]; billedYears: number[] };
+type Contract = { id: string; startYear: number; years: number; discountPct: number; source: string; cancelled: boolean; amount: number; endsInDays: number | null; lines: { name: string; quantity: number; price: number; fromYear: number | null; pending: boolean }[]; billedYears: number[] };
 type Invoice = { id: string; number: number; year: number; amount: number; dueAt: string; paidAt: string; dunningLevel: number; sent: boolean; overdue: boolean };
 const de = (iso: string) => new Date(iso).toLocaleDateString("de-CH");
+
+/** Test-Schutz: jede Aktion mit echtem Mailversand fragt vorher nach. */
+const warnMail = (name: string, email?: string) =>
+  window.confirm(`Achtung: Das verschickt eine ECHTE E-Mail an ${name}${email ? ` (${email})` : " (keine E-Mail-Adresse hinterlegt, ggf. geht eine Aufgaben-Mail an die zuständige Person)"}. Fortfahren?`);
 
 export function SponsorCard(p: {
   slug: string; year: number; status: SponsorStatus; sample: boolean;
@@ -26,10 +32,12 @@ export function SponsorCard(p: {
   contracts: Contract[]; years: { year: number; status: string }[]; invoices: Invoice[];
   deliverables: { id: string; year: number; label: string; done: boolean }[]; tasks: { id: string; title: string; assignee: string }[];
   history: { at: string; text: string; by: string }[];
+  stage: Stage; notes: Note[]; files: SponsorFileRow[];
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [contractOpen, setContractOpen] = useState(false);
+  const [stage, setStage] = useState(p.stage);
   const s = p.sponsor;
   const running = p.contracts.find((c) => !c.cancelled && c.startYear <= p.year && p.year < c.startYear + c.years) ?? null;
   const contact = s.contacts.find((c) => c.isPrimary) ?? s.contacts[0];
@@ -44,7 +52,31 @@ export function SponsorCard(p: {
 
   return (
     <div className="grid gap-4 px-5 pb-10 pt-4 @min-[1024px]:grid-cols-[1fr_380px] @min-[1024px]:items-start">
-      <div className="grid gap-4">
+      <section className="card grid gap-3 p-4 @min-[1024px]:col-span-2">
+        <div role="group" aria-label="Stufe" className="flex gap-1 overflow-x-auto rounded-full bg-bg p-1">
+          {STAGES.map((st) => (
+            <button key={st.value} type="button" aria-pressed={stage === st.value} onClick={() => {
+              if (stage === st.value) return;
+              const prev = stage;
+              setStage(st.value);
+              start(async () => {
+                const r = await setStageAction(p.slug, s.id, st.value).catch(() => ({ success: false as const, error: "Verbindung fehlgeschlagen." }));
+                if (!r.success) { setStage(prev); return void toast.error(r.error); }
+                router.refresh();
+              });
+            }} className={cn("h-9 flex-1 whitespace-nowrap rounded-full px-3 text-[13.5px] font-bold", stage === st.value ? "bg-brand-deep text-white" : "text-ink-2")}>{st.label}</button>
+          ))}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {contact?.phone && <a href={`tel:${contact.phone.replace(/[^\d+]/g, "")}`} className={cn(pill, "bg-bg text-ink")}>Anrufen</a>}
+          {contact?.email && <a href={`mailto:${contact.email}`} className={cn(pill, "bg-bg text-ink")}>Mail</a>}
+          <button type="button" onClick={() => { const el = document.getElementById("sponsor-note-input"); el?.scrollIntoView({ behavior: "smooth", block: "center" }); el?.focus({ preventScroll: true }); }} className={cn(pill, "bg-bg text-ink")}>Notiz</button>
+        </div>
+      </section>
+      <div className="grid gap-4 @min-[1024px]:col-start-2 @min-[1024px]:row-start-2">
+        <Details slug={p.slug} sponsor={s} board={p.board} />
+      </div>
+      <div className="grid gap-4 @min-[1024px]:col-start-1 @min-[1024px]:row-span-2 @min-[1024px]:row-start-2">
         <section className="card p-5">
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="mr-auto text-[17px] font-bold">Saison {p.year}</h2>
@@ -64,7 +96,7 @@ export function SponsorCard(p: {
               {open.map((i) => (
                 <li key={i.id} className={cn("flex flex-wrap items-center gap-2 rounded-[14px] p-3 text-[14px]", i.overdue ? "bg-bad-bg text-bad" : "bg-warn-bg text-warn")}>
                   <span className="min-w-0 flex-1 basis-40">Rechnung {i.year} · {chf(i.amount)} · {i.overdue ? "überfällig" : `offen bis ${de(i.dueAt)}`}</span>
-                  <button type="button" disabled={pending} onClick={() => run(() => resendInvoiceAction(p.slug, i.id), "Rechnung erneut verschickt")} className={cn(pill, "bg-card text-ink")}>Nochmals senden</button>
+                  <button type="button" disabled={pending} onClick={() => warnMail(s.name, contact?.email) && run(() => resendInvoiceAction(p.slug, i.id), "Rechnung erneut verschickt")} className={cn(pill, "bg-card text-ink")}>Nochmals senden</button>
                   <button type="button" disabled={pending} onClick={() => run(() => markInvoicePaidAction(p.slug, i.id, true), "Als bezahlt markiert")} className={cn(pill, "bg-brand-deep text-white")}>Bezahlt</button>
                 </li>
               ))}
@@ -93,8 +125,6 @@ export function SponsorCard(p: {
           )}
         </section>
 
-        <Deliverables slug={p.slug} sponsorId={s.id} year={p.year} items={p.deliverables} pending={pending} run={run} />
-
         <section className="card p-5">
           <h2 className="text-[17px] font-bold">Verträge</h2>
           <div className="mt-2 flex flex-wrap gap-2">
@@ -112,6 +142,7 @@ export function SponsorCard(p: {
                     <b>{c.startYear}{c.years > 1 ? `–${end}` : ""}{c.cancelled ? " · storniert" : ""}</b>
                     <span className="text-[14px] tabular-nums">{chf(c.amount)} / Jahr{c.discountPct ? ` (−${c.discountPct} %)` : ""}</span>
                   </div>
+                  {!c.cancelled && <div className="text-[13.5px] text-ink-2">Läuft bis 31.12.{end}{c.endsInDays != null && c.endsInDays >= 0 && c.endsInDays <= 90 && <b className="text-warn"> · endet in {c.endsInDays} {c.endsInDays === 1 ? "Tag" : "Tagen"}</b>}</div>}
                   <ul className="mt-1 text-[14px] text-ink-2">
                     {c.lines.map((l, i) => (
                       <li key={i}>
@@ -125,7 +156,7 @@ export function SponsorCard(p: {
                   {!c.cancelled && (
                     <div className="mt-2 flex flex-wrap gap-2">
                       {c.source !== "import" && unbilled.map((y) => (
-                        <button key={y} type="button" disabled={pending} onClick={() => run(() => billYearAction(p.slug, c.id, y), `Rechnung ${y} erstellt`)} className={cn(pill, "bg-card text-ink")}>Rechnung {y} erstellen</button>
+                        <button key={y} type="button" disabled={pending} onClick={() => warnMail(s.name, contact?.email) && run(() => billYearAction(p.slug, c.id, y), `Rechnung ${y} erstellt`)} className={cn(pill, "bg-card text-ink")}>Rechnung {y} erstellen</button>
                       ))}
                       {end >= p.year && (
                         <ConfirmButton disabled={pending} onConfirm={() => run(() => endContractAction(p.slug, c.id, c.startYear >= p.year ? c.startYear : p.year), "Vertrag angepasst")} confirm={c.startYear >= p.year ? "Ganz stornieren?" : `Nach ${p.year - 1} beenden?`} className={cn(pill, "bg-card text-ink")}>{c.startYear >= p.year ? "Stornieren" : `Ab ${p.year} beenden`}</ConfirmButton>
@@ -137,7 +168,10 @@ export function SponsorCard(p: {
             })}
             {!p.contracts.length && <li className="text-[14px] text-ink-3">Noch kein Vertrag.</li>}
           </ul>
+          <SponsorFiles slug={p.slug} sponsorId={s.id} files={p.files} />
         </section>
+
+        <Deliverables slug={p.slug} sponsorId={s.id} year={p.year} items={p.deliverables} pending={pending} run={run} />
 
         <section className="card p-5">
           <h2 className="text-[17px] font-bold">Rechnungen</h2>
@@ -153,7 +187,7 @@ export function SponsorCard(p: {
                   </span>
                   {!i.sent && <span className="text-[12.5px] text-ink-3">nicht verschickt</span>}
                   {open.some((o) => o.id === i.id) ? <span className="ml-auto text-[12.5px] text-ink-3">oben erledigen</span> : <span className="ml-auto flex gap-2">
-                    {!i.paidAt && <button type="button" disabled={pending} onClick={() => run(() => resendInvoiceAction(p.slug, i.id), "Rechnung verschickt")} className={cn(pill, "bg-bg text-ink")}>Senden</button>}
+                    {!i.paidAt && <button type="button" disabled={pending} onClick={() => warnMail(s.name, contact?.email) && run(() => resendInvoiceAction(p.slug, i.id), "Rechnung verschickt")} className={cn(pill, "bg-bg text-ink")}>Senden</button>}
                     <button type="button" disabled={pending} onClick={() => run(() => markInvoicePaidAction(p.slug, i.id, !i.paidAt))} className={cn(pill, i.paidAt ? "bg-bg text-ink" : "bg-brand-deep text-white")}>{i.paidAt ? "Doch offen" : "Bezahlt"}</button>
                   </span>}
                 </li>
@@ -163,10 +197,23 @@ export function SponsorCard(p: {
           </ul>
         </section>
 
+        <SponsorNotes slug={p.slug} sponsorId={s.id} notes={p.notes} />
+
+        <details className="card p-5">
+          <summary className="cursor-pointer text-[17px] font-bold">Verlauf</summary>
+          <ol className="mt-2 grid gap-2">
+            {p.history.map((h, i) => (
+              <li key={i} className="grid grid-cols-[86px_1fr] gap-2 text-[14px]">
+                <span className="tabular-nums text-ink-3">{de(h.at)}</span>
+                <span>{h.text}<span className="text-ink-3"> · {h.by}</span></span>
+              </li>
+            ))}
+            {!p.history.length && <li className="text-[14px] text-ink-3">Noch keine Einträge.</li>}
+          </ol>
+        </details>
       </div>
 
-      <div className="grid gap-4">
-        <Details slug={p.slug} sponsor={s} board={p.board} />
+      <div className="grid gap-4 @min-[1024px]:col-start-2 @min-[1024px]:row-start-3">
         <section className="card p-5">
           <div className="flex items-center justify-between gap-2">
             <h2 className="text-[17px] font-bold">Logo-Datei vom Sponsor</h2>
@@ -179,18 +226,6 @@ export function SponsorCard(p: {
             </div>
           ) : <p className="mt-1 text-[14px] text-ink-3">Der Sponsor lädt sein Logo im Portal hoch.</p>}
         </section>
-        <section className="card p-5">
-          <h2 className="text-[17px] font-bold">Verlauf</h2>
-          <ol className="mt-2 grid gap-2">
-            {p.history.map((h, i) => (
-              <li key={i} className="grid grid-cols-[86px_1fr] gap-2 text-[14px]">
-                <span className="tabular-nums text-ink-3">{de(h.at)}</span>
-                <span>{h.text}<span className="text-ink-3"> · {h.by}</span></span>
-              </li>
-            ))}
-            {!p.history.length && <li className="text-[14px] text-ink-3">Noch keine Einträge.</li>}
-          </ol>
-        </section>
         <section className="card grid gap-2 p-5">
           <ConfirmButton disabled={pending} onConfirm={() => run(() => renewPortalLinkAction(p.slug, s.id), "Neuer Link erstellt")} confirm="Alter Link geht dann nicht mehr. Sicher?" className={cn(pill, "bg-bg text-ink")}>Neuen Portal-Link erstellen</ConfirmButton>
           <ConfirmButton disabled={pending} onConfirm={() => start(async () => {
@@ -201,7 +236,7 @@ export function SponsorCard(p: {
         </section>
       </div>
 
-      <ContractSheet sample={p.sample} open={contractOpen} onClose={() => setContractOpen(false)} slug={p.slug} sponsorId={s.id} year={p.year} items={p.items} running={p.status === "CONFIRMED" ? running : null} />
+      <ContractSheet sample={p.sample} open={contractOpen} onClose={() => setContractOpen(false)} slug={p.slug} sponsorId={s.id} sponsorName={s.name} email={contact?.email} year={p.year} items={p.items} running={p.status === "CONFIRMED" ? running : null} />
     </div>
   );
 }
@@ -233,7 +268,7 @@ function Details({ slug, sponsor: s, board }: { slug: string; sponsor: Parameter
           {board.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
         </select>
       </label>
-      <label className={fieldLabel}>Notizen<textarea name="notes" defaultValue={s.notes} rows={3} className={cn(field, "h-auto py-3")} /></label>
+      <input type="hidden" name="notes" defaultValue={s.notes} />
       <div className={fieldLabel}>Kontakte</div>
       {contacts.map((c, i) => (
         <fieldset key={i} className="grid gap-2 rounded-[14px] bg-bg p-3">
@@ -292,8 +327,8 @@ function Deliverables({ slug, sponsorId, year, items, pending, run }: {
   );
 }
 
-function ContractSheet({ sample, open, onClose, slug, sponsorId, year, items, running }: {
-  sample: boolean; open: boolean; onClose: () => void; slug: string; sponsorId: string; year: number; items: { id: string; name: string; price: number; free: number | null }[];
+function ContractSheet({ sample, open, onClose, slug, sponsorId, sponsorName, email, year, items, running }: {
+  sample: boolean; open: boolean; onClose: () => void; slug: string; sponsorId: string; sponsorName: string; email?: string; year: number; items: { id: string; name: string; price: number; free: number | null }[];
   running: Contract | null;
 }) {
   const router = useRouter();
@@ -337,6 +372,7 @@ function ContractSheet({ sample, open, onClose, slug, sponsorId, year, items, ru
         {!items.length && <li className="py-3 text-[14px] text-ink-3">Noch keine Angebote im Katalog. <Link href={`/c/${slug}/admin/sponsoring/katalog`} className="font-semibold text-clay-text underline">Angebot anlegen ›</Link></li>}
       </ul>
       <button type="button" disabled={!lines.length || pending} className="btn btn-pri mt-4 h-[52px] w-full" onClick={() => start(async () => {
+        if (!warnMail(sponsorName, email)) return;
         const r = await createContractAction(slug, sponsorId, startYear, years, lines);
         if (!r.success) return void toast.error(r.error);
         if (r.notSent) toast.warning(`Vertrag erfasst. Rechnung NICHT verschickt: ${r.notSent}.`);

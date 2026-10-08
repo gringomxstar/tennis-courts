@@ -47,7 +47,7 @@ export default async function AdminStatsPage({ params, searchParams }: {
   const s = await loadStats(tenant.id, year, settings?.openingHour ?? 7, settings?.closingHour ?? 22);
   const { kasse, auslastung: a, gv, pflege, junioren: j } = s;
   // Leistungsprinzip (Treuhänder): a top-up is a liability, revenue arises with the booking (incl. paid from Guthaben)
-  const monthTotal = (m: (typeof kasse.months)[number]) => METHODS.reduce((t, k) => t + m.byMethod[k], 0) + m.abos;
+  const monthTotal = (m: (typeof kasse.months)[number]) => METHODS.reduce((t, k) => t + m.byMethod[k], 0) + m.abos + m.sponsoring;
   const yearTotal = kasse.months.reduce((t, m) => t + monthTotal(m), 0);
 
   const months = kasse.months.map(monthTotal);
@@ -80,7 +80,7 @@ export default async function AdminStatsPage({ params, searchParams }: {
       </div>
 
       <div className="grid grid-cols-2 gap-2.5 px-5 pt-3.5 @min-[640px]:gap-4 @min-[640px]:px-0 @min-[1024px]:grid-cols-4">
-        {kpi("Einnahmen", chf(yearTotal), "Buchungen und Abos", true)}
+        {kpi("Einnahmen", chf(yearTotal), "Buchungen, Abos, Sponsoring", true)}
         {kpi("Mitglieder mit Abo", String(gv.members), `Vorjahr ${gv.membersPrev}`)}
         {kpi("Buchungen", String(gv.cur.bookings), `Vorjahr ${gv.prev.bookings}`)}
         {kpi("Offene Posten", chf(kasse.open), "vor Ort / Rechnung", false, kasse.open > 0)}
@@ -127,20 +127,21 @@ export default async function AdminStatsPage({ params, searchParams }: {
         {/* 1. Kasse */}
         <section id="kasse" className={`${card} scroll-mt-4`}>
           <h2 className={h2}>Kassenjournal</h2>
-          <p className={sub}>Bezahlte Buchungen nach Zahlungsdatum und Zahlart, dazu Abos nach Zahlungsdatum. Aufladungen sind noch keine Einnahme (Verbindlichkeit), Einnahme entsteht mit der Buchung.</p>
+          <p className={sub}>Bezahlte Buchungen nach Zahlungsdatum und Zahlart, dazu Abos und bezahlte Sponsoring-Rechnungen nach Zahlungsdatum. Aufladungen sind noch keine Einnahme (Verbindlichkeit), Einnahme entsteht mit der Buchung.</p>
           <div className="mt-4 grid grid-cols-2 gap-2.5 @min-[1024px]:grid-cols-4">
-            <Tile label="Einnahmen total" value={chf(yearTotal)} hint="Buchungen + Abos" />
+            <Tile label="Einnahmen total" value={chf(yearTotal)} hint="Buchungen + Abos + Sponsoring" />
             <Tile label="Offene Posten" value={chf(kasse.open)} hint="vor Ort / Rechnung unbezahlt" />
             <Tile label="Guthaben aufgeladen" value={chf(kasse.wallet.topUps)} hint={`genutzt ${chf(kasse.wallet.used)}`} />
             <Tile label="Guthaben-Saldo" value={chf(kasse.wallet.liability)} hint="Verbindlichkeit per heute" />
           </div>
           <div className="mt-4 overflow-x-auto">
-            <table className="w-full min-w-[640px]">
+            <table className="w-full min-w-[720px]">
               <thead>
                 <tr className="border-b border-border">
                   <th className={th}>Monat</th>
                   {METHODS.map((m) => <th key={m} className={`${th} text-right`}>{METHOD_LABEL[m]}</th>)}
                   <th className={`${th} text-right`}>Abos</th>
+                  <th className={`${th} text-right`}>Sponsoring</th>
                   <th className={`${th} text-right`}>Total</th>
                 </tr>
               </thead>
@@ -150,6 +151,7 @@ export default async function AdminStatsPage({ params, searchParams }: {
                     <td className={td}>{MONTHS[m.m - 1]}</td>
                     {METHODS.map((k) => <td key={k} className={`${td} text-right`}>{m.byMethod[k] ? chf(m.byMethod[k]) : "–"}</td>)}
                     <td className={`${td} text-right`}>{m.abos ? chf(m.abos) : "–"}</td>
+                    <td className={`${td} text-right`}>{m.sponsoring ? chf(m.sponsoring) : "–"}</td>
                     <td className={`${td} text-right font-bold`}>{chf(monthTotal(m))}</td>
                   </tr>
                 ))}

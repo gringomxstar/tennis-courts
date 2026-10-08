@@ -216,6 +216,7 @@ export async function setRequestStatusAction(slug: string, sponsorId: string, ye
       create: { sponsorId, year, status, respondedAt: status === "DECLINED" ? new Date() : null },
       update: { status, respondedAt: status === "DECLINED" ? new Date() : null },
     });
+    if (status === "DECLINED") await prisma.sponsor.updateMany({ where: { id: sponsorId, contracts: { none: { cancelledAt: null } } }, data: { stage: "LOST" } });
     await logSponsor(tenantId, sponsorId, actorId, status === "DECLINED" ? `Absage ${year} erfasst` : `${year} wieder auf «angefragt» gesetzt`);
     refresh(slug);
     return { success: true };
@@ -385,6 +386,7 @@ export async function importSponsorsAction(slug: string, text: string, defaultYe
           update: {},
         });
         await logSponsor(tenantId, sponsorId, actorId, `${year}: ${lines.map((l) => l.name).join(", ")} (aus Excel)`);
+        await prisma.sponsor.update({ where: { id: sponsorId }, data: { stage: "WON" } });
         contracts++;
       }
     }
@@ -484,6 +486,7 @@ export async function portalDeclineAction(token: string): Promise<Res> {
       update: { status: "DECLINED", respondedAt: new Date() },
     });
     await prisma.sponsorTask.updateMany({ where: { sponsorId: s.id, doneAt: null, title: NO_ANSWER(year) }, data: { doneAt: new Date() } });
+    await prisma.sponsor.update({ where: { id: s.id }, data: { stage: "LOST" } });
     await logSponsor(s.tenantId, s.id, null, `Absage ${year} online`);
     if (s.owner?.email) {
       await sendMail(s.owner.email, `Absage Sponsoring ${year}: ${s.name}`, `${s.name} macht ${year} nicht mit (online abgesagt).`);

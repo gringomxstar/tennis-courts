@@ -1,20 +1,25 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useState, useSyncExternalStore, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { chf } from "@/lib/sponsoring";
+import { STAGES, chf, type Stage } from "@/lib/sponsoring";
 import { parseSponsors } from "@/lib/sponsor-import";
 import { xlsxToText } from "@/lib/xlsx";
 import { Sheet } from "@/components/app/sheet";
+import { SponsorMailSheet } from "@/components/app/sponsor-mail";
+import { SponsorBoard } from "@/components/app/sponsor-board";
 import { completeTaskAction, importSponsorsAction, saveSponsorAction, startCampaignAction } from "@/app/actions/sponsoring";
 
 export type SponsorStatus = "NONE" | "REQUESTED" | "REMINDED" | "CONFIRMED" | "DECLINED";
 export type SponsorRow = {
   id: string; name: string; contact: string; hasEmail: boolean; ownerId: string; owner: string;
   status: SponsorStatus; queued: boolean; amount: number; runningUntil: number | null; billed: number; paid: number;
+  email: string; firstName: string; city: string; stage: Stage; followUp: string | null; due: boolean;
+  endsInDays: number | null; endYear: number | null; dunning: number; itemIds: string[];
+  phone: string; updatedAt: string; lastNote: { text: string; at: string } | null;
 };
 type Task = { id: string; title: string; sponsorId: string; sponsor: string; assigneeId: string; assignee: string; createdAt: string };
 
@@ -25,9 +30,24 @@ export const STATUS: Record<SponsorStatus, [string, string]> = {
   CONFIRMED: ["zugesagt", "bg-ok-bg text-ok"],
   DECLINED: ["abgesagt", "bg-bad-bg text-bad"],
 };
+export const STAGE_CLASS: Record<Stage, string> = { INTERESTED: "bg-bg text-ink-2", OFFER: "bg-brand-tint text-brand-deep", NEGOTIATION: "bg-warn-bg text-warn", WON: "bg-ok-bg text-ok", LOST: "bg-bad-bg text-bad" };
 export const pill = "inline-flex min-h-10 items-center justify-center rounded-full px-3.5 py-2 text-[13px] font-bold";
 export const field = "mt-1.5 h-[50px] w-full min-w-0 rounded-[15px] border border-border bg-inset px-4 text-[16px] text-foreground outline-none focus-visible:border-clay";
 export const fieldLabel = "block text-[13px] font-bold uppercase tracking-[.06em] text-muted-foreground";
+
+const VIEW_KEY = "sponsoring-view";
+const subView = (cb: () => void) => { window.addEventListener("sponsoring-view", cb); return () => window.removeEventListener("sponsoring-view", cb); };
+const readView = () => { try { return localStorage.getItem(VIEW_KEY); } catch { return null; } };
+type SortKey = "name" | "stage" | "amount" | "owner" | "followUp" | "end";
+const SORTS: [SortKey, string][] = [["name", "Firma"], ["stage", "Stufe"], ["amount", "Betrag"], ["owner", "Verantwortlicher"], ["followUp", "Wiedervorlage"], ["end", "Vertragsende"]];
+const SORT_KEY = "sponsoring-sort";
+const subSort = (cb: () => void) => { window.addEventListener("sponsoring-sort", cb); return () => window.removeEventListener("sponsoring-sort", cb); };
+const readSort = () => { try { return localStorage.getItem(SORT_KEY); } catch { return null; } };
+const saveSort = (k: SortKey, d: 1 | -1) => { try { localStorage.setItem(SORT_KEY, `${k}:${d}`); } catch {} window.dispatchEvent(new Event("sponsoring-sort")); };
+const ROW_GRID = "@min-[1024px]:grid @min-[1024px]:grid-cols-[24px_minmax(0,2.2fr)_120px_100px_minmax(0,1.2fr)_110px_120px] @min-[1024px]:gap-4";
+const MQ = "(min-width: 1024px)";
+const subMq = (cb: () => void) => { const m = window.matchMedia(MQ); m.addEventListener("change", cb); return () => m.removeEventListener("change", cb); };
+const saveView = (v: "board" | "list") => { try { localStorage.setItem(VIEW_KEY, v); } catch {} window.dispatchEvent(new Event("sponsoring-view")); };
 
 export function SponsorNav({ slug, active, year }: { slug: string; active: "" | "katalog" | "rechnungen"; year: number }) {
   const base = `/c/${slug}/admin/sponsoring`;
@@ -50,24 +70,94 @@ export function AdminSponsoring(p: {
   slug: string; year: number; meId: string; sample: boolean; rows: SponsorRow[];
   totals: { committed: number; billed: number; paid: number; renewal: number | null; prevCount: number };
   campaign: { startedAt: string; reminderDays: number; taskDays: number } | null;
-  board: { id: string; name: string }[]; tasks: Task[];
+  board: { id: string; name: string }[]; tasks: Task[]; items: { id: string; name: string }[];
 }) {
   const router = useRouter();
   const [q, setQ] = useState("");
   const [status, setStatus] = useState<SponsorStatus | "ALL">("ALL");
   const [owner, setOwner] = useState("");
+  const [item, setItem] = useState("");
   const [mine, setMine] = useState(false);
+  const [stage, setStage] = useState<Stage | "">("");
+  const [flags, setFlags] = useState<Record<string, boolean>>({});
+  const [selecting, setSelecting] = useState(false);
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [mailOpen, setMailOpen] = useState(false);
   const [sheet, setSheet] = useState<"" | "new" | "import" | "campaign">("");
   const [pending, start] = useTransition();
+  const stored = useSyncExternalStore(subView, readView, () => null);
+  const dev = useSyncExternalStore(subMq, () => (window.matchMedia(MQ).matches ? "d" : "m"), () => "");
+  const desktop = dev === "d";
+  const [sk, sd] = (useSyncExternalStore(subSort, readSort, () => null) ?? "name:1").split(":");
+  const sortKey: SortKey = SORTS.some(([k]) => k === sk) ? (sk as SortKey) : "name";
+  const dir: 1 | -1 = sd === "-1" ? -1 : 1;
+  const clickSort = (k: SortKey) => saveSort(k, k === sortKey ? (dir === 1 ? -1 : 1) : 1);
+  // ponytail: view is null until mounted (no flash of the wrong view); choice persisted in localStorage
+  const view = stored === "board" || stored === "list" ? stored : dev === "" ? null : desktop ? "board" : "list";
 
   const counts = useMemo(() => {
     const c: Record<string, number> = { ALL: p.rows.length };
     for (const r of p.rows) c[r.status] = (c[r.status] ?? 0) + 1;
     return c;
   }, [p.rows]);
+  const ql = q.trim().toLowerCase();
   const list = p.rows.filter((r) =>
-    (status === "ALL" || r.status === status) && (!owner || r.ownerId === owner) &&
-    (!q || `${r.name} ${r.contact}`.toLowerCase().includes(q.toLowerCase())));
+    (status === "ALL" || r.status === status) && (!owner || r.ownerId === owner) && (!item || r.itemIds.includes(item)) && (!stage || r.stage === stage) &&
+    (!flags.due || r.due) && (!flags.end || (r.endsInDays != null && r.endsInDays <= 90)) && (!flags.dun || r.dunning > 0) && (!flags.nomail || !r.hasEmail) &&
+    (!ql || `${r.name} ${r.contact} ${r.email} ${r.city}`.toLowerCase().includes(ql)))
+    .sort((a, b) => {
+      // empty values always last, regardless of direction
+      const v = (r: SponsorRow): string | number | null => {
+        switch (sortKey) {
+          case "name": return r.name.toLowerCase();
+          case "stage": return STAGES.findIndex((x) => x.value === r.stage);
+          case "amount": return r.amount > 0 ? r.amount : null;
+          case "owner": return r.owner ? r.owner.toLowerCase() : null;
+          case "followUp": return r.followUp;
+          case "end": return r.endsInDays;
+        }
+      };
+      const x = v(a), y = v(b);
+      if (x == null || y == null) return x == null ? (y == null ? 0 : 1) : -1;
+      return (typeof x === "string" ? x.localeCompare(y as string, "de") : x - (y as number)) * dir;
+    });
+  const dueList = list.filter((r) => r.due);
+  const restList = list.filter((r) => !r.due);
+  const allPicked = list.length > 0 && list.every((r) => picked.has(r.id));
+  const toggleMany = (ids: string[]) => setPicked((s) => { const n = new Set(s); const all = ids.every((i) => n.has(i)); ids.forEach((i) => (all ? n.delete(i) : n.add(i))); return n; });
+  const toggle = (id: string) => setPicked((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  const stopSelect = () => { setSelecting(false); setPicked(new Set()); };
+  const endText = (r: SponsorRow) => r.endsInDays == null ? "" : r.endsInDays < 0 ? "abgelaufen" : `in ${r.endsInDays} Tagen`;
+  const recipients = p.rows.filter((r) => picked.has(r.id));
+  const initials = (n: string) => n.split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase();
+  const fmt = (iso: string) => new Date(iso).toLocaleDateString("de-CH", { day: "2-digit", month: "2-digit", timeZone: "Europe/Zurich" });
+  const rowEl = (r: SponsorRow) => {
+    const on = picked.has(r.id);
+    return (
+      <li key={r.id} className={cn("flex items-center gap-3 rounded-[14px] px-3 py-2.5", ROW_GRID, on && "bg-brand-tint")}>
+        <input type="checkbox" checked={on} onChange={() => toggle(r.id)} aria-label={`${r.name} auswählen`} className="h-[18px] w-[18px] shrink-0 accent-brand-deep" />
+        <Link href={`/c/${p.slug}/admin/sponsoring/${r.id}`} className="flex min-w-0 flex-1 items-center gap-3 @min-[1024px]:block">
+          <span className="block min-w-0 flex-1">
+            <span className="block truncate font-semibold">{r.name}</span>
+            <span className="block truncate text-[13px] text-ink-2 @min-[1024px]:text-ink-3">
+              <span className="@min-[1024px]:hidden">{[r.followUp && `Wiedervorlage ${fmt(r.followUp)}`, r.endsInDays != null && r.endsInDays <= 90 && `endet in ${Math.max(0, r.endsInDays)} Tagen`, r.dunning > 0 && `${r.dunning}. Mahnung`, !r.hasEmail && "keine E-Mail", r.queued && "Mail in Warteschlange", !r.followUp && r.contact].filter(Boolean).join(" · ")}</span>
+              <span className="hidden @min-[1024px]:inline">{[r.contact, r.email, r.dunning > 0 && `${r.dunning}. Mahnung`, !r.hasEmail && "keine E-Mail", r.queued && "Mail in Warteschlange"].filter(Boolean).join(" · ")}</span>
+            </span>
+          </span>
+          <span className="flex shrink-0 items-center gap-3 @min-[1024px]:hidden">
+            {r.amount > 0 && <span className="text-[13px] tabular-nums text-ink-2">{chf(r.amount)}</span>}
+            {r.owner && <span aria-label={r.owner} title={r.owner} className="grid size-7 place-items-center rounded-full bg-bg text-[11px] font-bold text-ink-2">{initials(r.owner)}</span>}
+            <span className={cn("rounded-full px-2.5 py-1 text-[12px] font-bold", STAGE_CLASS[r.stage])}>{STAGES.find((x) => x.value === r.stage)?.label}</span>
+          </span>
+        </Link>
+        <span className="hidden @min-[1024px]:block"><span className={cn("rounded-full px-2.5 py-1 text-[12px] font-bold", STAGE_CLASS[r.stage])}>{STAGES.find((x) => x.value === r.stage)?.label}</span></span>
+        <span className="hidden text-[14px] tabular-nums @min-[1024px]:block">{r.amount > 0 ? chf(r.amount) : ""}</span>
+        <span className="hidden truncate text-[14px] @min-[1024px]:block">{r.owner}</span>
+        <span className={cn("hidden text-[14px] tabular-nums @min-[1024px]:block", r.due && "font-semibold text-warn")}>{r.followUp ? fmt(r.followUp) : ""}</span>
+        <span className="hidden text-[14px] @min-[1024px]:block">{endText(r)}</span>
+      </li>
+    );
+  };
   const byOwner = useMemo(() => {
     const m = new Map<string, { name: string; total: number; yes: number; open: number; no: number; amount: number }>();
     for (const r of p.rows) {
@@ -121,41 +211,81 @@ export function AdminSponsoring(p: {
       <section className="px-5 pt-6">
         <div className="flex flex-wrap items-center gap-2">
           <h2 className="mr-auto text-[22px] font-bold tracking-[-.02em]">Sponsoren</h2>
+          <div role="group" aria-label="Ansicht" className="inline-flex rounded-full bg-bg p-0.5">
+            {(["board", "list"] as const).map((v) => (
+              <button key={v} type="button" aria-pressed={view === v} onClick={() => saveView(v)} className={cn("min-h-9 rounded-full px-3.5 text-[13px] font-bold", view === v ? "bg-card text-ink shadow-card" : "text-ink-2")}>{v === "board" ? "Board" : "Liste"}</button>
+            ))}
+          </div>
+          {view === "board" && <button type="button" aria-pressed={selecting} onClick={() => selecting ? stopSelect() : setSelecting(true)} className={cn(pill, selecting ? "bg-ink text-card" : "bg-card text-ink shadow-card")}>{selecting ? "Fertig" : "Auswählen"}</button>}
           <button type="button" onClick={() => setSheet("import")} className={cn(pill, "bg-card text-ink shadow-card")}>Excel importieren</button>
           <button type="button" onClick={() => setSheet("new")} className={cn(pill, "bg-brand-deep text-white")}>+ Sponsor</button>
         </div>
         <div className="mt-3 flex flex-wrap gap-2">
-          <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Firma oder Kontakt suchen" aria-label="Suchen"
+          <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Firma, Kontakt, E-Mail, Ort" aria-label="Suchen"
             className="h-[42px] min-w-0 flex-1 rounded-full border border-border bg-card px-4 text-[15px] outline-none focus-visible:border-clay" />
           <select value={owner} onChange={(e) => setOwner(e.target.value)} aria-label="Verantwortlich" className="h-[42px] rounded-full border border-border bg-card px-3 text-[14px]">
             <option value="">Alle Verantwortlichen</option>
             {p.board.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
           </select>
+          <select value={item} onChange={(e) => setItem(e.target.value)} aria-label="Angebot" className="h-[42px] rounded-full border border-border bg-card px-3 text-[14px]">
+            <option value="">Alle Angebote</option>
+            {p.items.map((it) => <option key={it.id} value={it.id}>{it.name} ({p.rows.filter((r) => r.itemIds.includes(it.id)).length})</option>)}
+          </select>
+          {view === "list" && <span className="flex gap-2 @min-[1024px]:hidden">
+            <select value={sortKey} onChange={(e) => saveSort(e.target.value as SortKey, dir)} aria-label="Sortieren" className="h-[42px] rounded-full border border-border bg-card px-3 text-[14px]">
+              {SORTS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+            </select>
+            <button type="button" onClick={() => saveSort(sortKey, dir === 1 ? -1 : 1)} aria-label={dir === 1 ? "Aufsteigend, umkehren" : "Absteigend, umkehren"} className="h-[42px] rounded-full border border-border bg-card px-3 text-[14px]">{dir === 1 ? "▲" : "▼"}</button>
+          </span>}
         </div>
-        <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+        <div className="no-scrollbar mt-3 flex gap-2 overflow-x-auto pb-1">
           {(["ALL", "NONE", "REQUESTED", "REMINDED", "CONFIRMED", "DECLINED"] as const).map((s) => (
-            <button key={s} type="button" aria-pressed={status === s} onClick={() => setStatus(s)} className="chip">
+            <button key={s} type="button" aria-pressed={status === s} onClick={() => setStatus(s)} className="chip shrink-0">
               {s === "ALL" ? "Alle" : STATUS[s][0]} <span className="tabular-nums opacity-70">{counts[s] ?? 0}</span>
             </button>
           ))}
         </div>
-        <ul className="card mt-3 divide-y divide-line">
-          {list.map((r) => (
-            <li key={r.id}>
-              <Link href={`/c/${p.slug}/admin/sponsoring/${r.id}`} className="flex items-center gap-3 px-4 py-3">
-                <div className="min-w-0 flex-1">
-                  <div className="truncate font-semibold">{r.name}</div>
-                  <div className="truncate text-[13px] text-ink-2">
-                    {[r.contact, r.owner && `↳ ${r.owner}`, !r.hasEmail && "keine E-Mail", r.queued && "Mail in Warteschlange", r.runningUntil && `Vertrag bis ${r.runningUntil}`].filter(Boolean).join(" · ")}
-                  </div>
-                </div>
-                {r.amount > 0 && <span className="hidden text-[14px] tabular-nums text-ink-2 sm:inline">{chf(r.amount)}</span>}
-                <span className={cn("rounded-full px-2.5 py-1 text-[12px] font-bold", STATUS[r.status][1])}>{STATUS[r.status][0]}</span>
-              </Link>
-            </li>
+        <div className="no-scrollbar mt-1 flex gap-2 overflow-x-auto pb-1">
+          {STAGES.map((x) => (
+            <button key={x.value} type="button" aria-pressed={stage === x.value} onClick={() => setStage(stage === x.value ? "" : x.value)} className="chip shrink-0">{x.label}</button>
           ))}
-          {!list.length && <li className="px-4 py-6 text-center text-[14px] text-ink-3">{p.rows.length ? "Keine Treffer." : "Noch keine Sponsoren. Importieren Sie Ihre Excel-Liste oder erfassen Sie den ersten Sponsor."}</li>}
-        </ul>
+          {p.meId && <button type="button" aria-pressed={owner === p.meId} onClick={() => setOwner(owner === p.meId ? "" : p.meId)} className="chip shrink-0">Meine</button>}
+          {([["due", "Wiedervorlage fällig"], ["end", "endet bald"], ["dun", "Mahnung"], ["nomail", "ohne E-Mail"]] as const).map(([k, l]) => (
+            <button key={k} type="button" aria-pressed={Boolean(flags[k])} onClick={() => setFlags({ ...flags, [k]: !flags[k] })} className="chip shrink-0">{l}</button>
+          ))}
+        </div>
+        {view === "board" && selecting && (
+          <label className="mt-2 flex items-center gap-2 px-1 text-[14px] font-semibold">
+            <input type="checkbox" checked={allPicked} onChange={() => setPicked(allPicked ? new Set() : new Set(list.map((r) => r.id)))} className="size-5 accent-[var(--brand-deep)]" />
+            Alle {list.length} (gefilterten) auswählen
+          </label>
+        )}
+        {view === "board" && <SponsorBoard slug={p.slug} rows={list} desktop={desktop} selecting={selecting} picked={picked} onToggle={toggle} onToggleMany={toggleMany} />}
+        {view === "list" && dueList.length > 0 && (
+          <div className="card mt-3 border border-warn/30 px-0 py-1">
+            <h3 className="px-4 pt-2 text-[15px] font-bold text-warn">Wiedervorlage fällig <span className="tabular-nums">{dueList.length}</span></h3>
+            <ul className="p-1">{dueList.map(rowEl)}</ul>
+          </div>
+        )}
+        {view === "list" && list.length > 0 && (
+          <button type="button" onClick={() => setPicked(allPicked ? new Set() : new Set(list.map((r) => r.id)))} className="mt-2 h-10 px-1 text-[14px] font-semibold text-brand-deep @min-[1024px]:hidden">
+            {allPicked ? "Auswahl aufheben" : `Alle ${list.length} auswählen`}
+          </button>
+        )}
+        {view === "list" && <div className="card mt-3 p-1">
+          <div className={cn("hidden px-3 py-3 text-[12.5px] font-semibold text-ink-3 @min-[1024px]:grid", "@min-[1024px]:grid-cols-[24px_minmax(0,2.2fr)_120px_100px_minmax(0,1.2fr)_110px_120px] @min-[1024px]:gap-4")}>
+            <input type="checkbox" aria-label="Alle angezeigten auswählen" checked={allPicked} onChange={() => setPicked(allPicked ? new Set() : new Set(list.map((r) => r.id)))} className="h-[18px] w-[18px] accent-brand-deep" />
+            {SORTS.map(([k, l]) => (
+              <span key={k} role="columnheader" aria-sort={sortKey === k ? (dir === 1 ? "ascending" : "descending") : "none"}>
+                <button type="button" onClick={() => clickSort(k)} className="inline-flex items-center gap-1 text-left font-semibold hover:text-ink">{l}{sortKey === k && <span aria-hidden>{dir === 1 ? "▲" : "▼"}</span>}</button>
+              </span>
+            ))}
+          </div>
+          <ul className="divide-y divide-line">
+            {restList.map(rowEl)}
+            {!list.length && <li className="px-4 py-6 text-center text-[14px] text-ink-3">{p.rows.length ? "Keine Treffer." : "Noch keine Sponsoren. Importieren Sie Ihre Excel-Liste oder erfassen Sie den ersten Sponsor."}</li>}
+          </ul>
+        </div>}
       </section>
 
       <section className="card mx-5 mt-6 flex flex-col items-start gap-3 p-5 @min-[640px]:flex-row @min-[640px]:items-center">
@@ -190,6 +320,14 @@ export function AdminSponsoring(p: {
         </table>
       </details>
 
+      {picked.size > 0 && (
+        <div className="fixed inset-x-4 bottom-[calc(max(10px,env(safe-area-inset-bottom))+68px)] z-30 flex items-center gap-3 rounded-full bg-ink p-2 pl-5 text-card shadow-card @min-[640px]:bottom-6 @min-[640px]:left-auto @min-[640px]:right-8">
+          <span className="text-[14px] font-semibold">{picked.size} gewählt</span>
+          <button type="button" onClick={stopSelect} className={cn(pill, "ml-auto bg-white/15 text-card")}>Auswahl aufheben</button>
+          <button type="button" onClick={() => setMailOpen(true)} className={cn(pill, "bg-brand-deep text-white")}>Mail an {picked.size} senden</button>
+        </div>
+      )}
+      <SponsorMailSheet open={mailOpen} onClose={() => setMailOpen(false)} slug={p.slug} recipients={recipients} onDone={() => { setMailOpen(false); stopSelect(); }} />
       <NewSponsorSheet open={sheet === "new"} onClose={() => setSheet("")} slug={p.slug} board={p.board} meId={p.meId} />
       <ImportSheet open={sheet === "import"} onClose={() => setSheet("")} slug={p.slug} year={p.year - 1} />
       <CampaignSheet sample={p.sample} open={sheet === "campaign"} onClose={() => setSheet("")} slug={p.slug} year={p.year} campaign={p.campaign} rows={p.rows} />
@@ -314,7 +452,7 @@ function CampaignSheet({ sample, open, onClose, slug, year, campaign, rows }: {
         </div>
       )}
       <form action={(fd) => start(async () => {
-        if (ask - noMail > 0 && !window.confirm(`Jetzt ${ask - noMail} E-Mails an Sponsoren verschicken?`)) return;
+        if (!window.confirm(`Achtung: Das verschickt ECHTE E-Mails an ${ask - noMail} Sponsoren (danach automatisch Erinnerungen), laufende Verträge bekommen ihre Rechnung per Mail. Nicht rückgängig zu machen. Fortfahren?`)) return;
         const r = await startCampaignAction(slug, year, Number(fd.get("reminderDays")), Number(fd.get("taskDays")));
         if (!r.success) return void toast.error(r.error);
         toast.success(r.summary);

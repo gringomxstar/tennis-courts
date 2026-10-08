@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useTransition } from "react";
+import { useMemo, useState, useSyncExternalStore, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -16,15 +16,55 @@ type Item = {
   hasImage: boolean; sortOrder: number; active: boolean; taken: number; sponsors: { id: string; name: string; quantity: number }[];
 };
 
+type SortKey = "order" | "name" | "price" | "taken";
+const SORTS: [SortKey, string][] = [["order", "Reihenfolge"], ["name", "Name"], ["price", "Preis"], ["taken", "Vergeben"]];
+const SORT_KEY = "sponsoring-catalog-sort";
+const subSort = (cb: () => void) => { window.addEventListener("sponsoring-catalog-sort", cb); return () => window.removeEventListener("sponsoring-catalog-sort", cb); };
+const readSort = () => { try { return localStorage.getItem(SORT_KEY); } catch { return null; } };
+const saveSort = (k: SortKey, d: 1 | -1) => { try { localStorage.setItem(SORT_KEY, `${k}:${d}`); } catch {} window.dispatchEvent(new Event("sponsoring-catalog-sort")); };
+type Filter = "ALL" | "free" | "low" | "sold" | "hidden";
+const FILTERS: [Filter, string, (i: Item) => boolean][] = [
+  ["ALL", "Alle", () => true],
+  ["free", "Frei", (i) => i.capacity == null || i.taken < i.capacity],
+  ["low", "Fast weg", (i) => itemHint(i.capacity, i.taken, i.badge)?.tone === "low"],
+  ["sold", "Ausverkauft", (i) => itemHint(i.capacity, i.taken, i.badge)?.tone === "sold"],
+  ["hidden", "Ausgeblendet", (i) => !i.active],
+];
+
 export function SponsorCatalog({ slug, year, items }: { slug: string; year: number; items: Item[] }) {
   const [edit, setEdit] = useState<Item | "new" | null>(null);
+  const [q, setQ] = useState("");
+  const [filter, setFilter] = useState<Filter>("ALL");
+  const [sk, sd] = (useSyncExternalStore(subSort, readSort, () => null) ?? "order:1").split(":");
+  const sortKey: SortKey = SORTS.some(([k]) => k === sk) ? (sk as SortKey) : "order";
+  const dir: 1 | -1 = sd === "-1" ? -1 : 1;
+  const counts = useMemo(() => Object.fromEntries(FILTERS.map(([k, , f]) => [k, items.filter(f).length])), [items]);
+  const ql = q.trim().toLowerCase();
+  const pred = FILTERS.find(([k]) => k === filter)![2];
+  const list = items.filter((i) => pred(i) && (!ql || `${i.name} ${i.description} ${i.sponsors.map((s) => s.name).join(" ")}`.toLowerCase().includes(ql)))
+    .sort((a, b) => {
+      const v = (i: Item) => sortKey === "name" ? i.name.toLowerCase() : sortKey === "price" ? i.price : sortKey === "taken" ? i.taken : i.sortOrder;
+      const x = v(a), y = v(b);
+      return (typeof x === "string" ? x.localeCompare(y as string, "de") : x - (y as number)) * dir;
+    });
   return (
     <section className="px-5 pb-10 pt-4">
-      <div className="flex justify-end">
+      <div className="flex flex-wrap gap-2">
+        <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Angebot, Beschreibung, Sponsor" aria-label="Suchen"
+          className="h-[42px] min-w-0 flex-1 rounded-full border border-border bg-card px-4 text-[15px] outline-none focus-visible:border-clay" />
+        <select value={sortKey} onChange={(e) => saveSort(e.target.value as SortKey, dir)} aria-label="Sortieren" className="h-[42px] rounded-full border border-border bg-card px-3 text-[14px]">
+          {SORTS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+        </select>
+        <button type="button" onClick={() => saveSort(sortKey, dir === 1 ? -1 : 1)} aria-label={dir === 1 ? "Aufsteigend, umkehren" : "Absteigend, umkehren"} className="h-[42px] rounded-full border border-border bg-card px-3 text-[14px]">{dir === 1 ? "▲" : "▼"}</button>
         <button type="button" onClick={() => setEdit("new")} className={cn(pill, "bg-brand-deep text-white")}>+ Angebot</button>
       </div>
+      <div className="no-scrollbar mt-3 flex gap-2 overflow-x-auto pb-1">
+        {FILTERS.map(([k, l]) => (
+          <button key={k} type="button" aria-pressed={filter === k} onClick={() => setFilter(k)} className="chip shrink-0">{l} <span className="tabular-nums opacity-70">{counts[k]}</span></button>
+        ))}
+      </div>
       <ul className="mt-3 grid gap-3 @min-[900px]:grid-cols-2">
-        {items.map((it) => {
+        {list.map((it) => {
           const hint = itemHint(it.capacity, it.taken, it.badge);
           return (
             <li key={it.id} className={cn("card flex gap-4 p-4", !it.active && "opacity-60")}>
@@ -49,7 +89,7 @@ export function SponsorCatalog({ slug, year, items }: { slug: string; year: numb
             </li>
           );
         })}
-        {!items.length && <li className="card p-6 text-center text-[14px] text-ink-3">Noch keine Angebote. Erfassen Sie z.B. Blache, Tischset, Hauptsponsor, Container (1×), Centre Court (1×).</li>}
+        {!list.length && <li className="card p-6 text-center text-[14px] text-ink-3">{items.length ? "Keine Treffer." : "Noch keine Angebote. Erfassen Sie z.B. Blache, Tischset, Hauptsponsor, Container (1×), Centre Court (1×)."}</li>}
       </ul>
       <ItemSheet key={edit === "new" ? "new" : edit?.id ?? "none"} slug={slug} item={edit} onClose={() => setEdit(null)} />
     </section>
