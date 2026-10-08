@@ -1,6 +1,7 @@
 "use server";
 
 import { auth } from "@/auth";
+import { bookingsInBlocks } from "@/lib/events-server";
 import { mockDb } from "@/lib/data/mock-db";
 import {
   getTenantBySlug,
@@ -901,18 +902,6 @@ export async function topUpWalletAction(input: { clubSlug: string; amount: numbe
     console.error("Top-up checkout failed:", e);
     return { success: false, error: "Zahlung konnte nicht gestartet werden." };
   }
-}
-
-/** A block over live bookings would leave paid slots on an unusable court: the admin cancels those first. */
-async function bookingsInBlocks(tenantId: string, items: { courtId: string; startsAt: Date; endsAt: Date }[]) {
-  const n = await prisma.booking.count({
-    where: {
-      tenantId,
-      status: { in: ["CONFIRMED", "PENDING"] },
-      OR: items.map((i) => ({ courtId: i.courtId, startsAt: { lt: i.endsAt }, endsAt: { gt: i.startsAt } })),
-    },
-  });
-  return n ? `Im Zeitraum gibt es noch ${n} Buchung${n === 1 ? "" : "en"}. Bitte zuerst stornieren, dann sperren.` : null;
 }
 
 export async function createCourtBlockAction(input: {

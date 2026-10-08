@@ -7,6 +7,7 @@ import Image from "next/image";
 import sandplatz from "@/assets/sandplatz.webp";
 import { BookingSheet } from "@/components/app/booking-sheet";
 import { Avatar, Dot } from "@/components/app/avatar";
+import { MemberEvents, type MemberEvent } from "@/components/app/event-reply";
 import { useSheetSlot } from "@/components/app/use-sheet-slot";
 import { useNow } from "@/components/app/use-now";
 import {
@@ -45,6 +46,7 @@ export function HomeView({
   planSports,
   minPlanPrice,
   aboCta,
+  events = [],
 }: {
   tenant: Tenant;
   courts: Court[];
@@ -61,6 +63,7 @@ export function HomeView({
   minPlanPrice: number | null;
   /** Logged-in Abo prompt: no Abo yet, or the Abo ends within 30 days without renewal. */
   aboCta: "join" | "renew" | null;
+  events?: MemberEvent[];
 }) {
   const sheet = useSheetSlot();
   const [heatDay, setHeatDay] = useState<0 | 1>(0);
@@ -290,6 +293,8 @@ export function HomeView({
             )}
           </div>
         </div>
+
+        <MemberEvents slug={tenant.slug} events={events} />
 
         <div className="grid gap-3.5 @min-[640px]:gap-4 @min-[1024px]:grid-cols-[1.5fr_1fr]">
           <div className="card p-5">
