@@ -19,7 +19,7 @@ export default async function SponsorCatalogPage({ params, searchParams }: { par
     <>
       <div className="px-5 pt-[66px] lg:pt-12">
         <h1 className="text-[34px] font-bold tracking-[-.035em]">Katalog</h1>
-        <div className="mt-0.5 text-[15px] text-muted-foreground">Leistungen, Preise und was {year} schon vergeben ist</div>
+        <div className="mt-0.5 text-[15px] text-muted-foreground">Angebote für Sponsoren, Preise und was {year} schon vergeben ist</div>
       </div>
       <SponsorNav slug={tenant.slug} active="katalog" year={year} />
       <SponsorCatalog

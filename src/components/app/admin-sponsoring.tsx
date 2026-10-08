@@ -25,7 +25,7 @@ export const STATUS: Record<SponsorStatus, [string, string]> = {
   CONFIRMED: ["zugesagt", "bg-ok-bg text-ok"],
   DECLINED: ["abgesagt", "bg-bad-bg text-bad"],
 };
-export const pill = "rounded-full px-3.5 py-2 text-[13px] font-bold";
+export const pill = "inline-flex min-h-10 items-center justify-center rounded-full px-3.5 py-2 text-[13px] font-bold";
 export const field = "mt-1.5 h-[50px] w-full min-w-0 rounded-[15px] border border-border bg-inset px-4 text-[16px] text-foreground outline-none focus-visible:border-clay";
 export const fieldLabel = "block text-[13px] font-bold uppercase tracking-[.06em] text-muted-foreground";
 
@@ -95,20 +95,6 @@ export function AdminSponsoring(p: {
         <Kpi label="Verlängerungsquote" value={p.totals.renewal == null ? "–" : `${Math.round(p.totals.renewal * 100)} %`} sub={`von ${p.totals.prevCount} Sponsoren ${p.year - 1}`} />
       </section>
 
-      <section className="card mx-5 mt-4 flex flex-col items-start gap-3 p-5 @min-[640px]:flex-row @min-[640px]:items-center">
-        <div className="min-w-0 flex-1">
-          <h2 className="text-[17px] font-bold">Kampagne {p.year}</h2>
-          <p className="text-[14px] text-ink-2">
-            {p.campaign
-              ? `Gestartet am ${new Date(p.campaign.startedAt).toLocaleDateString("de-CH")}. Erinnerung alle ${p.campaign.reminderDays} Tage (max. 2), nach ${p.campaign.taskDays} Tagen ohne Antwort eine Aufgabe für die zuständige Person.`
-              : "Noch nicht gestartet. Laufende Verträge werden automatisch verrechnet, alle anderen bekommen ihren persönlichen Link per E-Mail."}
-          </p>
-        </div>
-        <button type="button" onClick={() => setSheet("campaign")} className={cn(pill, p.campaign ? "bg-bg text-ink" : "bg-brand-deep text-white")}>
-          {p.campaign ? "Neue Sponsoren anfragen" : `Kampagne ${p.year} starten`}
-        </button>
-      </section>
-
       {p.tasks.length > 0 && (
         <section className="card mx-5 mt-4 p-5">
           <div className="flex items-center justify-between gap-3">
@@ -131,24 +117,6 @@ export function AdminSponsoring(p: {
           </ul>
         </section>
       )}
-
-      <section className="card mx-5 mt-4 overflow-x-auto p-5">
-        <h2 className="text-[17px] font-bold">Pro Verantwortlichem</h2>
-        <table className="mt-2 w-full min-w-[480px] text-[14px]">
-          <thead className="text-left text-[12px] uppercase tracking-[.06em] text-ink-3">
-            <tr><th className="py-1.5 font-bold">Person</th><th className="font-bold">Sponsoren</th><th className="font-bold">Zugesagt</th><th className="font-bold">Offen</th><th className="font-bold">Abgesagt</th><th className="text-right font-bold">Betrag</th></tr>
-          </thead>
-          <tbody>
-            {byOwner.map(([id, o]) => (
-              <tr key={id} className="border-t border-line">
-                <td className="py-2"><button type="button" onClick={() => setOwner(owner === id ? "" : id)} className="font-semibold text-left">{o.name}</button></td>
-                <td className="tabular-nums">{o.total}</td><td className="tabular-nums text-ok">{o.yes}</td><td className="tabular-nums">{o.open}</td><td className="tabular-nums">{o.no}</td>
-                <td className="text-right tabular-nums">{chf(o.amount)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </section>
 
       <section className="px-5 pt-6">
         <div className="flex flex-wrap items-center gap-2">
@@ -189,6 +157,38 @@ export function AdminSponsoring(p: {
           {!list.length && <li className="px-4 py-6 text-center text-[14px] text-ink-3">{p.rows.length ? "Keine Treffer." : "Noch keine Sponsoren. Importieren Sie Ihre Excel-Liste oder erfassen Sie den ersten Sponsor."}</li>}
         </ul>
       </section>
+
+      <section className="card mx-5 mt-6 flex flex-col items-start gap-3 p-5 @min-[640px]:flex-row @min-[640px]:items-center">
+        <div className="min-w-0 flex-1">
+          <h2 className="text-[17px] font-bold">Kampagne {p.year}</h2>
+          <p className="text-[14px] text-ink-2">
+            {p.campaign
+              ? `Gestartet am ${new Date(p.campaign.startedAt).toLocaleDateString("de-CH")}. Erinnerung alle ${p.campaign.reminderDays} Tage (max. 2), nach ${p.campaign.taskDays} Tagen ohne Antwort eine Aufgabe für die zuständige Person.`
+              : "Noch nicht gestartet. Laufende Verträge werden automatisch verrechnet, alle anderen bekommen ihren persönlichen Link per E-Mail."}
+          </p>
+        </div>
+        <button type="button" onClick={() => setSheet("campaign")} className={cn(pill, p.campaign ? "bg-bg text-ink" : "bg-brand-deep text-white")}>
+          {p.campaign ? "Neue Sponsoren anfragen" : `Kampagne ${p.year} starten`}
+        </button>
+      </section>
+
+      <details className="card mx-5 mt-4 overflow-x-auto p-5">
+        <summary className="cursor-pointer text-[17px] font-bold">Pro Verantwortlichem <span className="text-[13px] font-normal text-ink-3">· Name antippen filtert die Liste</span></summary>
+        <table className="mt-2 w-full min-w-[480px] text-[14px]">
+          <thead className="text-left text-[12px] uppercase tracking-[.06em] text-ink-3">
+            <tr><th className="py-1.5 font-bold">Person</th><th className="font-bold">Sponsoren</th><th className="font-bold">Zugesagt</th><th className="font-bold">Offen</th><th className="font-bold">Abgesagt</th><th className="text-right font-bold">Betrag</th></tr>
+          </thead>
+          <tbody>
+            {byOwner.map(([id, o]) => (
+              <tr key={id} className="border-t border-line">
+                <td className="py-2"><button type="button" onClick={() => setOwner(owner === id ? "" : id)} className="font-semibold text-left">{o.name}</button></td>
+                <td className="tabular-nums">{o.total}</td><td className="tabular-nums text-ok">{o.yes}</td><td className="tabular-nums">{o.open}</td><td className="tabular-nums">{o.no}</td>
+                <td className="text-right tabular-nums">{chf(o.amount)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </details>
 
       <NewSponsorSheet open={sheet === "new"} onClose={() => setSheet("")} slug={p.slug} board={p.board} meId={p.meId} />
       <ImportSheet open={sheet === "import"} onClose={() => setSheet("")} slug={p.slug} year={p.year - 1} />
