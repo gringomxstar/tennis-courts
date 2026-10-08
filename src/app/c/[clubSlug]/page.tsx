@@ -2,6 +2,8 @@ import { loadClubData } from "@/lib/club-data";
 import { HomeView } from "@/components/app/home-view";
 import { getMembershipPlansByTenantId } from "@/lib/data";
 import { prisma } from "@/lib/prisma";
+import { seatsTaken, waitlistPosition } from "@/lib/events";
+import type { MemberEvent } from "@/components/app/event-reply";
 
 const DAY = 86_400_000;
 
@@ -24,6 +26,30 @@ export default async function ClubHomePage({ params }: { params: Promise<{ clubS
           .catch(() => null)
       : null,
   ]);
+  const TZ = "Europe/Zurich";
+  const invites = d.user && process.env.DATABASE_URL
+    ? await prisma.eventInvite
+        .findMany({
+          where: { userId: d.user.id, event: { tenantId: d.tenant.id, cancelledAt: null, startsAt: { gt: now } } },
+          include: { event: { include: { invites: true } } },
+          orderBy: { event: { startsAt: "asc" } },
+          take: 3,
+        })
+        .catch(() => [])
+    : [];
+  const events: MemberEvent[] = invites.map((i) => ({
+    inviteId: i.id,
+    title: i.event.title,
+    whenText: i.event.startsAt.toLocaleString("de-CH", { timeZone: TZ, weekday: "short", day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" }),
+    location: i.event.location,
+    reply: i.reply,
+    plusOnes: i.plusOnes,
+    waitPos: waitlistPosition(i.event.invites, i.id),
+    maxPlusOnes: i.event.maxPlusOnes,
+    deadlinePassed: Boolean(i.event.deadline && now > i.event.deadline),
+    yesCount: seatsTaken(i.event.invites),
+    names: i.event.invites.filter((x) => x.reply === "YES" && !x.sponsorId).map((x) => x.name + (x.plusOnes ? ` (+${x.plusOnes})` : "")),
+  }));
   const aboCta = !d.user
     ? null
     : !d.planSports
@@ -47,6 +73,7 @@ export default async function ClubHomePage({ params }: { params: Promise<{ clubS
       planSports={d.planSports}
       minPlanPrice={plans.length ? Math.min(...plans.map((p) => p.price)) : null}
       aboCta={plans.length ? aboCta : null}
+      events={events}
     />
   );
 }

@@ -25,6 +25,10 @@ export function verifyBookingToken(bookingId: string, token: string | undefined)
   return same(bookingToken(bookingId), token);
 }
 
+export const eventToken = (inviteId: string) => sign(`event:${inviteId}`);
+export const verifyEventToken = (inviteId: string, token: string | undefined) => same(eventToken(inviteId), token);
+export const eventLink = (inviteId: string) => `${appUrl()}/e/${inviteId}?t=${eventToken(inviteId)}`;
+
 /**
  * "Passwort setzen" link token (invite, activation, reset). It signs the current password hash,
  * so it stops working as soon as a password is set — single use without a token table.

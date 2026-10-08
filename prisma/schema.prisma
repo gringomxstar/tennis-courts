@@ -44,6 +44,8 @@ model User {
   memberships         Membership[]
   auditLogs           AuditLog[]           @relation("ActorAuditLogs")
   courtBlocksCreated  CourtBlock[]         @relation("BlockCreatedBy")
+  eventsCreated       Event[]              @relation("EventCreatedBy")
+  eventInvites        EventInvite[]
 
   // NextAuth
   accounts      Account[]
@@ -142,6 +144,7 @@ model Tenant {
   sponsors         Sponsor[]
   sponsorItems     SponsorItem[]
   sponsorCampaigns SponsorCampaign[]
+  events           Event[]
 
   @@map("tenants")
 }
@@ -411,12 +414,14 @@ model CourtBlock {
   endsAt      DateTime
   reason      BlockReason @default(MAINTENANCE)
   description String?
+  eventId     String?
   createdById String
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
 
   tenant    Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   court     Court  @relation(fields: [courtId], references: [id], onDelete: Cascade)
+  event     Event? @relation(fields: [eventId], references: [id], onDelete: Cascade)
   createdBy User   @relation("BlockCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
 
   @@index([tenantId, courtId, startsAt, endsAt])
@@ -521,6 +526,7 @@ model Sponsor {
   tasks        SponsorTask[]
   noteList     SponsorNote[]
   files        SponsorFile[]
+  eventInvites EventInvite[]
 
   @@index([tenantId])
   @@map("sponsors")
@@ -733,4 +739,69 @@ model SponsorTask {
 
   @@index([sponsorId])
   @@map("sponsor_tasks")
+}
+
+// ==========================================
+// Anlässe
+// ==========================================
+
+enum EventReply {
+  INVITED
+  YES
+  NO
+  WAITLIST
+}
+
+model Event {
+  id          String    @id @default(cuid())
+  tenantId    String
+  title       String
+  kind        String
+  startsAt    DateTime
+  endsAt      DateTime
+  location    String?
+  description String?
+  priceNote   String?
+  deadline    DateTime?
+  maxSeats    Int?
+  maxPlusOnes Int       @default(0)
+  mailMembers Boolean   @default(true) // false = Mitglieder nur in der App
+  createdById String
+  cancelledAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  tenant      Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdBy   User          @relation("EventCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  invites     EventInvite[]
+  courtBlocks CourtBlock[]
+
+  @@index([tenantId, startsAt])
+  @@map("events")
+}
+
+model EventInvite {
+  id              String     @id @default(cuid())
+  eventId         String
+  userId          String?
+  sponsorId       String?
+  email           String?
+  name            String
+  reply           EventReply @default(INVITED)
+  plusOnes        Int        @default(0)
+  comment         String?
+  sentAt          DateTime?
+  remindedAt      DateTime?
+  dayBeforeSentAt DateTime?
+  respondedAt     DateTime?
+  createdAt       DateTime   @default(now())
+
+  event   Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user    User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  sponsor Sponsor? @relation(fields: [sponsorId], references: [id], onDelete: SetNull)
+
+  @@unique([eventId, userId])
+  @@unique([eventId, sponsorId])
+  @@index([eventId])
+  @@map("event_invites")
 }
