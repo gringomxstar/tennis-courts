@@ -41,7 +41,7 @@ export default async function AdminStatsPage({ params, searchParams }: {
   const base = `/c/${tenant.slug}/admin/stats`;
 
   if (!process.env.DATABASE_URL) {
-    return <div className="px-5 pt-[66px] @min-[640px]:px-0 @min-[640px]:pt-0 text-[15px] text-muted-foreground">Statistik braucht eine Datenbank.</div>;
+    return <div className="px-5 pt-3 @min-[640px]:px-0 @min-[640px]:pt-0 text-[15px] text-muted-foreground">Statistik braucht eine Datenbank.</div>;
   }
   const settings = tenant.settingsJson;
   const s = await loadStats(tenant.id, year, settings?.openingHour ?? 7, settings?.closingHour ?? 22);
@@ -63,9 +63,8 @@ export default async function AdminStatsPage({ params, searchParams }: {
 
   return (
     <>
-      <div className="flex flex-wrap items-end justify-between gap-3 px-5 pt-[66px] @min-[640px]:px-0 @min-[640px]:pt-0">
+      <div className="flex flex-wrap items-end justify-between gap-3 px-5 pt-3 @min-[640px]:px-0 @min-[640px]:pt-0">
         <div>
-          <Link href={`/c/${tenant.slug}/admin`} className="@min-[640px]:hidden inline-flex items-center gap-1 text-[15px] font-semibold text-clay-text"><svg aria-hidden width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>Verwaltung</Link>
           <h1 className="text-[28px] font-bold tracking-[-.03em]">Statistik</h1>
           <div className="mt-0.5 text-[15px] text-muted-foreground">Kalenderjahr {year}, nach Zahlungsdatum</div>
         </div>

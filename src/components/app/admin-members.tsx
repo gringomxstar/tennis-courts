@@ -130,15 +130,15 @@ const filtersFor = (plans: PlanOption[]): [FilterId, string, (m: MemberRow) => b
 ];
 
 export function AdminMembers({ slug, tenantId, members, plans }: { slug: string; tenantId: string; members: MemberRow[]; plans: PlanOption[] }) {
-  const [editing, setEditing] = useState<MemberRow | "new" | null>(null);
+  // the topbar search lands here with ?q=; the hub links ?filter= and ?new=1
+  const sp = useSearchParams();
+  const [editing, setEditing] = useState<MemberRow | "new" | null>(() => (sp.get("new") ? "new" : null));
   const router = useRouter();
   const [reminded, setReminded] = useState<string[]>([]);
   const [paid, setPaid] = useState<string[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
-  // the topbar search lands here with ?q=
-  const sp = useSearchParams();
   const [q, setQ] = useState(sp.get("q") ?? "");
-  const [filter, setFilter] = useState<FilterId>("all");
+  const [filter, setFilter] = useState<FilterId>(() => (["all", "abo", "none", "open", "soon", "check"].includes(sp.get("filter") ?? "") ? (sp.get("filter") as FilterId) : "all"));
   const [sel, setSel] = useState<string[]>([]);
   const filters = useMemo(() => filtersFor(plans), [plans]);
   const needle = q.trim().toLowerCase();
@@ -244,16 +244,21 @@ export function AdminMembers({ slug, tenantId, members, plans }: { slug: string;
                 />
               </label>
               <div className="flex-1" />
-              <button type="button" onClick={() => downloadCsv(shown)} className="btn btn-ghost hidden @min-[640px]:inline-flex">Exportieren</button>
+              <button type="button" onClick={() => downloadCsv(shown)} className="btn btn-ghost">Als Excel-Liste</button>
               <button type="button" onClick={() => setEditing("new")} className="btn btn-pri">+ Mitglied</button>
             </div>
             <div className="no-scrollbar -mx-1 mb-3 flex gap-2 overflow-x-auto px-1 py-1">
               {filters.map(([id, label, t]) => (
-                <button key={id} type="button" aria-pressed={filter === id} onClick={() => setFilter(id)} className="chip shadow-none aria-pressed:shadow-none bg-bg">
+                <button key={id} type="button" aria-pressed={filter === id} onClick={() => setFilter(id)} className="chip bg-bg shadow-none aria-pressed:bg-ink aria-pressed:text-card aria-pressed:shadow-none">
                   {label} <span className="opacity-60">{members.filter(t).length}</span>
                 </button>
               ))}
             </div>
+            {shown.length > 0 && (
+              <button type="button" onClick={() => setSel(allOn ? [] : shown.map((m) => m.id))} className="mb-2 h-10 self-start px-1 text-[14px] font-semibold text-brand-deep @min-[1024px]:hidden">
+                {allOn ? "Auswahl aufheben" : `Alle ${shown.length} auswählen`}
+              </button>
+            )}
             {/* wide: table rows; phone: the same rows stack */}
             <div className={cn("flex flex-col", picked.length > 0 && "mb-2")}>
               <div className="hidden grid-cols-[24px_minmax(0,2.2fr)_minmax(0,1.6fr)_minmax(0,1.4fr)_150px] gap-4 px-3 pb-3 text-[12.5px] font-semibold text-ink-3 @min-[1024px]:grid">
